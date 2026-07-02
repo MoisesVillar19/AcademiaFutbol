@@ -1,0 +1,32 @@
+# Entorno virtual
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Base de datos local
+database/*.db
+
+# Backups
+backups/
+*.bak
+*.zip
+
+# Archivos exportados
+exports/
+
+# Logs
+logs/
+*.log
+
+# Variables de entorno
+.env
+
+# VS Code
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

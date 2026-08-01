@@ -17,6 +17,9 @@ backups/
 # Archivos exportados
 exports/
 
+# Reportes generados
+reports/
+
 # Logs
 logs/
 *.log

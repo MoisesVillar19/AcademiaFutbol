@@ -1,0 +1,451 @@
+import customtkinter as ctk
+from controllers import inventario_controller, login_controller
+
+
+class InventarioView(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="transparent")
+        self._crear_widgets()
+        self._cargar_combo_categorias()
+        self._cargar_productos()
+
+    def _crear_widgets(self):
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.tab_productos = self.tabview.add("Productos")
+        self.tab_categorias = self.tabview.add("Categorías")
+        self.tab_form = self.tabview.add("Registrar Producto")
+        self.tab_movimiento = self.tabview.add("Movimiento")
+        self.tab_historial = self.tabview.add("Historial")
+
+        self._crear_tab_productos()
+        self._crear_tab_categorias()
+        self._crear_tab_formulario()
+        self._crear_tab_movimiento()
+        self._crear_tab_historial()
+
+    def _crear_tab_productos(self):
+        header = ctk.CTkFrame(self.tab_productos, fg_color="transparent")
+        header.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            header, text="Inventario de Productos",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            header, text="+ Nuevo", width=100,
+            command=self._nuevo_producto,
+        ).pack(side="right")
+
+        self.scroll_productos = ctk.CTkScrollableFrame(self.tab_productos)
+        self.scroll_productos.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.label_status = ctk.CTkLabel(self.tab_productos, text="", font=ctk.CTkFont(size=11))
+        self.label_status.pack(pady=3)
+
+    def _crear_tab_categorias(self):
+        header = ctk.CTkFrame(self.tab_categorias, fg_color="transparent")
+        header.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            header, text="Categorías de Productos",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            header, text="+ Nueva", width=100,
+            command=self._nueva_categoria,
+        ).pack(side="right")
+
+        self.scroll_categorias = ctk.CTkScrollableFrame(self.tab_categorias)
+        self.scroll_categorias.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.label_status_cat = ctk.CTkLabel(self.tab_categorias, text="", font=ctk.CTkFont(size=11))
+        self.label_status_cat.pack(pady=3)
+
+        self._cargar_categorias()
+
+    def _cargar_categorias(self):
+        for widget in self.scroll_categorias.winfo_children():
+            widget.destroy()
+
+        categorias = inventario_controller.listar_categorias()
+
+        if not categorias:
+            ctk.CTkLabel(
+                self.scroll_categorias, text="No hay categorías registradas",
+                text_color="gray",
+            ).pack(pady=20)
+            self.label_status_cat.configure(text="Total: 0")
+            return
+
+        for cat in categorias:
+            card = ctk.CTkFrame(self.scroll_categorias)
+            card.pack(fill="x", padx=5, pady=3)
+
+            ctk.CTkLabel(
+                card, text=cat.get("nombre", ""),
+                font=ctk.CTkFont(size=14, weight="bold"),
+            ).pack(side="left", padx=10, pady=8)
+
+            botones = ctk.CTkFrame(card, fg_color="transparent")
+            botones.pack(side="right", padx=5, pady=5)
+
+            ctk.CTkButton(
+                botones, text="Editar", width=70, height=28,
+                command=lambda c=cat: self._editar_categoria(c),
+            ).pack(side="left", padx=2)
+
+        self.label_status_cat.configure(text=f"Total: {len(categorias)} categoría(s)")
+
+    def _nueva_categoria(self):
+        dialog = ctk.CTkInputDialog(
+            text="Nombre de la nueva categoría:", title="Nueva Categoría",
+        )
+        nombre = dialog.get_input()
+        if not nombre:
+            return
+
+        exito, msg, _ = inventario_controller.crear_categoria({"nombre": nombre})
+        if exito:
+            self._cargar_categorias()
+            self._cargar_combo_categorias()
+        else:
+            ctk.CTkLabel(self.scroll_categorias, text=msg, text_color="red").pack(pady=5)
+
+    def _editar_categoria(self, cat):
+        dialog = ctk.CTkInputDialog(
+            text=f"Nuevo nombre para '{cat['nombre']}':", title="Editar Categoría",
+        )
+        nombre = dialog.get_input()
+        if not nombre:
+            return
+
+        exito, msg = inventario_controller.editar_categoria(
+            cat["id_categoria_producto"], {"nombre": nombre},
+        )
+        if exito:
+            self._cargar_categorias()
+            self._cargar_combo_categorias()
+
+    def _crear_tab_formulario(self):
+        scroll = ctk.CTkScrollableFrame(self.tab_form)
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+        ctk.CTkLabel(
+            scroll, text="Registrar Producto",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(scroll, text="Código:").pack(anchor="w")
+        self.entry_codigo = ctk.CTkEntry(scroll, placeholder_text="Código único", width=300)
+        self.entry_codigo.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Nombre:").pack(anchor="w")
+        self.entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del producto", width=400)
+        self.entry_nombre.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Categoría:").pack(anchor="w")
+        self.combo_categoria = ctk.CTkComboBox(scroll, width=300, values=["Cargando..."])
+        self.combo_categoria.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Tipo de uso:").pack(anchor="w")
+        self.combo_tipo_uso = ctk.CTkComboBox(
+            scroll, width=200,
+            values=["CONSUMO_INTERNO", "VENTA"],
+        )
+        self.combo_tipo_uso.set("CONSUMO_INTERNO")
+        self.combo_tipo_uso.pack(anchor="w", pady=3)
+
+        row1 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row1.pack(fill="x", anchor="w", pady=3)
+
+        ctk.CTkLabel(row1, text="Stock mínimo:").pack(side="left")
+        self.entry_stock_min = ctk.CTkEntry(row1, placeholder_text="0", width=100)
+        self.entry_stock_min.pack(side="left", padx=10)
+
+        ctk.CTkLabel(row1, text="Precio (S/):").pack(side="left", padx=(20, 0))
+        self.entry_precio = ctk.CTkEntry(row1, placeholder_text="0.00", width=100)
+        self.entry_precio.pack(side="left", padx=10)
+
+        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
+        self.label_form_status.pack(anchor="w", pady=5)
+
+        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        btn_frame.pack(anchor="w", pady=10)
+
+        self.btn_guardar = ctk.CTkButton(
+            btn_frame, text="Guardar", width=120,
+            command=self._guardar_producto,
+        )
+        self.btn_guardar.pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame, text="Cancelar", width=120, fg_color="gray",
+            command=lambda: self.tabview.set("Productos"),
+        ).pack(side="left", padx=5)
+
+        self._id_producto_editando = None
+
+    def _crear_tab_movimiento(self):
+        scroll = ctk.CTkScrollableFrame(self.tab_movimiento)
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+        ctk.CTkLabel(
+            scroll, text="Registrar Movimiento",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(scroll, text="Producto:").pack(anchor="w")
+        self.combo_producto = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        self.combo_producto.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Tipo de movimiento:").pack(anchor="w")
+        self.combo_tipo_mov = ctk.CTkComboBox(
+            scroll, width=200,
+            values=["ENTRADA", "SALIDA", "AJUSTE"],
+        )
+        self.combo_tipo_mov.set("ENTRADA")
+        self.combo_tipo_mov.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Cantidad:").pack(anchor="w")
+        self.entry_cantidad = ctk.CTkEntry(scroll, placeholder_text="0", width=150)
+        self.entry_cantidad.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Motivo:").pack(anchor="w")
+        self.entry_motivo = ctk.CTkEntry(scroll, placeholder_text="Motivo del movimiento", width=400)
+        self.entry_motivo.pack(anchor="w", pady=3)
+
+        self.label_mov_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
+        self.label_mov_status.pack(anchor="w", pady=5)
+
+        ctk.CTkButton(
+            scroll, text="Registrar Movimiento", width=180,
+            command=self._registrar_movimiento,
+        ).pack(anchor="w", pady=10)
+
+    def _crear_tab_historial(self):
+        header = ctk.CTkFrame(self.tab_historial, fg_color="transparent")
+        header.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            header, text="Historial de Movimientos",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(side="left")
+
+        self.scroll_historial = ctk.CTkScrollableFrame(self.tab_historial)
+        self.scroll_historial.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.label_status_hist = ctk.CTkLabel(self.tab_historial, text="", font=ctk.CTkFont(size=11))
+        self.label_status_hist.pack(pady=3)
+
+    def _cargar_productos(self):
+        for widget in self.scroll_productos.winfo_children():
+            widget.destroy()
+
+        productos = inventario_controller.listar_productos()
+
+        if not productos:
+            ctk.CTkLabel(
+                self.scroll_productos, text="No hay productos registrados",
+                text_color="gray",
+            ).pack(pady=20)
+            self.label_status.configure(text="Total: 0")
+            return
+
+        for prod in productos:
+            self._crear_card_producto(prod)
+
+        self.label_status.configure(text=f"Total: {len(productos)} producto(s)")
+
+    def _crear_card_producto(self, prod):
+        card = ctk.CTkFrame(self.scroll_productos)
+        card.pack(fill="x", padx=5, pady=3)
+
+        info = ctk.CTkFrame(card, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+
+        stock_bajo = prod.get("stock_actual", 0) <= prod.get("stock_minimo", 0)
+        stock_color = "red" if stock_bajo and prod.get("stock_minimo", 0) > 0 else "gray"
+
+        ctk.CTkLabel(
+            info,
+            text=f"{prod.get('codigo', '')} - {prod.get('nombre', '')}",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            info,
+            text=f"Categoría: {prod.get('categoria_nombre', '')} | "
+                 f"Tipo: {prod.get('tipo_uso', '')} | Precio: S/{prod.get('precio', 0):.2f}",
+            font=ctk.CTkFont(size=12), text_color="gray",
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            info,
+            text=f"Stock: {prod.get('stock_actual', 0)} | Mínimo: {prod.get('stock_minimo', 0)}",
+            font=ctk.CTkFont(size=12), text_color=stock_color,
+        ).pack(anchor="w")
+
+        botones = ctk.CTkFrame(card, fg_color="transparent")
+        botones.pack(side="right", padx=5, pady=5)
+
+        ctk.CTkButton(
+            botones, text="Editar", width=70, height=28,
+            command=lambda p=prod: self._editar_producto(p),
+        ).pack(side="left", padx=2)
+
+        ctk.CTkButton(
+            botones, text="Movimiento", width=90, height=28,
+            fg_color="blue", hover_color="darkblue",
+            command=lambda p=prod: self._ir_movimiento(p),
+        ).pack(side="left", padx=2)
+
+    def _nuevo_producto(self):
+        self._limpiar_formulario()
+        self._cargar_combo_categorias()
+        self.tabview.set("Registrar Producto")
+
+    def _editar_producto(self, prod):
+        self._limpiar_formulario()
+        self._cargar_combo_categorias()
+        self._id_producto_editando = prod["id_producto"]
+
+        producto = inventario_controller.obtener_producto(prod["id_producto"])
+        if producto:
+            self.entry_codigo.insert(0, producto.get("codigo", ""))
+            self.entry_nombre.insert(0, producto.get("nombre", ""))
+            self.combo_tipo_uso.set(producto.get("tipo_uso", ""))
+            self.entry_stock_min.insert(0, str(producto.get("stock_minimo", 0)))
+            self.entry_precio.insert(0, str(producto.get("precio", 0)))
+
+        self.tabview.set("Registrar Producto")
+
+    def _guardar_producto(self):
+        data = {
+            "codigo": self.entry_codigo.get().strip(),
+            "nombre": self.entry_nombre.get().strip(),
+            "tipo_uso": self.combo_tipo_uso.get(),
+            "stock_minimo": self.entry_stock_min.get().strip() or "0",
+            "precio": self.entry_precio.get().strip() or "0",
+        }
+
+        cat_selection = self.combo_categoria.get()
+        if cat_selection in self._categorias_map:
+            data["id_categoria_producto"] = self._categorias_map[cat_selection]
+
+        if self._id_producto_editando:
+            exito, msg = inventario_controller.editar_producto(self._id_producto_editando, data)
+        else:
+            exito, msg, _ = inventario_controller.crear_producto(data)
+
+        if exito:
+            self.label_form_status.configure(text=msg, text_color="green")
+            self._limpiar_formulario()
+            self._cargar_productos()
+            self.tabview.set("Productos")
+        else:
+            self.label_form_status.configure(text=msg, text_color="red")
+
+    def _cargar_combo_categorias(self):
+        categorias = inventario_controller.listar_categorias(activo=1)
+        nombres = [c["nombre"] for c in categorias]
+        self.combo_categoria.configure(values=nombres if nombres else ["Sin categorías"])
+        self._categorias_map = {c["nombre"]: c["id_categoria_producto"] for c in categorias}
+
+    def _ir_movimiento(self, prod):
+        self._cargar_combo_productos()
+        self.tabview.set("Movimiento")
+        for key, val in self._productos_map.items():
+            if val == prod["id_producto"]:
+                self.combo_producto.set(key)
+                break
+
+    def _cargar_combo_productos(self):
+        productos = inventario_controller.listar_productos(activo=1)
+        nombres = [f"{p.get('codigo', '')} - {p.get('nombre', '')} (Stock:{p.get('stock_actual', 0)})" for p in productos]
+        self.combo_producto.configure(values=nombres if nombres else ["Sin productos"])
+        self._productos_map = {n: p["id_producto"] for n, p in zip(nombres, productos)}
+
+    def _registrar_movimiento(self):
+        prod_selection = self.combo_producto.get()
+        id_prod = self._productos_map.get(prod_selection)
+        if not id_prod:
+            self.label_mov_status.configure(text="Seleccione un producto", text_color="red")
+            return
+
+        cantidad_str = self.entry_cantidad.get().strip()
+        if not cantidad_str:
+            self.label_mov_status.configure(text="Ingrese la cantidad", text_color="red")
+            return
+
+        usuario = login_controller.obtener_usuario_actual()
+        if not usuario:
+            self.label_mov_status.configure(text="Sesión no válida", text_color="red")
+            return
+
+        data = {
+            "id_producto": id_prod,
+            "tipo_movimiento": self.combo_tipo_mov.get(),
+            "cantidad": cantidad_str,
+            "motivo": self.entry_motivo.get().strip(),
+            "id_usuario": usuario["id_usuario"],
+        }
+
+        exito, msg, _ = inventario_controller.registrar_movimiento(data)
+
+        if exito:
+            self.label_mov_status.configure(text=msg, text_color="green")
+            self._cargar_productos()
+            self._cargar_historial()
+            self.entry_cantidad.delete(0, "end")
+            self.entry_motivo.delete(0, "end")
+        else:
+            self.label_mov_status.configure(text=msg, text_color="red")
+
+    def _cargar_historial(self):
+        for widget in self.scroll_historial.winfo_children():
+            widget.destroy()
+
+        movimientos = inventario_controller.listar_movimientos()
+
+        if not movimientos:
+            ctk.CTkLabel(
+                self.scroll_historial, text="No hay movimientos registrados",
+                text_color="gray",
+            ).pack(pady=20)
+            self.label_status_hist.configure(text="Total: 0")
+            return
+
+        for mov in movimientos:
+            card = ctk.CTkFrame(self.scroll_historial)
+            card.pack(fill="x", padx=5, pady=3)
+
+            tipo = mov.get("tipo_movimiento", "")
+            color = {"ENTRADA": "green", "SALIDA": "red", "AJUSTE": "orange"}.get(tipo, "gray")
+
+            ctk.CTkLabel(
+                card,
+                text=f"{mov.get('codigo', '')} - {mov.get('producto_nombre', '')}",
+                font=ctk.CTkFont(size=13, weight="bold"),
+            ).pack(side="left", padx=10, pady=8)
+
+            ctk.CTkLabel(
+                card,
+                text=f"{tipo}: {mov.get('cantidad', 0)} | "
+                     f"Stock: {mov.get('stock_anterior', 0)} → {mov.get('stock_nuevo', 0)}",
+                font=ctk.CTkFont(size=12), text_color=color,
+            ).pack(side="left", padx=10)
+
+        self.label_status_hist.configure(text=f"Total: {len(movimientos)} movimiento(s)")
+
+    def _limpiar_formulario(self):
+        self._id_producto_editando = None
+        self.entry_codigo.delete(0, "end")
+        self.entry_nombre.delete(0, "end")
+        self.combo_tipo_uso.set("CONSUMO_INTERNO")
+        self.entry_stock_min.delete(0, "end")
+        self.entry_precio.delete(0, "end")
+        self.label_form_status.configure(text="")

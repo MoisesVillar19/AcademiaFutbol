@@ -1,0 +1,69 @@
+from services import matricula_service, tarifa_service, beca_service, cuota_service
+from utils.validators import validate_not_empty
+
+
+def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
+    if not data.get("id_estudiante"):
+        return False, "El estudiante es obligatorio", None
+    if not data.get("id_tarifa"):
+        return False, "La tarifa es obligatoria", None
+
+    monto_pactado = data.get("monto_pactado")
+    if monto_pactado is not None and monto_pactado != "":
+        try:
+            monto_pactado = float(monto_pactado)
+            if monto_pactado < 0:
+                return False, "El monto pactado no puede ser negativo", None
+        except (ValueError, TypeError):
+            return False, "El monto pactado no es válido", None
+        data["monto_pactado"] = monto_pactado
+    else:
+        data["monto_pactado"] = None
+
+    dia_venc = data.get("dia_vencimiento", 1)
+    try:
+        dia_venc = int(dia_venc)
+        if not (1 <= dia_venc <= 31):
+            return False, "El día de vencimiento debe ser entre 1 y 31", None
+    except (ValueError, TypeError):
+        return False, "Día de vencimiento no válido", None
+    data["dia_vencimiento"] = dia_venc
+
+    return matricula_service.crear_matricula(data)
+
+
+def obtener_matricula(id_matricula: int) -> dict | None:
+    return matricula_service.obtener_matricula(id_matricula)
+
+
+def obtener_por_estudiante(id_estudiante: int) -> list[dict]:
+    return matricula_service.obtener_por_estudiante(id_estudiante)
+
+
+def listar_matriculas_activas() -> list[dict]:
+    return matricula_service.listar_matriculas_activas()
+
+
+def asignar_beca(id_matricula: int, id_beca: int,
+                 observacion: str = "") -> tuple[bool, str]:
+    return matricula_service.asignar_beca(id_matricula, id_beca, observacion)
+
+
+def desasignar_beca(id_matricula: int, id_beca: int) -> tuple[bool, str]:
+    return matricula_service.desasignar_beca(id_matricula, id_beca)
+
+
+def obtener_becas_por_matricula(id_matricula: int) -> list[dict]:
+    return matricula_service.obtener_becas_por_matricula(id_matricula)
+
+
+def listar_tarifas_activas() -> list[dict]:
+    return tarifa_service.listar_tarifas_activas()
+
+
+def listar_becas() -> list[dict]:
+    return beca_service.listar_becas(activo=1)
+
+
+def obtener_cuotas_por_matricula(id_matricula: int) -> list[dict]:
+    return cuota_service.obtener_cuotas_por_matricula(id_matricula)

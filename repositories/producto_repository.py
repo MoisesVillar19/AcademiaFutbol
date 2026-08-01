@@ -1,0 +1,117 @@
+from database.connection import get_connection, fetch_one, fetch_all
+from models.producto import Producto
+
+
+def insertar(producto: Producto) -> int:
+    conn = get_connection()
+    cursor = conn.execute(
+        """INSERT INTO producto
+           (id_categoria_producto, tipo_uso, codigo, nombre,
+            stock_actual, stock_minimo, precio, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            producto.id_categoria_producto,
+            producto.tipo_uso,
+            producto.codigo,
+            producto.nombre,
+            producto.stock_actual,
+            producto.stock_minimo,
+            producto.precio,
+            producto.activo,
+        ),
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+
+def obtener_por_id(id_producto: int) -> dict | None:
+    return fetch_one(
+        """SELECT p.*, cp.nombre as categoria_nombre
+           FROM producto p
+           JOIN categoria_producto cp ON p.id_categoria_producto = cp.id_categoria_producto
+           WHERE p.id_producto = ?""",
+        (id_producto,),
+    )
+
+
+def obtener_por_codigo(codigo: str) -> dict | None:
+    return fetch_one(
+        "SELECT * FROM producto WHERE codigo = ?",
+        (codigo,),
+    )
+
+
+def obtener_todos(activo: int | None = None) -> list[dict]:
+    sql = """
+        SELECT p.*, cp.nombre as categoria_nombre
+        FROM producto p
+        JOIN categoria_producto cp ON p.id_categoria_producto = cp.id_categoria_producto
+    """
+    if activo is not None:
+        sql += " WHERE p.activo = ?"
+        return fetch_all(sql, (activo,))
+    return fetch_all(sql)
+
+
+def obtener_bajo_stock() -> list[dict]:
+    return fetch_all(
+        """SELECT p.*, cp.nombre as categoria_nombre
+           FROM producto p
+           JOIN categoria_producto cp ON p.id_categoria_producto = cp.id_categoria_producto
+           WHERE p.stock_actual <= p.stock_minimo AND p.activo = 1
+           ORDER BY p.stock_actual""",
+    )
+
+
+def actualizar_stock(id_producto: int, nuevo_stock: int) -> None:
+    conn = get_connection()
+    conn.execute(
+        "UPDATE producto SET stock_actual = ? WHERE id_producto = ?",
+        (nuevo_stock, id_producto),
+    )
+    conn.commit()
+
+
+def existe_codigo(codigo: str, exclude_id: int | None = None) -> bool:
+    if exclude_id:
+        row = fetch_one(
+            "SELECT id_producto FROM producto WHERE codigo = ? AND id_producto != ?",
+            (codigo, exclude_id),
+        )
+    else:
+        row = fetch_one(
+            "SELECT id_producto FROM producto WHERE codigo = ?",
+            (codigo,),
+        )
+    return row is not None
+
+
+def actualizar(producto: Producto) -> None:
+    conn = get_connection()
+    conn.execute(
+        """UPDATE producto SET
+           id_categoria_producto = ?, tipo_uso = ?, codigo = ?, nombre = ?,
+           stock_actual = ?, stock_minimo = ?, precio = ?, activo = ?
+           WHERE id_producto = ?""",
+        (
+            producto.id_categoria_producto,
+            producto.tipo_uso,
+            producto.codigo,
+            producto.nombre,
+            producto.stock_actual,
+            producto.stock_minimo,
+            producto.precio,
+            producto.activo,
+            producto.id_producto,
+        ),
+    )
+    conn.commit()
+
+
+def soft_delete(id_producto: int) -> None:
+    conn = get_connection()
+    conn.execute(
+        "UPDATE producto SET activo = 0 WHERE id_producto = ?",
+        (id_producto,),
+    )
+    conn.commit()

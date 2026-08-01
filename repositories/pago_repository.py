@@ -1,0 +1,97 @@
+from database.connection import get_connection, fetch_one, fetch_all
+from models.pago import Pago
+from utils.dates import get_now
+
+
+def insertar(pago: Pago) -> int:
+    conn = get_connection()
+    now = get_now()
+    cursor = conn.execute(
+        """INSERT INTO pago
+           (id_usuario, numero_recibo, fecha_pago, monto_total,
+            metodo_pago, observacion, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (
+            pago.id_usuario,
+            pago.numero_recibo,
+            pago.fecha_pago,
+            pago.monto_total,
+            pago.metodo_pago,
+            pago.observacion,
+            pago.activo,
+        ),
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+
+def obtener_por_id(id_pago: int) -> dict | None:
+    return fetch_one(
+        """SELECT p.*, u.username
+           FROM pago p
+           JOIN usuario u ON p.id_usuario = u.id_usuario
+           WHERE p.id_pago = ?""",
+        (id_pago,),
+    )
+
+
+def obtener_por_recibo(numero_recibo: str) -> dict | None:
+    return fetch_one(
+        "SELECT * FROM pago WHERE numero_recibo = ?",
+        (numero_recibo,),
+    )
+
+
+def obtener_todos(limit: int = 100, offset: int = 0) -> list[dict]:
+    return fetch_all(
+        """SELECT p.*, u.username
+           FROM pago p
+           JOIN usuario u ON p.id_usuario = u.id_usuario
+           WHERE p.activo = 1
+           ORDER BY p.fecha_pago DESC
+           LIMIT ? OFFSET ?""",
+        (limit, offset),
+    )
+
+
+def obtener_por_fecha(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    return fetch_all(
+        """SELECT p.*, u.username
+           FROM pago p
+           JOIN usuario u ON p.id_usuario = u.id_usuario
+           WHERE p.fecha_pago BETWEEN ? AND ? AND p.activo = 1
+           ORDER BY p.fecha_pago DESC""",
+        (fecha_inicio, fecha_fin),
+    )
+
+
+def obtener_por_estudiante(id_estudiante: int) -> list[dict]:
+    return fetch_all(
+        """SELECT DISTINCT p.*, u.username
+           FROM pago p
+           JOIN usuario u ON p.id_usuario = u.id_usuario
+           JOIN detalle_pago dp ON p.id_pago = dp.id_pago
+           JOIN cuota c ON dp.id_cuota = c.id_cuota
+           JOIN matricula m ON c.id_matricula = m.id_matricula
+           WHERE m.id_estudiante = ? AND p.activo = 1
+           ORDER BY p.fecha_pago DESC""",
+        (id_estudiante,),
+    )
+
+
+def contar_por_fecha(fecha_inicio: str, fecha_fin: str) -> int:
+    row = fetch_one(
+        """SELECT COUNT(*) as total FROM pago
+           WHERE fecha_pago BETWEEN ? AND ? AND activo = 1""",
+        (fecha_inicio, fecha_fin),
+    )
+    return row["total"] if row else 0
+
+
+def sumar_por_fecha(fecha_inicio: str, fecha_fin: str) -> float:
+    row = fetch_one(
+        """SELECT COALESCE(SUM(monto_total), 0) as total FROM pago
+           WHERE fecha_pago BETWEEN ? AND ? AND activo = 1""",
+        (fecha_inicio, fecha_fin),
+    )
+    return row["total"] if row else 0.0

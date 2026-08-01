@@ -1,0 +1,85 @@
+from repositories import pago_repository, detalle_pago_repository
+from models.pago import Pago
+from services import auditoria_service, cuota_service
+from utils.helpers import generate_receipt_number
+from utils.dates import get_today
+from utils.logger import logger
+
+
+def registrar_pago(data: dict) -> tuple[bool, str, int | None]:
+    id_usuario = data.get("id_usuario")
+    id_cuota = data.get("id_cuota")
+    monto_pagado = data.get("monto_pagado", 0)
+    metodo_pago = data.get("metodo_pago", "")
+
+    if not id_usuario:
+        return False, "Usuario no identificado", None
+    if not id_cuota:
+        return False, "La cuota es obligatoria", None
+    if monto_pagado <= 0:
+        return False, "El monto debe ser mayor a 0", None
+    if metodo_pago not in ("EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"):
+        return False, "Método de pago no válido", None
+
+    from repositories import cuota_repository
+    cuota = cuota_repository.obtener_por_id(id_cuota)
+    if not cuota:
+        return False, "Cuota no encontrada", None
+    if cuota["estado"] == "PAGADO":
+        return False, "Esta cuota ya está pagada completamente", None
+    if monto_pagado > cuota["saldo"]:
+        return False, f"El monto excede el saldo pendiente de S/{cuota['saldo']:.2f}", None
+
+    numero_recibo = generate_receipt_number()
+
+    pago = Pago(
+        id_usuario=id_usuario,
+        numero_recibo=numero_recibo,
+        fecha_pago=get_today(),
+        monto_total=monto_pagado,
+        metodo_pago=metodo_pago,
+        observacion=data.get("observacion", ""),
+    )
+    id_pago = pago_repository.insertar(pago)
+
+    detalle_pago_repository.insertar(id_pago, id_cuota, monto_pagado)
+
+    cuota_service.actualizar_pago(id_cuota, monto_pagado)
+
+    auditoria_service.registrar_insert(
+        id_usuario=id_usuario,
+        tabla="pago",
+        id_registro=id_pago,
+        valores_nuevos=f"recibo={numero_recibo}, monto=S/{monto_pagado:.2f}, metodo={metodo_pago}",
+    )
+
+    logger.info(f"Pago registrado: recibo={numero_recibo}, monto=S/{monto_pagado:.2f}")
+    return True, f"Pago registrado. Recibo: {numero_recibo}", id_pago
+
+
+def obtener_pago(id_pago: int) -> dict | None:
+    return pago_repository.obtener_por_id(id_pago)
+
+
+def obtener_detalles_por_pago(id_pago: int) -> list[dict]:
+    return detalle_pago_repository.obtener_por_pago(id_pago)
+
+
+def listar_pagos(limit: int = 100, offset: int = 0) -> list[dict]:
+    return pago_repository.obtener_todos(limit=limit, offset=offset)
+
+
+def listar_por_fecha(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    return pago_repository.obtener_por_fecha(fecha_inicio, fecha_fin)
+
+
+def listar_por_estudiante(id_estudiante: int) -> list[dict]:
+    return pago_repository.obtener_por_estudiante(id_estudiante)
+
+
+def obtener_ingresos_por_fecha(fecha_inicio: str, fecha_fin: str) -> float:
+    return pago_repository.sumar_por_fecha(fecha_inicio, fecha_fin)
+
+
+def contar_pagos_por_fecha(fecha_inicio: str, fecha_fin: str) -> int:
+    return pago_repository.contar_por_fecha(fecha_inicio, fecha_fin)

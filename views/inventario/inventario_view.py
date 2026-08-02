@@ -39,6 +39,16 @@ class InventarioView(ctk.CTkFrame):
             command=self._nuevo_producto,
         ).pack(side="right")
 
+        busqueda_frame = ctk.CTkFrame(self.tab_productos, fg_color="transparent")
+        busqueda_frame.pack(fill="x", padx=5, pady=(0, 5))
+
+        self.entry_busqueda = ctk.CTkEntry(
+            busqueda_frame, placeholder_text="Buscar por nombre o código...",
+            width=250,
+        )
+        self.entry_busqueda.pack(side="left", padx=5)
+        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
+
         self.scroll_productos = ctk.CTkScrollableFrame(self.tab_productos)
         self.scroll_productos.pack(fill="both", expand=True, padx=5, pady=5)
 
@@ -139,25 +149,25 @@ class InventarioView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        ctk.CTkLabel(scroll, text="Código:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Código *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_codigo = ctk.CTkEntry(scroll, placeholder_text="Código único", width=300)
-        self.entry_codigo.pack(anchor="w", pady=3)
+        self.entry_codigo.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Nombre:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Nombre *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del producto", width=400)
-        self.entry_nombre.pack(anchor="w", pady=3)
+        self.entry_nombre.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Categoría:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Categoría *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_categoria = ctk.CTkComboBox(scroll, width=300, values=["Cargando..."])
-        self.combo_categoria.pack(anchor="w", pady=3)
+        self.combo_categoria.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Tipo de uso:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Tipo de uso", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_tipo_uso = ctk.CTkComboBox(
             scroll, width=200,
             values=["CONSUMO_INTERNO", "VENTA"],
         )
         self.combo_tipo_uso.set("CONSUMO_INTERNO")
-        self.combo_tipo_uso.pack(anchor="w", pady=3)
+        self.combo_tipo_uso.pack(anchor="w", pady=(0, 5))
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -242,14 +252,30 @@ class InventarioView(ctk.CTkFrame):
         self.label_status_hist.pack(pady=3)
 
     def _cargar_productos(self):
+        self._on_busqueda_cambiar()
+
+    def _on_busqueda_cambiar(self, event=None):
+        texto = self.entry_busqueda.get().strip().lower()
+        todos = inventario_controller.listar_productos()
+
+        if texto:
+            filtrados = []
+            for p in todos:
+                nombre = str(p.get('nombre', '')).lower()
+                codigo = str(p.get('codigo', '')).lower()
+                if texto in nombre or texto in codigo:
+                    filtrados.append(p)
+            self._renderizar_productos(filtrados)
+        else:
+            self._renderizar_productos(todos)
+
+    def _renderizar_productos(self, productos):
         for widget in self.scroll_productos.winfo_children():
             widget.destroy()
 
-        productos = inventario_controller.listar_productos()
-
         if not productos:
             ctk.CTkLabel(
-                self.scroll_productos, text="No hay productos registrados",
+                self.scroll_productos, text="No se encontraron productos",
                 text_color="gray",
             ).pack(pady=20)
             self.label_status.configure(text="Total: 0")

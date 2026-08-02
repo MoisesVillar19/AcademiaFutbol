@@ -42,7 +42,14 @@ class EstudianteView(ctk.CTkFrame):
             command=self._filtrar,
         )
         self.filtro_estado.set("Todos")
-        self.filtro_estado.pack(side="left")
+        self.filtro_estado.pack(side="left", padx=(0, 10))
+
+        self.entry_busqueda = ctk.CTkEntry(
+            filtros, placeholder_text="Buscar por nombre o DNI...",
+            width=250,
+        )
+        self.entry_busqueda.pack(side="left", padx=5)
+        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
 
         self.scroll_estudiantes = ctk.CTkScrollableFrame(self.tab_lista)
         self.scroll_estudiantes.pack(fill="both", expand=True, padx=5, pady=5)
@@ -59,14 +66,17 @@ class EstudianteView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        self.entry_dni = ctk.CTkEntry(scroll, placeholder_text="DNI (8 dígitos)", width=300)
-        self.entry_dni.pack(anchor="w", pady=3)
+        ctk.CTkLabel(scroll, text="DNI *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_dni = ctk.CTkEntry(scroll, placeholder_text="8 dígitos", width=300)
+        self.entry_dni.pack(anchor="w", pady=(0, 5))
 
-        self.entry_nombres = ctk.CTkEntry(scroll, placeholder_text="Nombres", width=400)
-        self.entry_nombres.pack(anchor="w", pady=3)
+        ctk.CTkLabel(scroll, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_nombres = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
+        self.entry_nombres.pack(anchor="w", pady=(0, 5))
 
-        self.entry_apellidos = ctk.CTkEntry(scroll, placeholder_text="Apellidos", width=400)
-        self.entry_apellidos.pack(anchor="w", pady=3)
+        ctk.CTkLabel(scroll, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_apellidos = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
+        self.entry_apellidos.pack(anchor="w", pady=(0, 5))
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -279,16 +289,52 @@ class EstudianteView(ctk.CTkFrame):
             self._cargar_combo_estudiantes()
 
     def _filtrar(self, valor):
-        if valor == "Activos":
-            self._cargar_estudiantes(activo=1)
-        elif valor == "Retirados":
-            self._cargar_estudiantes(estado="RETIRADO")
+        self._on_busqueda_cambiar()
+
+    def _on_busqueda_cambiar(self, event=None):
+        texto = self.entry_busqueda.get().strip().lower()
+        filtro_estado = self.filtro_estado.get()
+
+        activo = None
+        estado = None
+        if filtro_estado == "Activos":
+            activo = 1
+        elif filtro_estado == "Retirados":
+            estado = "RETIRADO"
+
+        todos = estudiante_controller.listar_estudiantes(activo=activo, estado=estado)
+
+        if texto:
+            filtrados = []
+            for e in todos:
+                nombre = f"{e.get('nombres', '')} {e.get('apellidos', '')}".lower()
+                dni = str(e.get('dni', '')).lower()
+                if texto in nombre or texto in dni:
+                    filtrados.append(e)
+            self._renderizar_estudiantes(filtrados)
         else:
-            self._cargar_estudiantes()
+            self._renderizar_estudiantes(todos)
+
+    def _renderizar_estudiantes(self, estudiantes):
+        for widget in self.scroll_estudiantes.winfo_children():
+            widget.destroy()
+
+        if not estudiantes:
+            ctk.CTkLabel(
+                self.scroll_estudiantes, text="No se encontraron estudiantes",
+                text_color="gray",
+            ).pack(pady=20)
+            self.label_status.configure(text="Total: 0")
+            return
+
+        for est in estudiantes:
+            self._crear_card_estudiante(est)
+
+        self.label_status.configure(text=f"Total: {len(estudiantes)} estudiante(s)")
 
     def _cargar_combo_estudiantes(self):
         estudiantes = estudiante_controller.listar_estudiantes(activo=1)
-        nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')} (ID:{e['id_estudiante']})" for e in estudiantes]
+        nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')}" for e in estudiantes]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin estudiantes"])
         self._estudiantes_map = {n: e["id_estudiante"] for n, e in zip(nombres, estudiantes)}
 
@@ -332,62 +378,89 @@ class EstudianteView(ctk.CTkFrame):
         if not id_est:
             return
 
-        dialog = ctk.CTkInputDialog(
-            text="Ingrese DNI del apoderado:", title="DNI del Apoderado",
-        )
-        dni = dialog.get_input()
-        if not dni:
-            return
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Asociar Apoderado")
+        dialog.geometry("400x300")
+        dialog.transient(self)
+        dialog.grab_set()
 
-        from controllers import persona_controller
-        persona = persona_controller.buscar_por_dni(dni)
-        if not persona:
-            dialog2 = ctk.CTkInputDialog(
-                text="Apoderado no encontrado. Nombres:", title="Registrar Apoderado",
-            )
-            nombres = dialog2.get_input()
-            if not nombres:
+        ctk.CTkLabel(
+            dialog, text="DNI del Apoderado *",
+            font=ctk.CTkFont(size=12),
+        ).pack(anchor="w", padx=15, pady=(15, 2))
+        entry_dni = ctk.CTkEntry(dialog, width=350, placeholder_text="8 dígitos")
+        entry_dni.pack(padx=15)
+
+        ctk.CTkLabel(
+            dialog, text="Parentesco *",
+            font=ctk.CTkFont(size=12),
+        ).pack(anchor="w", padx=15, pady=(10, 2))
+        entry_parentesco = ctk.CTkEntry(dialog, width=350, placeholder_text="Ej: Madre, Padre, Tutor")
+        entry_parentesco.pack(padx=15)
+
+        label_status = ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=11))
+        label_status.pack(padx=15, pady=5)
+
+        def confirmar():
+            dni = entry_dni.get().strip()
+            parentesco = entry_parentesco.get().strip()
+
+            if not dni:
+                label_status.configure(text="El DNI es obligatorio", text_color="red")
                 return
-
-            dialog3 = ctk.CTkInputDialog(
-                text="Apellidos:", title="Apellidos",
-            )
-            apellidos = dialog3.get_input()
-            if not apellidos:
-                return
-
-            dialog4 = ctk.CTkInputDialog(
-                text="Parentesco:", title="Parentesco",
-            )
-            parentesco = dialog4.get_input()
             if not parentesco:
+                label_status.configure(text="El parentesco es obligatorio", text_color="red")
                 return
 
-            exito, msg, id_apoderado = estudiante_controller.crear_apoderado({
-                "dni": dni, "nombres": nombres, "apellidos": apellidos,
-                "parentesco": parentesco,
-            })
-            if not exito:
-                ctk.CTkLabel(self.scroll_apoderados, text=msg, text_color="red").pack(pady=5)
-                return
-        else:
-            exito2, msg2, id_apoderado = estudiante_controller.crear_apoderado({
-                "dni": dni, "parentesco": "No especificado",
-            })
+            from controllers import persona_controller
+            persona = persona_controller.buscar_por_dni(dni)
 
-        if not id_apoderado:
-            apo = estudiante_controller.obtener_apoderado_por_persona(persona["id_persona"] if persona else None)
-            if apo:
-                id_apoderado = apo["id_apoderado"]
+            if not persona:
+                exito, msg, id_apoderado = estudiante_controller.crear_apoderado({
+                    "dni": dni,
+                    "nombres": "",
+                    "apellidos": "",
+                    "parentesco": parentesco,
+                })
+                if not exito:
+                    label_status.configure(text=msg, text_color="red")
+                    return
             else:
-                return
+                exito2, msg2, id_apoderado = estudiante_controller.crear_apoderado({
+                    "dni": dni,
+                    "parentesco": parentesco,
+                })
 
-        tiene_principal = estudiante_controller.obtener_apoderados_por_estudiante(id_est)
-        es_principal = len(tiene_principal) == 0
+            if not id_apoderado:
+                apo = estudiante_controller.obtener_apoderado_por_persona(persona["id_persona"] if persona else None)
+                if apo:
+                    id_apoderado = apo["id_apoderado"]
+                else:
+                    label_status.configure(text="Error al obtener apoderado", text_color="red")
+                    return
 
-        exito, msg = estudiante_controller.asociar_apoderado(id_est, id_apoderado, es_principal)
-        if exito:
-            self._cargar_apoderados_estudiante(selection)
+            tiene_principal = estudiante_controller.obtener_apoderados_por_estudiante(id_est)
+            es_principal = len(tiene_principal) == 0
+
+            exito, msg = estudiante_controller.asociar_apoderado(id_est, id_apoderado, es_principal)
+            if exito:
+                dialog.destroy()
+                self._cargar_apoderados_estudiante(selection)
+            else:
+                label_status.configure(text=msg, text_color="red")
+
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(pady=10)
+
+        ctk.CTkButton(
+            btn_frame, text="Cancelar", width=100, fg_color="gray",
+            command=dialog.destroy,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame, text="Asociar", width=100,
+            command=confirmar,
+        ).pack(side="left", padx=5)
 
     def _desasociar(self, id_est, id_apoderado):
         exito, msg = estudiante_controller.desasociar_apoderado(id_est, id_apoderado)

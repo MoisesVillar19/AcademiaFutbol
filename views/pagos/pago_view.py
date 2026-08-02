@@ -47,9 +47,18 @@ class PagoView(ctk.CTkFrame):
         self.entry_fecha_fin.pack(side="left", padx=5)
 
         ctk.CTkButton(
-            filtros, text="Buscar", width=80,
+            filtros, text="Buscar fechas", width=100,
             command=self._buscar_por_fecha,
         ).pack(side="left", padx=5)
+
+        ctk.CTkLabel(filtros, text="  |  ").pack(side="left")
+
+        self.entry_busqueda = ctk.CTkEntry(
+            filtros, placeholder_text="Buscar por recibo o método...",
+            width=200,
+        )
+        self.entry_busqueda.pack(side="left", padx=5)
+        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
 
         self.scroll_pagos = ctk.CTkScrollableFrame(self.tab_lista)
         self.scroll_pagos.pack(fill="both", expand=True, padx=5, pady=5)
@@ -66,29 +75,29 @@ class PagoView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        ctk.CTkLabel(scroll, text="Estudiante:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_estudiante = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
-        self.combo_estudiante.pack(anchor="w", pady=3)
+        self.combo_estudiante.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Cuota pendiente:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Cuota pendiente *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_cuota = ctk.CTkComboBox(scroll, width=400, values=["Seleccionar estudiante primero"])
-        self.combo_cuota.pack(anchor="w", pady=3)
+        self.combo_cuota.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Monto a pagar (S/):").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Monto a pagar (S/) *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_monto = ctk.CTkEntry(scroll, placeholder_text="0.00", width=200)
-        self.entry_monto.pack(anchor="w", pady=3)
+        self.entry_monto.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Método de pago:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Método de pago *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_metodo = ctk.CTkComboBox(
             scroll, width=200,
             values=["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"],
         )
         self.combo_metodo.set("EFECTIVO")
-        self.combo_metodo.pack(anchor="w", pady=3)
+        self.combo_metodo.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Observación (opcional):").pack(anchor="w")
-        self.entry_observacion = ctk.CTkEntry(scroll, placeholder_text="Observación", width=400)
-        self.entry_observacion.pack(anchor="w", pady=3)
+        ctk.CTkLabel(scroll, text="Observación (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_observacion = ctk.CTkEntry(scroll, placeholder_text="Referencia o nota", width=400)
+        self.entry_observacion.pack(anchor="w", pady=(0, 5))
 
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
@@ -127,15 +136,31 @@ class PagoView(ctk.CTkFrame):
         self.label_status_morosos.pack(pady=3)
 
     def _cargar_pagos(self, pagos=None):
+        self._pagos_actuales = pagos if pagos is not None else pago_controller.listar_pagos()
+        self._renderizar_pagos(self._pagos_actuales)
+
+    def _on_busqueda_cambiar(self, event=None):
+        texto = self.entry_busqueda.get().strip().lower()
+        pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
+
+        if texto:
+            filtrados = []
+            for p in pagos:
+                recibo = str(p.get('numero_recibo', '')).lower()
+                metodo = str(p.get('metodo_pago', '')).lower()
+                if texto in recibo or texto in metodo:
+                    filtrados.append(p)
+            self._renderizar_pagos(filtrados)
+        else:
+            self._renderizar_pagos(pagos)
+
+    def _renderizar_pagos(self, pagos):
         for widget in self.scroll_pagos.winfo_children():
             widget.destroy()
 
-        if pagos is None:
-            pagos = pago_controller.listar_pagos()
-
         if not pagos:
             ctk.CTkLabel(
-                self.scroll_pagos, text="No hay pagos registrados",
+                self.scroll_pagos, text="No se encontraron pagos",
                 text_color="gray",
             ).pack(pady=20)
             self.label_status.configure(text="Total: 0")
@@ -191,7 +216,7 @@ class PagoView(ctk.CTkFrame):
     def _cargar_combo_estudiantes(self):
         from controllers import pago_controller
         matriculas = pago_controller.listar_matriculas_activas()
-        nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')} (Mat:{m['id_matricula']})" for m in matriculas]
+        nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')}" for m in matriculas]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin matrículas activas"])
         self._matriculas_map = {n: m["id_matricula"] for n, m in zip(nombres, matriculas)}
 

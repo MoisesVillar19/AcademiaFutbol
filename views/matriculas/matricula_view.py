@@ -49,16 +49,16 @@ class MatriculaView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        ctk.CTkLabel(scroll, text="Estudiante:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_estudiante = ctk.CTkComboBox(
             scroll, width=400, values=["Cargando..."],
             command=self._on_estudiante_changed,
         )
-        self.combo_estudiante.pack(anchor="w", pady=3)
+        self.combo_estudiante.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Tarifa:").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Tarifa *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_tarifa = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
-        self.combo_tarifa.pack(anchor="w", pady=3)
+        self.combo_tarifa.pack(anchor="w", pady=(0, 5))
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -175,7 +175,7 @@ class MatriculaView(ctk.CTkFrame):
 
     def _cargar_combo_estudiantes(self):
         estudiantes = estudiante_controller.listar_estudiantes(activo=1)
-        nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')} (ID:{e['id_estudiante']})" for e in estudiantes]
+        nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')}" for e in estudiantes]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin estudiantes"])
         self._estudiantes_map = {n: e for n, e in zip(nombres, estudiantes)}
 
@@ -253,7 +253,7 @@ class MatriculaView(ctk.CTkFrame):
 
     def _cargar_combo_matriculas(self):
         matriculas = matricula_controller.listar_matriculas_activas()
-        nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')} (ID:{m['id_matricula']})" for m in matriculas]
+        nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')}" for m in matriculas]
         self.combo_matricula_cuotas.configure(values=nombres if nombres else ["Sin matrículas"])
         self._matriculas_map = {n: m["id_matricula"] for n, m in zip(nombres, matriculas)}
 

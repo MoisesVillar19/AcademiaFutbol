@@ -1,4 +1,4 @@
-from services import configuracion_service
+from services import configuracion_service, categoria_service
 from controllers import login_controller
 
 
@@ -28,3 +28,7 @@ def obtener_porcentaje_mora() -> float:
 
 def permite_multiples_becas() -> bool:
     return configuracion_service.permite_multiples_becas()
+
+
+def listar_categorias() -> list[dict]:
+    return categoria_service.listar_categorias()

@@ -189,8 +189,8 @@ class PagoView(ctk.CTkFrame):
         self.tabview.set("Registrar Pago")
 
     def _cargar_combo_estudiantes(self):
-        from repositories import matricula_repository
-        matriculas = matricula_repository.obtener_activas()
+        from controllers import pago_controller
+        matriculas = pago_controller.listar_matriculas_activas()
         nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')} (Mat:{m['id_matricula']})" for m in matriculas]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin matrículas activas"])
         self._matriculas_map = {n: m["id_matricula"] for n, m in zip(nombres, matriculas)}

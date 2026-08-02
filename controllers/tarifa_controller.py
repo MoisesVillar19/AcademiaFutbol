@@ -1,0 +1,30 @@
+from services import tarifa_service, auth_service
+
+
+def _get_id_usuario() -> int:
+    usuario = auth_service.obtener_usuario_actual()
+    return usuario["id_usuario"] if usuario else 1
+
+
+def crear_tarifa(data: dict) -> tuple[bool, str, int | None]:
+    return tarifa_service.crear_tarifa(data)
+
+
+def editar_tarifa(id_tarifa: int, data: dict) -> tuple[bool, str]:
+    return tarifa_service.editar_tarifa(id_tarifa, data)
+
+
+def obtener_tarifa(id_tarifa: int) -> dict | None:
+    return tarifa_service.obtener_tarifa(id_tarifa)
+
+
+def listar_tarifas_activas() -> list[dict]:
+    return tarifa_service.listar_tarifas_activas()
+
+
+def listar_por_categoria(id_categoria: int) -> list[dict]:
+    return tarifa_service.listar_tarifas_por_categoria(id_categoria)
+
+
+def desactivar_tarifa(id_tarifa: int) -> tuple[bool, str]:
+    return tarifa_service.editar_tarifa(id_tarifa, {"activo": 0})

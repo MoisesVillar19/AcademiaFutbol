@@ -112,8 +112,8 @@ def contar_matriculas_mes() -> int:
 
 
 def _obtener_configuracion():
-    from database.connection import fetch_one
-    return fetch_one("SELECT * FROM configuracion WHERE id_configuracion = 1")
+    from repositories import configuracion_repository
+    return configuracion_repository.obtener_configuracion()
 
 
 def _ultimo_dia_mes(fecha_str: str) -> int:

@@ -1,4 +1,4 @@
-from services import pago_service, cuota_service
+from services import pago_service, cuota_service, matricula_service
 from utils.validators import validate_metodo_pago
 
 
@@ -47,6 +47,10 @@ def obtener_ingresos_por_fecha(fecha_inicio: str, fecha_fin: str) -> float:
 
 def contar_pagos_por_fecha(fecha_inicio: str, fecha_fin: str) -> int:
     return pago_service.contar_pagos_por_fecha(fecha_inicio, fecha_fin)
+
+
+def listar_matriculas_activas() -> list[dict]:
+    return matricula_service.listar_matriculas_activas()
 
 
 def obtener_cuotas_vencidas() -> list[dict]:

@@ -7,14 +7,16 @@ def insertar(tarifa: Tarifa) -> int:
     conn = get_connection()
     cursor = conn.execute(
         """INSERT INTO tarifa
-           (id_categoria, nombre, monto, fecha_inicio, fecha_fin, activo)
-           VALUES (?, ?, ?, ?, ?, ?)""",
+           (id_categoria, nombre, monto, descripcion, fecha_inicio, fecha_fin, observaciones, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             tarifa.id_categoria,
             tarifa.nombre,
             tarifa.monto,
+            tarifa.descripcion,
             tarifa.fecha_inicio,
             tarifa.fecha_fin,
+            tarifa.observaciones,
             tarifa.activo,
         ),
     )
@@ -55,14 +57,17 @@ def actualizar(tarifa: Tarifa) -> None:
     conn.execute(
         """UPDATE tarifa SET
            id_categoria = ?, nombre = ?, monto = ?,
-           fecha_inicio = ?, fecha_fin = ?, activo = ?
+           descripcion = ?, fecha_inicio = ?, fecha_fin = ?,
+           observaciones = ?, activo = ?
            WHERE id_tarifa = ?""",
         (
             tarifa.id_categoria,
             tarifa.nombre,
             tarifa.monto,
+            tarifa.descripcion,
             tarifa.fecha_inicio,
             tarifa.fecha_fin,
+            tarifa.observaciones,
             tarifa.activo,
             tarifa.id_tarifa,
         ),

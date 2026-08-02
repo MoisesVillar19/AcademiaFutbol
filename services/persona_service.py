@@ -4,7 +4,7 @@ from services import auditoria_service
 from utils.logger import logger
 
 
-def crear_persona(data: dict) -> tuple[bool, str, int | None]:
+def crear_persona(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
     nombres = data.get("nombres", "")
     apellidos = data.get("apellidos", "")
@@ -33,7 +33,7 @@ def crear_persona(data: dict) -> tuple[bool, str, int | None]:
     id_persona = persona_repository.insertar(persona)
 
     auditoria_service.registrar_insert(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="persona",
         id_registro=id_persona,
         valores_nuevos=f"dni={dni}, nombres={nombres}, apellidos={apellidos}",
@@ -43,7 +43,7 @@ def crear_persona(data: dict) -> tuple[bool, str, int | None]:
     return True, "Persona registrada correctamente", id_persona
 
 
-def editar_persona(id_persona: int, data: dict) -> tuple[bool, str]:
+def editar_persona(id_persona: int, data: dict, id_usuario: int = 1) -> tuple[bool, str]:
     persona = persona_repository.obtener_por_id(id_persona)
     if not persona:
         return False, "Persona no encontrada"
@@ -67,7 +67,7 @@ def editar_persona(id_persona: int, data: dict) -> tuple[bool, str]:
     persona_repository.actualizar(persona_obj)
 
     auditoria_service.registrar_update(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="persona",
         id_registro=id_persona,
         valores_anteriores=f"dni={persona['dni']}",

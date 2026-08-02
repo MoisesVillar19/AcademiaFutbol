@@ -140,11 +140,11 @@ class EstudianteView(ctk.CTkFrame):
 
         self._cargar_combo_estudiantes()
 
-    def _cargar_estudiantes(self, activo=None):
+    def _cargar_estudiantes(self, activo=None, estado=None):
         for widget in self.scroll_estudiantes.winfo_children():
             widget.destroy()
 
-        estudiantes = estudiante_controller.listar_estudiantes(activo=activo)
+        estudiantes = estudiante_controller.listar_estudiantes(activo=activo, estado=estado)
 
         if not estudiantes:
             ctk.CTkLabel(
@@ -282,7 +282,7 @@ class EstudianteView(ctk.CTkFrame):
         if valor == "Activos":
             self._cargar_estudiantes(activo=1)
         elif valor == "Retirados":
-            self._cargar_estudiantes(activo=0)
+            self._cargar_estudiantes(estado="RETIRADO")
         else:
             self._cargar_estudiantes()
 
@@ -376,8 +376,7 @@ class EstudianteView(ctk.CTkFrame):
             })
 
         if not id_apoderado:
-            from repositories import apoderado_repository
-            apo = apoderado_repository.obtener_por_persona(persona["id_persona"] if persona else None)
+            apo = estudiante_controller.obtener_apoderado_por_persona(persona["id_persona"] if persona else None)
             if apo:
                 id_apoderado = apo["id_apoderado"]
             else:

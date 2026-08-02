@@ -50,7 +50,10 @@ class MatriculaView(ctk.CTkFrame):
         ).pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(scroll, text="Estudiante:").pack(anchor="w")
-        self.combo_estudiante = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        self.combo_estudiante = ctk.CTkComboBox(
+            scroll, width=400, values=["Cargando..."],
+            command=self._on_estudiante_changed,
+        )
         self.combo_estudiante.pack(anchor="w", pady=3)
 
         ctk.CTkLabel(scroll, text="Tarifa:").pack(anchor="w")
@@ -174,7 +177,22 @@ class MatriculaView(ctk.CTkFrame):
         estudiantes = estudiante_controller.listar_estudiantes(activo=1)
         nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')} (ID:{e['id_estudiante']})" for e in estudiantes]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin estudiantes"])
-        self._estudiantes_map = {n: e["id_estudiante"] for n, e in zip(nombres, estudiantes)}
+        self._estudiantes_map = {n: e for n, e in zip(nombres, estudiantes)}
+
+    def _on_estudiante_changed(self, selection):
+        est = self._estudiantes_map.get(selection)
+        if not est:
+            return
+        fecha_nac = est.get("fecha_nacimiento", "")
+        if not fecha_nac:
+            return
+        id_tarifa_sugerida = matricula_controller.obtener_tarifa_sugerida_por_edad(fecha_nac)
+        if not id_tarifa_sugerida:
+            return
+        for nombre, tid in self._tarifas_map.items():
+            if tid == id_tarifa_sugerida:
+                self.combo_tarifa.set(nombre)
+                break
 
     def _cargar_combo_tarifas(self):
         tarifas = matricula_controller.listar_tarifas_activas()
@@ -190,7 +208,8 @@ class MatriculaView(ctk.CTkFrame):
 
     def _registrar_matricula(self):
         est_selection = self.combo_estudiante.get()
-        id_est = self._estudiantes_map.get(est_selection)
+        est = self._estudiantes_map.get(est_selection)
+        id_est = est["id_estudiante"] if est else None
         if not id_est:
             self.label_form_status.configure(text="Seleccione un estudiante", text_color="red")
             return

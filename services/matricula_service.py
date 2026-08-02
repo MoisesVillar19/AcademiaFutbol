@@ -5,7 +5,7 @@ from utils.dates import get_today
 from utils.logger import logger
 
 
-def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
+def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
     id_estudiante = data.get("id_estudiante")
     id_tarifa = data.get("id_tarifa")
 
@@ -35,8 +35,6 @@ def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
         estado="ACTIVO",
     )
     id_matricula = matricula_repository.insertar(matricula)
-
-    tarifa = cuota_service.obtener_cuotas_por_matricula(0)
 
     from repositories import tarifa_repository
     tarifa_data = tarifa_repository.obtener_por_id(id_tarifa)
@@ -71,7 +69,7 @@ def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
         er.cambiar_estado(id_estudiante, "ACTIVO")
 
     auditoria_service.registrar_insert(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="matricula",
         id_registro=id_matricula,
         valores_nuevos=f"id_estudiante={id_estudiante}, id_tarifa={id_tarifa}, monto={monto_base}",

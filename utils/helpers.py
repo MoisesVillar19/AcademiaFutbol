@@ -7,6 +7,12 @@ def generate_receipt_number() -> str:
     return now.strftime("R%Y%m%d%H%M%S")
 
 
+def generate_product_code() -> str:
+    from datetime import datetime
+    now = datetime.now()
+    return now.strftime("PRD%Y%m%d%H%M%S")
+
+
 def clean_dni(dni: str) -> str:
     return re.sub(r"\D", "", dni)
 

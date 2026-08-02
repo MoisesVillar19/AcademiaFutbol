@@ -6,7 +6,7 @@ from utils.dates import get_today
 from utils.logger import logger
 
 
-def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
+def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
 
     if not dni:
@@ -44,7 +44,7 @@ def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
     id_estudiante = estudiante_repository.insertar(estudiante)
 
     auditoria_service.registrar_insert(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="estudiante",
         id_registro=id_estudiante,
         valores_nuevos=f"dni={dni}, estado=ACTIVO",
@@ -82,7 +82,7 @@ def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
     return True, "Estudiante actualizado correctamente"
 
 
-def registrar_retiro(id_estudiante: int) -> tuple[bool, str]:
+def registrar_retiro(id_estudiante: int, id_usuario: int = 1) -> tuple[bool, str]:
     estudiante = estudiante_repository.obtener_por_id(id_estudiante)
     if not estudiante:
         return False, "Estudiante no encontrado"
@@ -93,7 +93,7 @@ def registrar_retiro(id_estudiante: int) -> tuple[bool, str]:
     estudiante_repository.cambiar_estado(id_estudiante, "RETIRADO", get_today())
 
     auditoria_service.registrar_update(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="estudiante",
         id_registro=id_estudiante,
         valores_anteriores=f"estado={estudiante['estado']}",
@@ -104,7 +104,7 @@ def registrar_retiro(id_estudiante: int) -> tuple[bool, str]:
     return True, "Retiro registrado correctamente"
 
 
-def registrar_reingreso(id_estudiante: int) -> tuple[bool, str]:
+def registrar_reingreso(id_estudiante: int, id_usuario: int = 1) -> tuple[bool, str]:
     estudiante = estudiante_repository.obtener_por_id(id_estudiante)
     if not estudiante:
         return False, "Estudiante no encontrado"
@@ -115,7 +115,7 @@ def registrar_reingreso(id_estudiante: int) -> tuple[bool, str]:
     estudiante_repository.cambiar_estado(id_estudiante, "REINGRESANTE")
 
     auditoria_service.registrar_update(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="estudiante",
         id_registro=id_estudiante,
         valores_anteriores=f"estado=RETIRADO",
@@ -153,8 +153,8 @@ def desasociar_apoderado(id_estudiante: int, id_apoderado: int) -> tuple[bool, s
     return True, "Apoderado desasociado correctamente"
 
 
-def listar_estudiantes(activo: int | None = None) -> list[dict]:
-    return estudiante_repository.obtener_todos(activo=activo)
+def listar_estudiantes(activo: int | None = None, estado: str | None = None) -> list[dict]:
+    return estudiante_repository.obtener_todos(activo=activo, estado=estado)
 
 
 def obtener_estudiante(id_estudiante: int) -> dict | None:

@@ -1,5 +1,10 @@
-from services import persona_service
+from services import persona_service, auth_service
 from utils.validators import validate_dni, validate_not_empty, validate_sex, validate_email
+
+
+def _get_id_usuario() -> int:
+    usuario = auth_service.obtener_usuario_actual()
+    return usuario["id_usuario"] if usuario else 1
 
 
 def crear_persona(data: dict) -> tuple[bool, str, int | None]:
@@ -27,7 +32,7 @@ def crear_persona(data: dict) -> tuple[bool, str, int | None]:
     if correo and not validate_email(correo):
         return False, "Correo no válido", None
 
-    return persona_service.crear_persona(data)
+    return persona_service.crear_persona(data, id_usuario=_get_id_usuario())
 
 
 def editar_persona(id_persona: int, data: dict) -> tuple[bool, str]:
@@ -43,7 +48,7 @@ def editar_persona(id_persona: int, data: dict) -> tuple[bool, str]:
     if correo and not validate_email(correo):
         return False, "Correo no válido"
 
-    return persona_service.editar_persona(id_persona, data)
+    return persona_service.editar_persona(id_persona, data, id_usuario=_get_id_usuario())
 
 
 def buscar_por_dni(dni: str) -> dict | None:

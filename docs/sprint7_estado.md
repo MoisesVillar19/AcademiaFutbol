@@ -129,12 +129,33 @@
 
 ## 8. Estado del Git
 
-- Solo 1 commit: "Estructura inicial del proyecto"
-- Todos los cambios de Sprints 1-9 sin commit
-- Necesita commit antes del Sprint 10
+- ✅ Commit de Sprints 1-9 realizado
+- ✅ Push a GitHub exitoso
+- Repo: https://github.com/MoisesVillar19/AcademiaFutbol
 
 ---
 
 ## 9. Próximo: Sprint 10 — Estabilización
+
+### Orden de ejecución
+
+| Paso | Prioridad | Descripción |
+|------|-----------|-------------|
+| 1 | ALTA | Configurar tests (conftest.py, pytest, :memory:) |
+| 2 | ALTA | Tests unitarios (validators, security, dates) |
+| 3 | ALTA | Tests de services (cuota, pago, estudiante) |
+| 4 | ALTA | Tests de integración (login, matrícula) |
+| 5 | ALTA | Bugs críticos (#7, #12, #18) |
+| 6 | MEDIA | Violaciones de arquitectura (#8-10, #16) |
+| 7 | MEDIA | Limpieza de código |
+| 8 | MEDIA | Documentación (README, renombrar archivos) |
+| 9 | BAJA | Seguridad (.env, bcrypt) |
+| 10 | BAJA | Git (commit + tag v1.0) |
+
+### Base de datos para tests
+
+- Se usa `:memory:` (SQLite en memoria)
+- No se toca `academia.db` (datos de cada usuario)
+- Se crea automáticamente al ejecutar `python main.py`
 
 Ver archivo: `docs/sprint10_plan.md`

@@ -19,7 +19,47 @@ class App(ctk.CTk):
         self.geometry("1024x680")
         self.minsize(800, 600)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
-        self._abrir_login()
+        self._centrar_ventana()
+        self._mostrar_bienvenida()
+
+    def _centrar_ventana(self):
+        self.update_idletasks()
+        ancho = 1024
+        alto = 680
+        x = (self.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (self.winfo_screenheight() // 2) - (alto // 2)
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+    def _mostrar_bienvenida(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame.pack(expand=True)
+
+        ctk.CTkLabel(
+            frame, text="⚽",
+            font=ctk.CTkFont(size=64),
+        ).pack(pady=(0, 10))
+
+        ctk.CTkLabel(
+            frame, text="Academia Deportiva",
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color="#1f6aa5",
+        ).pack(pady=(0, 5))
+
+        ctk.CTkLabel(
+            frame, text="Sistema de Gestión",
+            font=ctk.CTkFont(size=16),
+            text_color="gray",
+        ).pack(pady=(0, 30))
+
+        ctk.CTkButton(
+            frame, text="Iniciar Sesión", width=220, height=45,
+            corner_radius=10,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            command=self._abrir_login,
+        ).pack()
 
     def _abrir_login(self):
         for widget in self.winfo_children():
@@ -48,7 +88,7 @@ class App(ctk.CTk):
         rol = usuario.get("rol", "") if usuario else ""
 
         ctk.CTkLabel(
-            sidebar, text="Academia Deportiva",
+            sidebar, text="⚽ Academia",
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(pady=(15, 5))
 
@@ -61,18 +101,19 @@ class App(ctk.CTk):
         self.contenido.pack(side="right", fill="both", expand=True)
 
         botones = [
-            ("Dashboard", self._mostrar_placeholder),
-            ("Estudiantes", self._mostrar_estudiantes),
-            ("Matrículas", self._mostrar_matriculas),
-            ("Pagos", self._mostrar_pagos),
-            ("Inventario", self._mostrar_inventario),
-            ("Reportes", self._mostrar_reportes),
+            ("📊 Dashboard", self._mostrar_placeholder),
+            ("👤 Estudiantes", self._mostrar_estudiantes),
+            ("📋 Matrículas", self._mostrar_matriculas),
+            ("💰 Pagos", self._mostrar_pagos),
+            ("📦 Inventario", self._mostrar_inventario),
+            ("📈 Reportes", self._mostrar_reportes),
         ]
 
         if login_controller.es_admin():
-            botones.append(("Usuarios", self._mostrar_usuarios))
-            botones.append(("Auditoría", self._mostrar_auditoria))
-            botones.append(("Configuración", self._mostrar_configuracion))
+            botones.append(("🔑 Usuarios", self._mostrar_usuarios))
+            botones.append(("🏷️ Tarifas", self._mostrar_tarifas))
+            botones.append(("📝 Auditoría", self._mostrar_auditoria))
+            botones.append(("⚙️ Configuración", self._mostrar_configuracion))
 
         for text, command in botones:
             ctk.CTkButton(
@@ -82,7 +123,7 @@ class App(ctk.CTk):
             ).pack(pady=2, padx=10)
 
         ctk.CTkButton(
-            sidebar, text="Cerrar Sesión", width=180, height=36,
+            sidebar, text="🚪 Cerrar Sesión", width=180, height=36,
             fg_color="red", hover_color="darkred",
             command=self._cerrar_sesion,
         ).pack(side="bottom", pady=15)
@@ -133,6 +174,11 @@ class App(ctk.CTk):
         from views.auditoria.auditoria_view import AuditoriaView
         AuditoriaView(self.contenido).pack(fill="both", expand=True)
 
+    def _mostrar_tarifas(self):
+        self._limpiar_contenido()
+        from views.tarifas.tarifa_view import TarifaView
+        TarifaView(self.contenido).pack(fill="both", expand=True)
+
     def _mostrar_configuracion(self):
         self._limpiar_contenido()
         from views.configuracion.configuracion_view import ConfiguracionView
@@ -140,7 +186,7 @@ class App(ctk.CTk):
 
     def _cerrar_sesion(self):
         login_controller.cerrar_sesion()
-        self._abrir_login()
+        self._mostrar_bienvenida()
 
     def _on_cerrar(self):
         login_controller.cerrar_sesion()

@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from controllers import configuracion_controller
+from controllers import configuracion_controller, categoria_controller
+from utils.dates import calculate_age
 
 
 class ConfiguracionView(ctk.CTkFrame):
@@ -117,6 +118,21 @@ class ConfiguracionView(ctk.CTkFrame):
         self._crear_campo(backup_frame, "correo_onedrive", "Correo OneDrive",
                           config.get("correo_onedrive", ""))
 
+        categorias_frame = ctk.CTkFrame(self.contenido)
+        categorias_frame.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            categorias_frame, text="Categorías de Edad",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(10, 5))
+
+        self._cargar_categorias(categorias_frame)
+
+        ctk.CTkButton(
+            categorias_frame, text="+ Nueva Categoría", width=150,
+            command=self._nueva_categoria,
+        ).pack(anchor="w", padx=10, pady=5)
+
         btn_frame = ctk.CTkFrame(self.contenido, fg_color="transparent")
         btn_frame.pack(fill="x", padx=5, pady=10)
 
@@ -165,3 +181,121 @@ class ConfiguracionView(ctk.CTkFrame):
             messagebox.showinfo("Éxito", msg)
         else:
             messagebox.showerror("Error", msg)
+
+    def _cargar_categorias(self, parent):
+        cats = categoria_controller.listar_categorias()
+        if not cats:
+            ctk.CTkLabel(parent, text="No hay categorías", text_color="gray").pack(
+                anchor="w", padx=10, pady=3
+            )
+            return
+        for cat in cats:
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", padx=10, pady=2)
+            ctk.CTkLabel(
+                row,
+                text=f"{cat['nombre']}  |  Edad: {cat['edad_min']}-{cat['edad_max']} años",
+                font=ctk.CTkFont(size=12),
+            ).pack(side="left")
+
+            ctk.CTkButton(
+                row, text="Editar", width=70, height=28,
+                command=lambda c=cat: self._editar_categoria(c),
+            ).pack(side="right", padx=2)
+
+            ctk.CTkButton(
+                row, text="Desactivar", width=90, height=28,
+                fg_color="#d9534f",
+                command=lambda c=cat: self._desactivar_categoria(c),
+            ).pack(side="right", padx=2)
+
+    def _nueva_categoria(self):
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Nueva Categoría")
+        dialog.geometry("350x250")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="Nombre:").pack(anchor="w", padx=15, pady=(15, 2))
+        entry_nombre = ctk.CTkEntry(dialog, width=300)
+        entry_nombre.pack(padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad mínima:").pack(anchor="w", padx=15, pady=(10, 2))
+        entry_min = ctk.CTkEntry(dialog, width=300)
+        entry_min.pack(padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad máxima:").pack(anchor="w", padx=15, pady=(10, 2))
+        entry_max = ctk.CTkEntry(dialog, width=300)
+        entry_max.pack(padx=15)
+
+        label_status = ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=12))
+        label_status.pack(padx=15, pady=5)
+
+        def guardar():
+            nombre = entry_nombre.get().strip()
+            edad_min = entry_min.get().strip()
+            edad_max = entry_max.get().strip()
+
+            exito, msg, _ = categoria_controller.crear_categoria({
+                "nombre": nombre,
+                "edad_min": edad_min,
+                "edad_max": edad_max,
+            })
+            if exito:
+                dialog.destroy()
+                self._cargar_configuracion()
+            else:
+                label_status.configure(text=msg, text_color="red")
+
+        ctk.CTkButton(dialog, text="Guardar", width=120, command=guardar).pack(pady=10)
+
+    def _editar_categoria(self, cat):
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Editar Categoría")
+        dialog.geometry("350x250")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="Nombre:").pack(anchor="w", padx=15, pady=(15, 2))
+        entry_nombre = ctk.CTkEntry(dialog, width=300)
+        entry_nombre.insert(0, cat["nombre"])
+        entry_nombre.pack(padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad mínima:").pack(anchor="w", padx=15, pady=(10, 2))
+        entry_min = ctk.CTkEntry(dialog, width=300)
+        entry_min.insert(0, str(cat["edad_min"]))
+        entry_min.pack(padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad máxima:").pack(anchor="w", padx=15, pady=(10, 2))
+        entry_max = ctk.CTkEntry(dialog, width=300)
+        entry_max.insert(0, str(cat["edad_max"]))
+        entry_max.pack(padx=15)
+
+        label_status = ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=12))
+        label_status.pack(padx=15, pady=5)
+
+        def guardar():
+            exito, msg = categoria_controller.editar_categoria(cat["id_categoria"], {
+                "nombre": entry_nombre.get().strip(),
+                "edad_min": entry_min.get().strip(),
+                "edad_max": entry_max.get().strip(),
+            })
+            if exito:
+                dialog.destroy()
+                self._cargar_configuracion()
+            else:
+                label_status.configure(text=msg, text_color="red")
+
+        ctk.CTkButton(dialog, text="Guardar", width=120, command=guardar).pack(pady=10)
+
+    def _desactivar_categoria(self, cat):
+        confirm = messagebox.askyesno(
+            "Confirmar",
+            f"¿Desactivar la categoría '{cat['nombre']}'?"
+        )
+        if confirm:
+            exito, msg = categoria_controller.desactivar_categoria(cat["id_categoria"])
+            if exito:
+                self._cargar_configuracion()
+            else:
+                messagebox.showerror("Error", msg)

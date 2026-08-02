@@ -58,12 +58,14 @@ def crear_producto(data: dict) -> tuple[bool, str, int | None]:
     nombre = data.get("nombre", "")
     id_categoria = data.get("id_categoria_producto")
 
-    if not codigo:
-        return False, "El código es obligatorio", None
     if not nombre:
         return False, "El nombre es obligatorio", None
     if not id_categoria:
         return False, "La categoría es obligatoria", None
+
+    if not codigo:
+        from utils.helpers import generate_product_code
+        codigo = generate_product_code()
 
     if producto_repository.existe_codigo(codigo):
         return False, "Ya existe un producto con ese código", None

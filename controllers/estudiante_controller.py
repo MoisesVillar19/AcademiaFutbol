@@ -1,6 +1,11 @@
-from services import estudiante_service, apoderado_service
+from services import estudiante_service, apoderado_service, auth_service
 from utils.validators import (validate_dni, validate_not_empty, validate_sex,
                                validate_estado_estudiante)
+
+
+def _get_id_usuario() -> int:
+    usuario = auth_service.obtener_usuario_actual()
+    return usuario["id_usuario"] if usuario else 1
 
 
 def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
@@ -24,7 +29,7 @@ def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
     if sexo and not validate_sex(sexo):
         return False, "Sexo debe ser M o F", None
 
-    return estudiante_service.crear_estudiante(data)
+    return estudiante_service.crear_estudiante(data, id_usuario=_get_id_usuario())
 
 
 def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
@@ -40,11 +45,11 @@ def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
 
 
 def registrar_retiro(id_estudiante: int) -> tuple[bool, str]:
-    return estudiante_service.registrar_retiro(id_estudiante)
+    return estudiante_service.registrar_retiro(id_estudiante, id_usuario=_get_id_usuario())
 
 
 def registrar_reingreso(id_estudiante: int) -> tuple[bool, str]:
-    return estudiante_service.registrar_reingreso(id_estudiante)
+    return estudiante_service.registrar_reingreso(id_estudiante, id_usuario=_get_id_usuario())
 
 
 def asociar_apoderado(id_estudiante: int, id_apoderado: int,
@@ -56,8 +61,8 @@ def desasociar_apoderado(id_estudiante: int, id_apoderado: int) -> tuple[bool, s
     return estudiante_service.desasociar_apoderado(id_estudiante, id_apoderado)
 
 
-def listar_estudiantes(activo: int | None = None) -> list[dict]:
-    return estudiante_service.listar_estudiantes(activo=activo)
+def listar_estudiantes(activo: int | None = None, estado: str | None = None) -> list[dict]:
+    return estudiante_service.listar_estudiantes(activo=activo, estado=estado)
 
 
 def obtener_estudiante(id_estudiante: int) -> dict | None:
@@ -80,7 +85,7 @@ def crear_apoderado(data: dict) -> tuple[bool, str, int | None]:
     if error:
         return False, error, None
 
-    return apoderado_service.crear_apoderado(data)
+    return apoderado_service.crear_apoderado(data, id_usuario=_get_id_usuario())
 
 
 def listar_apoderados(activo: int | None = None) -> list[dict]:
@@ -89,3 +94,8 @@ def listar_apoderados(activo: int | None = None) -> list[dict]:
 
 def obtener_apoderado(id_apoderado: int) -> dict | None:
     return apoderado_service.obtener_apoderado(id_apoderado)
+
+
+def obtener_apoderado_por_persona(id_persona: int) -> dict | None:
+    from repositories import apoderado_repository
+    return apoderado_repository.obtener_por_persona(id_persona)

@@ -5,7 +5,7 @@ from services import auditoria_service
 from utils.logger import logger
 
 
-def crear_apoderado(data: dict) -> tuple[bool, str, int | None]:
+def crear_apoderado(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
     parentesco = data.get("parentesco", "")
 
@@ -45,7 +45,7 @@ def crear_apoderado(data: dict) -> tuple[bool, str, int | None]:
     id_apoderado = apoderado_repository.insertar(apoderado)
 
     auditoria_service.registrar_insert(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="apoderado",
         id_registro=id_apoderado,
         valores_nuevos=f"dni={dni}, parentesco={parentesco}",
@@ -75,7 +75,7 @@ def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
 
 
 def asociar_a_estudiante(id_estudiante: int, id_apoderado: int,
-                         es_principal: bool = False) -> tuple[bool, str]:
+                         es_principal: bool = False, id_usuario: int = 1) -> tuple[bool, str]:
     if estudiante_apoderado_repository.existe_relacion(id_estudiante, id_apoderado):
         return False, "Este apoderado ya está asociado al estudiante"
 
@@ -89,7 +89,7 @@ def asociar_a_estudiante(id_estudiante: int, id_apoderado: int,
     )
 
     auditoria_service.registrar_insert(
-        id_usuario=1,
+        id_usuario=id_usuario,
         tabla="estudiante_apoderado",
         id_registro=id_estudiante,
         valores_nuevos=f"id_estudiante={id_estudiante}, id_apoderado={id_apoderado}, principal={es_principal}",

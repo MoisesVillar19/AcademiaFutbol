@@ -21,8 +21,10 @@ def crear_tarifa(data: dict) -> tuple[bool, str, int | None]:
         id_categoria=id_categoria,
         nombre=nombre,
         monto=monto,
+        descripcion=data.get("descripcion", ""),
         fecha_inicio=data.get("fecha_inicio", get_today()),
         fecha_fin=data.get("fecha_fin", ""),
+        observaciones=data.get("observaciones", ""),
     )
 
     id_tarifa = tarifa_repository.insertar(tarifa)
@@ -48,8 +50,10 @@ def editar_tarifa(id_tarifa: int, data: dict) -> tuple[bool, str]:
         id_categoria=data.get("id_categoria", tarifa["id_categoria"]),
         nombre=data.get("nombre", tarifa["nombre"]),
         monto=data.get("monto", tarifa["monto"]),
+        descripcion=data.get("descripcion", tarifa.get("descripcion", "")),
         fecha_inicio=data.get("fecha_inicio", tarifa["fecha_inicio"]),
         fecha_fin=data.get("fecha_fin", tarifa["fecha_fin"] or ""),
+        observaciones=data.get("observaciones", tarifa.get("observaciones", "")),
         activo=tarifa["activo"],
     )
     tarifa_repository.actualizar(tarifa_obj)

@@ -73,8 +73,10 @@ CREATE TABLE IF NOT EXISTS tarifa (
     id_categoria INTEGER NOT NULL,
     nombre TEXT NOT NULL,
     monto REAL NOT NULL,
+    descripcion TEXT,
     fecha_inicio TEXT NOT NULL,
     fecha_fin TEXT,
+    observaciones TEXT,
     activo INTEGER DEFAULT 1,
     FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)
 );

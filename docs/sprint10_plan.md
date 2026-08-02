@@ -5,7 +5,243 @@
 
 ---
 
-## Prioridad 1 — Bugs Críticos
+## Orden de Ejecución
+
+| Paso | Prioridad | Descripción |
+|------|-----------|-------------|
+| 1 | ALTA | Configurar tests (conftest.py, pytest, :memory:) |
+| 2 | ALTA | Tests unitarios (validators, security, dates) |
+| 3 | ALTA | Tests de services (cuota, pago, estudiante) |
+| 4 | ALTA | Tests de integración (login, matrícula) |
+| 5 | ALTA | Bugs críticos (#7, #12, #18) |
+| 6 | MEDIA | Violaciones de arquitectura (#8-10, #16) |
+| 7 | MEDIA | Limpieza de código |
+| 8 | MEDIA | Documentación (README, renombrar archivos) |
+| 9 | BAJA | Seguridad (.env, bcrypt) |
+| 10 | BAJA | Git (commit + tag v1.0) |
+
+---
+
+## Nota sobre la Base de Datos
+
+La `academia.db` **NO se sube al repositorio** porque:
+- Es datos locales de cada usuario
+- Contiene passwords hasheados
+- Se crea automáticamente al ejecutar `python main.py`
+
+Para tests se usa SQLite `:memory:` (en memoria) porque:
+- Es rápida (no toca disco)
+- No necesita limpieza
+- Está aislada de datos reales
+- Se destruye automáticamente al terminar
+
+---
+
+## Paso 1 — Configurar Tests
+
+### Instalar pytest
+
+```powershell
+pip install pytest
+pip freeze > requirements.txt
+```
+
+### `tests/conftest.py`
+
+```python
+import pytest
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+@pytest.fixture(autouse=True)
+def test_db():
+    """Base de datos en memoria para cada test."""
+    import database.connection as conn_module
+    import utils.constants as const_module
+
+    # Guardar valores originales
+    original_db_name = const_module.DB_NAME
+    original_db_path = const_module.DB_PATH
+
+    # Forzar base de datos en memoria
+    conn_module._connection = None
+    const_module.DB_NAME = ":memory:"
+    const_module.DB_PATH = ":memory:"
+
+    # Recrear tablas y seed
+    from database.create_db import create_tables
+    from database.seed import seed_database
+    create_tables()
+    seed_database()
+
+    yield
+
+    # Cleanup
+    from database.connection import close_connection
+    close_connection()
+    const_module.DB_NAME = original_db_name
+    const_module.DB_PATH = original_db_path
+
+
+@pytest.fixture
+def usuario_admin():
+    """Login como admin para tests que requieren sesión."""
+    from services import auth_service
+    auth_service.login("admin", "admin123")
+    yield
+    auth_service.logout()
+```
+
+---
+
+## Paso 2 — Tests Unitarios
+
+### `tests/test_validators.py`
+
+```python
+from utils.validators import validate_dni, validate_not_empty, validate_sex
+
+def test_validate_dni_valid():
+    assert validate_dni("12345678") is True
+
+def test_validate_dni_invalid():
+    assert validate_dni("12345") is False
+    assert validate_dni("abcdefgh") is False
+
+def test_validate_not_empty():
+    assert validate_not_empty("test", "Campo") is None
+    assert validate_not_empty("", "Campo") is not None
+
+def test_validate_sex():
+    assert validate_sex("M") is True
+    assert validate_sex("F") is True
+    assert validate_sex("X") is False
+```
+
+### `tests/test_security.py`
+
+```python
+from utils.security import hash_password, verify_password
+
+def test_hash_password():
+    hashed = hash_password("test123")
+    assert hashed != "test123"
+    assert len(hashed) > 0
+
+def test_verify_password():
+    hashed = hash_password("test123")
+    assert verify_password("test123", hashed) is True
+    assert verify_password("wrong", hashed) is False
+```
+
+### `tests/test_dates.py`
+
+```python
+from utils.dates import get_today, get_now
+
+def test_get_today():
+    today = get_today()
+    assert len(today) == 10
+    assert today.count("-") == 2
+
+def test_get_now():
+    now = get_now()
+    assert len(now) >= 19
+```
+
+---
+
+## Paso 3 — Tests de Services
+
+### `tests/test_cuota_service.py`
+
+```python
+from services import cuota_service
+
+def test_crear_cuota():
+    id_cuota = cuota_service.crear_cuota(
+        id_matricula=1,
+        monto_total=100.0,
+        fecha_vencimiento="2026-08-15",
+        periodo="2026-08"
+    )
+    assert id_cuota is not None
+    assert id_cuota > 0
+
+def test_contar_por_estado():
+    cuota_service.crear_cuota(1, 100.0, "2026-08-15", "2026-08")
+    total = cuota_service.contar_por_estado("PENDIENTE")
+    assert total >= 1
+```
+
+### `tests/test_estudiante_service.py`
+
+```python
+from services import estudiante_service
+
+def test_crear_estudiante():
+    exito, msg, id_est = estudiante_service.crear_estudiante({
+        "dni": "99999999",
+        "nombres": "Test",
+        "apellidos": "User",
+    })
+    assert exito is True
+    assert id_est is not None
+
+def test_crear_estudiante_duplicado():
+    estudiante_service.crear_estudiante({
+        "dni": "88888888",
+        "nombres": "Test",
+        "apellidos": "User",
+    })
+    exito, msg, id_est = estudiante_service.crear_estudiante({
+        "dni": "88888888",
+        "nombres": "Test2",
+        "apellidos": "User2",
+    })
+    assert exito is False
+```
+
+---
+
+## Paso 4 — Tests de Integración
+
+### `tests/test_login.py`
+
+```python
+from services import auth_service
+
+def test_login_exitoso():
+    usuario = auth_service.login("admin", "admin123")
+    assert usuario is not None
+    assert usuario["username"] == "admin"
+    auth_service.logout()
+
+def test_login_fallido():
+    usuario = auth_service.login("admin", "wrongpass")
+    assert usuario is None
+
+def test_logout():
+    auth_service.login("admin", "admin123")
+    auth_service.logout()
+    assert auth_service.esta_logueado() is False
+```
+
+### `tests/test_matriculas.py`
+
+```python
+from services import matricula_service
+
+def test_listar_matriculas_activas():
+    matriculas = matricula_service.listar_matriculas_activas()
+    assert isinstance(matriculas, list)
+```
+
+---
+
+## Paso 5 — Bugs Críticos
 
 ### Bug #7: `id_usuario=1` hardcodeado (17 ocurrencias)
 
@@ -115,7 +351,7 @@ elif valor == "Retirados":
 
 ---
 
-## Prioridad 2 — Violaciones de Arquitectura
+## Paso 6 — Violaciones de Arquitectura
 
 ### Bug #8-9: View → Repository/Service en `pago_view.py`
 
@@ -183,7 +419,7 @@ def _obtener_configuracion():
 
 ---
 
-## Prioridad 3 — Limpieza de Código
+## Paso 7 — Limpieza de Código
 
 | Acción | Archivo | Línea |
 |--------|---------|-------|
@@ -191,62 +427,12 @@ def _obtener_configuracion():
 | Eliminar import redundante | `matricula_service.py` | 69 |
 | Eliminar función muerta | `database/connection.py` | 27-32 |
 | Eliminar import muerto | `repositories/estudiante_apoderado_repository.py` | 2 |
-| Agregar `__init__.py` | `views/dashboard/`, `views/estudiantes/`, `views/inventario/`, `views/matriculas/`, `views/pagos/`, `views/reportes/` |
+| Agregar `__init__.py` | `views/dashboard/`, `views/estudiantes/`, `views/inventario/`, `views/matriculas/`, `views/pagos/`, `views/reportes/`, `views/configuracion/` |
 | Usar constantes | Múltiples archivos | `METODO_EFECTIVO`, `METODO_YAPE`, etc. |
 
 ---
 
-## Prioridad 4 — Tests
-
-### Configuración
-
-1. Instalar pytest: `pip install pytest`
-2. Agregar `pytest` a `requirements.txt`
-3. Crear `tests/conftest.py` con fixtures
-
-### `tests/conftest.py`
-
-```python
-import pytest
-import sys
-import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from database.create_db import create_tables
-from database.seed import seed_database
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    create_tables()
-    seed_database()
-    yield
-    # Cleanup
-
-@pytest.fixture
-def usuario_admin():
-    from services import auth_service
-    auth_service.login("admin", "admin123")
-    yield
-    auth_service.logout()
-```
-
-### Tests a crear
-
-| Archivo | Cobertura |
-|---------|-----------|
-| `tests/test_validators.py` | `validate_dni`, `validate_not_empty`, `validate_sex`, `validate_email`, `validate_phone` |
-| `tests/test_security.py` | `hash_password`, `verify_password`, `generate_temp_password`, `generate_receipt_number` |
-| `tests/test_dates.py` | `get_today`, `get_now`, `format_date` |
-| `tests/test_cuota_service.py` | `crear_cuota`, `actualizar_pago`, `actualizar_estados_vencidos` |
-| `tests/test_pago_service.py` | `registrar_pago`, `obtener_pago` |
-| `tests/test_estudiante_service.py` | `crear_estudiante`, `editar_estudiante`, `registrar_retiro`, `registrar_reingreso` |
-| `tests/test_login.py` | Login exitoso, login fallido, logout, sesión |
-| `tests/test_matriculas.py` | `crear_matricula`, `asociar_beca` |
-
----
-
-## Prioridad 5 — Documentación
+## Paso 8 — Documentación
 
 ### `README.md` — Reescritura completa
 
@@ -291,7 +477,7 @@ Corregir referencia de `arquitectura_bd.md` a `AcademiaFutbol_Arquitectura_BD.md
 
 ---
 
-## Prioridad 6 — Seguridad y Config
+## Paso 9 — Seguridad y Config
 
 ### `.env`
 
@@ -317,57 +503,50 @@ DEFAULT_ADMIN_PASS = os.getenv("DEFAULT_ADMIN_PASS", "admin123")
 
 ---
 
-## Prioridad 7 — Git
+## Paso 10 — Git
 
-1. **Commit de Sprints 1-9:**
-```bash
-git add .
-git commit -m "feat: Sprints 1-9 completados
-
-- Sprint 1: Database (SQLite, models, seed, backup)
-- Sprint 2: Security (auth, usuarios, auditoría)
-- Sprint 3: Académica (personas, apoderados, estudiantes)
-- Sprint 4: Matrículas (tarifas, becas, cuotas)
-- Sprint 5: Pagos (registro, detalle)
-- Sprint 6: Inventario (productos, movimientos)
-- Sprint 7: Dashboard interactivo con gráficos
-- Sprint 8: Reportes exportables a Excel
-- Sprint 9: Configuración del sistema"
-```
-
-2. **Commit de Sprint 10:**
+1. **Commit de Sprint 10:**
 ```bash
 git add .
 git commit -m "feat: Sprint 10 - Estabilización
 
+- Configurar tests con SQLite :memory:
+- Tests unitarios (validators, security, dates)
+- Tests de services (cuota, pago, estudiante)
+- Tests de integración (login, matrícula)
 - Fix bugs críticos (#7, #12, #18)
 - Corregir violaciones de arquitectura
-- Agregar tests unitarios y de integración
+- Limpiar código muerto
 - Actualizar documentación
 - Migrar a bcrypt para passwords
 - Implementar variables de entorno"
 ```
 
-3. **Tag v1.0:**
+2. **Tag v1.0:**
 ```bash
 git tag -a v1.0 -m "Versión 1.0 estable"
+git push origin main
+git push origin v1.0
 ```
 
 ---
 
 ## Checklist de Verificación
 
-- [ ] Bug #7 corregido (id_usuario dinámico)
-- [ ] Bug #18 corregido (bcrypt)
-- [ ] Bug #12 corregido (filtro retirados)
-- [ ] Bugs #8-10 corregidos (violaciones arquitectura)
-- [ ] Bug #16 corregido (dashboard_service)
+- [x] pytest instalado
+- [x] conftest.py creado con DB :memory:
+- [x] Tests unitarios escritos y pasando (40 tests)
+- [x] Tests de services escritos y pasando (26 tests)
+- [x] Tests de integración escritos y pasando (12 tests)
+- [x] Bug #7 corregido (id_usuario dinámico)
+- [x] Bug #18 corregido (bcrypt)
+- [x] Bug #12 corregido (filtro retirados)
+- [x] Bugs #8-10 corregidos (violaciones arquitectura)
+- [x] Bug #16 corregido (dashboard_service)
+- [x] Login GUI mejorada (centrado, diseño)
+- [x] Main window mejorada (centrado, pantalla bienvenida)
 - [ ] Código muerto eliminado
 - [ ] `__init__.py` agregados
-- [ ] pytest instalado
-- [ ] conftest.py creado
-- [ ] Tests unitarios escritos
-- [ ] Tests de integración escritos
 - [ ] README.md actualizado
 - [ ] Documentación actualizada
 - [ ] `.env` implementado
@@ -376,11 +555,134 @@ git tag -a v1.0 -m "Versión 1.0 estable"
 
 ---
 
-## Prioridad 8 — Extras (Opcional)
+## Resumen de Cambios — Sprint 10 (hasta ahora)
+
+### Tests (78 tests, 100% pasan)
+
+| Archivo | Tests | Tipo |
+|---------|-------|------|
+| `test_validators.py` | 18 | Unitario |
+| `test_security.py` | 7 | Unitario |
+| `test_dates.py` | 15 | Unitario |
+| `test_cuota_service.py` | 11 | Service |
+| `test_estudiante_service.py` | 8 | Service |
+| `test_pago_service.py` | 7 | Service |
+| `test_login.py` | 6 | Integración |
+| `test_matriculas.py` | 6 | Integración |
+| **TOTAL** | **78** | |
+
+### Bugs Corregidos
+
+| Bug | Archivos | Descripción |
+|-----|----------|-------------|
+| #7 | services/*.py, controllers/*.py | `id_usuario=1` → parámetro dinámico desde sesión |
+| #12 | estudiante_view.py, estudiante_repository.py | Filtro "Retirados" usa `estado=RETIRADO` en vez de `activo=0` |
+| #18 | utils/security.py | SHA-256 → bcrypt (hash seguro) |
+| #8-9 | pago_view.py, pago_controller.py | View ya no llama a repository directamente |
+| #10 | estudiante_view.py, estudiante_controller.py | View ya no llama a repository directamente |
+| #16 | dashboard_service.py | Service ya no usa SQL directo, usa configuracion_repository |
+
+### Archivos Modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `utils/security.py` | Migrado a bcrypt |
+| `database/connection.py` | Manejo de `:memory:` para tests |
+| `tests/conftest.py` | Fixture DB en memoria con patch de DB_PATH |
+| `repositories/estudiante_repository.py` | Filtro `estado` en `obtener_todos` |
+| `services/estudiante_service.py` | `id_usuario` dinámico + filtro `estado` |
+| `services/persona_service.py` | `id_usuario` dinámico |
+| `services/apoderado_service.py` | `id_usuario` dinámico |
+| `services/matricula_service.py` | `id_usuario` dinámico + código muerto eliminado |
+| `services/dashboard_service.py` | Usa `configuracion_repository` |
+| `controllers/estudiante_controller.py` | `_get_id_usuario()` + `obtener_apoderado_por_persona()` |
+| `controllers/persona_controller.py` | `_get_id_usuario()` |
+| `controllers/matricula_controller.py` | `_get_id_usuario()` |
+| `controllers/pago_controller.py` | `listar_matriculas_activas()` |
+| `views/estudiantes/estudiante_view.py` | Filtro retirados + sin imports de repository |
+| `views/pagos/pago_view.py` | Sin imports de repository |
+| `views/login/login_view.py` | Centrado + diseño mejorado |
+| `main.py` | Centrado + pantalla bienvenida + sidebar con emojis |
+| `tests/*.py` | 8 archivos de tests |
+
+---
+
+## Base de Datos en Tests vs Producción
+
+Los tests usan SQLite `:memory:` (en memoria) para:
+- Ser rápidos (no tocan disco)
+- No contaminar la DB real
+- Resetearse automáticamente entre tests
+
+**La app de producción SIEMPRE usa `academia.db`** (archivo en disco). Al ejecutar `python main.py`:
+1. Se crea `academia.db` si no existe
+2. Se ejecuta `create_tables()` + `seed_database()`
+3. Los datos persisten entre sesiones
+
+**Nota:** Con el cambio a bcrypt (Bug #18), si ya tenías una `academia.db` antigua, debes eliminarla y volver a ejecutar `python main.py` para que se regenere con hashes bcrypt.
+
+---
+
+## Ideas Futuras — Tarifas y Categorías
+
+### 1. Auto-asignación de categoría por edad (en Matrícula)
+
+**Dónde:** `views/matriculas/matricula_view.py`
+
+**Cómo:** Al seleccionar un estudiante en el combo, calcular su edad y auto-seleccionar la tarifa correspondiente:
+
+```python
+from utils.dates import calculate_age
+from database.connection import fetch_one
+
+edad = calculate_age(estudiante["fecha_nacimiento"])
+# Buscar categoría donde edad_min <= edad <= edad_max
+cat = fetch_one(
+    "SELECT id_categoria FROM categoria WHERE ? BETWEEN edad_min AND edad_max",
+    (edad,)
+)
+# Seleccionar自动amente la tarifa de esa categoría
+```
+
+**Reglas de negocio:** Compatible con RN-006 (categorías = rangos de edad) y RN-008 (matrícula = estudiante + tarifa).
+
+### 2. Tarifas más configurables
+
+**Campos a agregar a tabla `tarifa`:**
+- `descripcion TEXT` — descripción de la tarifa
+- `activo INTEGER DEFAULT 1` — para desactivar sin eliminar
+- `observaciones TEXT` — notas internas
+
+**Archivos a modificar:**
+- `database/create_db.py` — agregar columnas
+- `models/tarifa.py` — agregar campos al dataclass
+- `repositories/tarifa_repository.py` — actualizar INSERT/UPDATE
+- `views/tarifas/tarifa_view.py` — formulario con nuevos campos
+
+### 3. Gestionar Categorías y Tarifas desde Configuración (Admin)
+
+**Dónde:** `views/configuracion/configuracion_view.py`
+
+**Nueva sección:** "Categorías y Tarifas" (solo visible para ADMIN)
+
+**Funcionalidades:**
+- Ver lista de categorías activas
+- Crear/editar/desactivar categorías (nombre, edad_min, edad_max)
+- Ver tarifas por categoría
+- Crear/editar/desactivar tarifas (nombre, monto, fecha_inicio, descripcion)
+
+**Archivos a crear/modificar:**
+- `controllers/categoria_controller.py` — CRUD de categorías
+- `services/categoria_service.py` — lógica de negocio
+- `repositories/categoria_repository.py` — acceso a datos (NO existe aún)
+- `views/configuracion/configuracion_view.py` — agregar sección
+
+---
+
+## Prioridad 11 — Extras (Opcional)
 
 | # | Item | Descripción |
 |---|------|-------------|
-| 1 | Agregar `reports/` a `.gitignore` | Si solo se usa `exports/` |
-| 2 | Mejorar error handling en `main.py` | Usar `messagebox.showerror()` en vez de `print()` para errores críticos |
-| 3 | Logging en backup/restore | Registrar operaciones de backup/restore en tabla `log` |
-| 4 | Validación en restore | Verificar integridad del archivo SQLite antes de restaurar |
+| 1 | Mejorar error handling en `main.py` | Usar `messagebox.showerror()` en vez de `print()` para errores críticos |
+| 2 | Logging en backup/restore | Registrar operaciones de backup/restore en tabla `log` |
+| 3 | Validación en restore | Verificar integridad del archivo SQLite antes de restaurar |

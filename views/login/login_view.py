@@ -12,6 +12,7 @@ class LoginView(ctk.CTkToplevel):
         self.on_login_success = on_login_success
         self._centrar_ventana()
         self._crear_widgets()
+        self.after(50, self._elevar_ventana)
 
     def _centrar_ventana(self):
         self.update_idletasks()
@@ -20,6 +21,12 @@ class LoginView(ctk.CTkToplevel):
         x = (self.winfo_screenwidth() // 2) - (ancho // 2)
         y = (self.winfo_screenheight() // 2) - (alto // 2)
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+    def _elevar_ventana(self):
+        self.lift()
+        self.focus_force()
+        self.attributes("-topmost", True)
+        self.after(200, lambda: self.attributes("-topmost", False))
 
     def _crear_widgets(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")

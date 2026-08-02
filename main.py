@@ -64,9 +64,13 @@ class App(ctk.CTk):
     def _abrir_login(self):
         for widget in self.winfo_children():
             widget.destroy()
+        self.withdraw()
         LoginView(self, on_login_success=self._on_login_success)
 
     def _on_login_success(self, usuario):
+        self.deiconify()
+        self.lift()
+        self.focus_force()
         if login_controller.necesita_cambiar_password():
             CambiarPasswordView(self, on_success=self._on_password_cambiado)
         else:

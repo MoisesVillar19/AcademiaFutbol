@@ -1,13 +1,20 @@
 import customtkinter as ctk
 from controllers import login_controller
 
+COLOR_SIDEBAR  = "#1a1a2e"
+COLOR_PRIMARY  = "#1f6aa5"
+COLOR_PRIMARY_H = "#155a85"
+COLOR_BG       = "#e8edf2"
+COLOR_TEXT_SEC = "#6c757d"
+
 
 class LoginView(ctk.CTkToplevel):
     def __init__(self, parent, on_login_success=None):
         super().__init__(parent)
         self.title("Academia Deportiva - Inicio de Sesión")
-        self.geometry("420x400")
+        self.geometry("440x480")
         self.resizable(False, False)
+        self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self.on_login_success = on_login_success
         self._centrar_ventana()
@@ -16,8 +23,8 @@ class LoginView(ctk.CTkToplevel):
 
     def _centrar_ventana(self):
         self.update_idletasks()
-        ancho = 420
-        alto = 400
+        ancho = 440
+        alto = 480
         x = (self.winfo_screenwidth() // 2) - (ancho // 2)
         y = (self.winfo_screenheight() // 2) - (alto // 2)
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
@@ -34,47 +41,50 @@ class LoginView(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             frame, text="⚽",
-            font=ctk.CTkFont(size=48),
-        ).pack(pady=(0, 5))
+            font=ctk.CTkFont(size=56),
+        ).pack(pady=(0, 8))
 
         ctk.CTkLabel(
             frame, text="Academia Deportiva",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#1f6aa5",
-        ).pack(pady=(0, 5))
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=COLOR_PRIMARY,
+        ).pack(pady=(0, 3))
 
         ctk.CTkLabel(
             frame, text="Iniciar Sesión",
-            font=ctk.CTkFont(size=14),
-            text_color="gray",
-        ).pack(pady=(0, 25))
+            font=ctk.CTkFont(size=13),
+            text_color=COLOR_TEXT_SEC,
+        ).pack(pady=(0, 30))
 
         self.entry_usuario = ctk.CTkEntry(
             frame, placeholder_text="👤  Usuario",
-            width=300, height=42,
-            border_width=1,
-            corner_radius=8,
+            width=320, height=44,
+            border_width=1, border_color="#ced4da",
+            corner_radius=10,
+            font=ctk.CTkFont(size=13),
         )
-        self.entry_usuario.pack(pady=6)
+        self.entry_usuario.pack(pady=7)
 
         self.entry_password = ctk.CTkEntry(
             frame, placeholder_text="🔒  Contraseña",
-            width=300, height=42, show="•",
-            border_width=1,
-            corner_radius=8,
+            width=320, height=44, show="•",
+            border_width=1, border_color="#ced4da",
+            corner_radius=10,
+            font=ctk.CTkFont(size=13),
         )
-        self.entry_password.pack(pady=6)
+        self.entry_password.pack(pady=7)
 
         self.btn_login = ctk.CTkButton(
-            frame, text="Ingresar", width=300, height=42,
-            corner_radius=8,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            frame, text="Ingresar", width=320, height=46,
+            corner_radius=10,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_H,
             command=self._on_login,
         )
-        self.btn_login.pack(pady=(20, 10))
+        self.btn_login.pack(pady=(22, 10))
 
         self.label_error = ctk.CTkLabel(
-            frame, text="", text_color="#e74c3c",
+            frame, text="", text_color="#dc3545",
             font=ctk.CTkFont(size=12),
         )
         self.label_error.pack()

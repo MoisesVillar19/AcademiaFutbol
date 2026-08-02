@@ -22,8 +22,9 @@ class DashboardView(ctk.CTkFrame):
         self.header.pack(fill="x", padx=15, pady=(15, 5))
 
         self.titulo_label = ctk.CTkLabel(
-            self.header, text="Dashboard",
+            self.header, text="📊  Dashboard",
             font=ctk.CTkFont(size=24, weight="bold"),
+            text_color="#1a1a2e",
         )
         self.titulo_label.pack(side="left")
 

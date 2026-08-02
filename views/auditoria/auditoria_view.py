@@ -77,7 +77,7 @@ class AuditoriaView(ctk.CTkFrame):
             ).pack(pady=20)
             return
 
-        header_row = ctk.CTkFrame(self.tabla_frame, fg_color=("gray85", "gray25"))
+        header_row = ctk.CTkFrame(self.tabla_frame, fg_color="#e2e8f0")
         header_row.pack(fill="x", padx=2, pady=2)
 
         for text, width in [("Fecha", 130), ("Usuario", 80), ("Tabla", 100),

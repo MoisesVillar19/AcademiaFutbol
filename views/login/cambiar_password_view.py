@@ -1,51 +1,85 @@
 import customtkinter as ctk
 from controllers import login_controller
 
+COLOR_PRIMARY   = "#1f6aa5"
+COLOR_PRIMARY_H = "#155a85"
+COLOR_BG        = "#e8edf2"
+COLOR_TEXT_SEC  = "#6c757d"
+
 
 class CambiarPasswordView(ctk.CTkToplevel):
     def __init__(self, parent, on_success=None):
         super().__init__(parent)
         self.title("Cambiar Contraseña - Primer Acceso")
-        self.geometry("420x420")
+        self.geometry("440x460")
         self.resizable(False, False)
+        self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self.on_success = on_success
+        self._centrar_ventana()
         self._crear_widgets()
+        self.after(50, self._elevar_ventana)
+
+    def _centrar_ventana(self):
+        self.update_idletasks()
+        ancho = 420
+        alto = 420
+        x = (self.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (self.winfo_screenheight() // 2) - (alto // 2)
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+    def _elevar_ventana(self):
+        self.lift()
+        self.focus_force()
+        self.attributes("-topmost", True)
+        self.after(200, lambda: self.attributes("-topmost", False))
 
     def _crear_widgets(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")
         frame.pack(expand=True, fill="both", padx=40, pady=30)
 
         ctk.CTkLabel(
+            frame, text="🔒",
+            font=ctk.CTkFont(size=48),
+        ).pack(pady=(0, 8))
+
+        ctk.CTkLabel(
             frame, text="Cambiar Contraseña",
             font=ctk.CTkFont(size=22, weight="bold"),
-        ).pack(pady=(0, 5))
+            text_color=COLOR_PRIMARY,
+        ).pack(pady=(0, 3))
 
         ctk.CTkLabel(
             frame, text="Es su primer acceso. Debe cambiar la contraseña.",
-            font=ctk.CTkFont(size=12), text_color="gray",
+            font=ctk.CTkFont(size=12), text_color=COLOR_TEXT_SEC,
         ).pack(pady=(0, 20))
 
         self.entry_password_actual = ctk.CTkEntry(
-            frame, placeholder_text="Contraseña actual", width=300, height=38, show="*",
+            frame, placeholder_text="Contraseña actual", width=320, height=42, show="*",
+            border_width=1, border_color="#ced4da", corner_radius=10,
         )
-        self.entry_password_actual.pack(pady=5)
+        self.entry_password_actual.pack(pady=6)
 
         self.entry_password_nuevo = ctk.CTkEntry(
-            frame, placeholder_text="Nueva contraseña (mín. 6 caracteres)", width=300, height=38, show="*",
+            frame, placeholder_text="Nueva contraseña (mín. 6 caracteres)", width=320, height=42, show="*",
+            border_width=1, border_color="#ced4da", corner_radius=10,
         )
-        self.entry_password_nuevo.pack(pady=5)
+        self.entry_password_nuevo.pack(pady=6)
 
         self.entry_confirmar = ctk.CTkEntry(
-            frame, placeholder_text="Confirmar nueva contraseña", width=300, height=38, show="*",
+            frame, placeholder_text="Confirmar nueva contraseña", width=320, height=42, show="*",
+            border_width=1, border_color="#ced4da", corner_radius=10,
         )
-        self.entry_confirmar.pack(pady=5)
+        self.entry_confirmar.pack(pady=6)
 
         self.btn_cambiar = ctk.CTkButton(
-            frame, text="Cambiar Contraseña", width=300, height=40,
+            frame, text="Cambiar Contraseña", width=320, height=44,
+            corner_radius=10,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_H,
             command=self._on_cambiar,
         )
-        self.btn_cambiar.pack(pady=20)
+        self.btn_cambiar.pack(pady=(18, 10))
 
         self.label_error = ctk.CTkLabel(
             frame, text="", font=ctk.CTkFont(size=12),

@@ -11,21 +11,40 @@ from controllers import login_controller
 from views.login.login_view import LoginView
 from views.login.cambiar_password_view import CambiarPasswordView
 
+# ── Colores globales ──────────────────────────────────────────────
+COLOR_SIDEBAR      = "#1a1a2e"
+COLOR_SIDEBAR_HOVER= "#16213e"
+COLOR_SIDEBAR_ACT  = "#0f3460"
+COLOR_HEADER       = "#0f3460"
+COLOR_PRIMARY      = "#1f6aa5"
+COLOR_PRIMARY_HOVER= "#155a85"
+COLOR_BG           = "#e8edf2"
+COLOR_CARD         = "#ffffff"
+COLOR_TEXT         = "#1a1a2e"
+COLOR_TEXT_SEC     = "#6c757d"
+COLOR_SUCCESS      = "#28a745"
+COLOR_DANGER       = "#dc3545"
+COLOR_DANGER_HVR   = "#b02a37"
+COLOR_BORDER       = "#dee2e6"
+
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
+        ctk.set_appearance_mode("light")
+        ctk.set_default_color_theme("blue")
         self.title("Academia Deportiva")
-        self.geometry("1024x680")
-        self.minsize(800, 600)
+        self.geometry("1100x700")
+        self.minsize(900, 600)
+        self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self._centrar_ventana()
         self._mostrar_bienvenida()
 
     def _centrar_ventana(self):
         self.update_idletasks()
-        ancho = 1024
-        alto = 680
+        ancho = 1100
+        alto = 700
         x = (self.winfo_screenwidth() // 2) - (ancho // 2)
         y = (self.winfo_screenheight() // 2) - (alto // 2)
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
@@ -34,30 +53,34 @@ class App(ctk.CTk):
         for widget in self.winfo_children():
             widget.destroy()
 
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        frame.pack(expand=True)
+        frame = ctk.CTkFrame(self, fg_color=COLOR_BG)
+        frame.pack(expand=True, fill="both")
+
+        inner = ctk.CTkFrame(frame, fg_color="transparent")
+        inner.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            frame, text="⚽",
-            font=ctk.CTkFont(size=64),
+            inner, text="⚽",
+            font=ctk.CTkFont(size=72),
         ).pack(pady=(0, 10))
 
         ctk.CTkLabel(
-            frame, text="Academia Deportiva",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#1f6aa5",
+            inner, text="Academia Deportiva",
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color=COLOR_PRIMARY,
         ).pack(pady=(0, 5))
 
         ctk.CTkLabel(
-            frame, text="Sistema de Gestión",
-            font=ctk.CTkFont(size=16),
-            text_color="gray",
-        ).pack(pady=(0, 30))
+            inner, text="Sistema de Gestión v1.0",
+            font=ctk.CTkFont(size=14),
+            text_color=COLOR_TEXT_SEC,
+        ).pack(pady=(0, 35))
 
         ctk.CTkButton(
-            frame, text="Iniciar Sesión", width=220, height=45,
-            corner_radius=10,
-            font=ctk.CTkFont(size=15, weight="bold"),
+            inner, text="⚽  Iniciar Sesión", width=260, height=50,
+            corner_radius=12,
+            font=ctk.CTkFont(size=16, weight="bold"),
+            fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER,
             command=self._abrir_login,
         ).pack()
 
@@ -83,7 +106,8 @@ class App(ctk.CTk):
         for widget in self.winfo_children():
             widget.destroy()
 
-        sidebar = ctk.CTkFrame(self, width=200, fg_color=("gray85", "gray20"))
+        # ── Sidebar ────────────────────────────────────────────────
+        sidebar = ctk.CTkFrame(self, width=220, fg_color=COLOR_SIDEBAR)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
@@ -91,48 +115,97 @@ class App(ctk.CTk):
         nombre = usuario.get("nombres", "") if usuario else ""
         rol = usuario.get("rol", "") if usuario else ""
 
-        ctk.CTkLabel(
-            sidebar, text="⚽ Academia",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(pady=(15, 5))
+        # Header del sidebar
+        header_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR)
+        header_frame.pack(fill="x", padx=15, pady=(20, 5))
 
         ctk.CTkLabel(
-            sidebar, text=f"{nombre}\n({rol})",
-            font=ctk.CTkFont(size=12), text_color="gray",
-        ).pack(pady=(0, 15))
+            header_frame, text="⚽",
+            font=ctk.CTkFont(size=28),
+        ).pack(anchor="w")
 
-        self.contenido = ctk.CTkFrame(self, fg_color="transparent")
-        self.contenido.pack(side="right", fill="both", expand=True)
+        ctk.CTkLabel(
+            header_frame, text="Academia",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#ffffff",
+        ).pack(anchor="w", pady=(2, 0))
 
-        botones = [
-            ("📊 Dashboard", self._mostrar_placeholder),
-            ("👤 Estudiantes", self._mostrar_estudiantes),
-            ("📋 Matrículas", self._mostrar_matriculas),
-            ("💰 Pagos", self._mostrar_pagos),
-            ("📦 Inventario", self._mostrar_inventario),
-            ("📈 Reportes", self._mostrar_reportes),
+        # Info del usuario
+        user_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, corner_radius=8)
+        user_frame.pack(fill="x", padx=12, pady=(10, 15))
+
+        ctk.CTkLabel(
+            user_frame, text=f"👤  {nombre}",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#ffffff", anchor="w",
+        ).pack(fill="x", padx=10, pady=(8, 0))
+
+        ctk.CTkLabel(
+            user_frame, text=f"   {rol}",
+            font=ctk.CTkFont(size=11),
+            text_color="#8899aa", anchor="w",
+        ).pack(fill="x", padx=10, pady=(0, 8))
+
+        # Separador
+        ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(fill="x", padx=15, pady=5)
+
+        # Botones del menú
+        self._boton_activo = None
+        self._sidebar_botones = []
+
+        botones_data = [
+            ("📊  Dashboard",   self._mostrar_placeholder),
+            ("👤  Estudiantes", self._mostrar_estudiantes),
+            ("📋  Matrículas",  self._mostrar_matriculas),
+            ("💰  Pagos",       self._mostrar_pagos),
+            ("📦  Inventario",  self._mostrar_inventario),
+            ("📈  Reportes",    self._mostrar_reportes),
         ]
 
         if login_controller.es_admin():
-            botones.append(("🔑 Usuarios", self._mostrar_usuarios))
-            botones.append(("🏷️ Tarifas", self._mostrar_tarifas))
-            botones.append(("📝 Auditoría", self._mostrar_auditoria))
-            botones.append(("⚙️ Configuración", self._mostrar_configuracion))
+            botones_data.append(("🔑  Usuarios",      self._mostrar_usuarios))
+            botones_data.append(("🏷️  Tarifas",      self._mostrar_tarifas))
+            botones_data.append(("📝  Auditoría",     self._mostrar_auditoria))
+            botones_data.append(("⚙️  Configuración", self._mostrar_configuracion))
 
-        for text, command in botones:
-            ctk.CTkButton(
-                sidebar, text=text, width=180, height=36,
+        for text, command in botones_data:
+            btn = ctk.CTkButton(
+                sidebar, text=text, width=196, height=38,
                 fg_color="transparent", anchor="w",
-                command=command,
-            ).pack(pady=2, padx=10)
+                font=ctk.CTkFont(size=13),
+                text_color="#c0c8d4",
+                hover_color=COLOR_SIDEBAR_HOVER,
+                corner_radius=8,
+                command=lambda c=command, b=text: self._on_menu_click(c, b),
+            )
+            btn.pack(pady=2, padx=12)
+            self._sidebar_botones.append((text, btn))
 
+        # Botón cerrar sesión
+        ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(
+            fill="x", padx=15, side="bottom", pady=(5, 0)
+        )
         ctk.CTkButton(
-            sidebar, text="🚪 Cerrar Sesión", width=180, height=36,
-            fg_color="red", hover_color="darkred",
+            sidebar, text="🚪  Cerrar Sesión", width=196, height=38,
+            fg_color=COLOR_DANGER, hover_color=COLOR_DANGER_HVR,
+            font=ctk.CTkFont(size=13),
+            corner_radius=8,
             command=self._cerrar_sesion,
-        ).pack(side="bottom", pady=15)
+        ).pack(side="bottom", pady=15, padx=12)
+
+        # ── Contenido principal ────────────────────────────────────
+        self.contenido = ctk.CTkFrame(self, fg_color=COLOR_BG)
+        self.contenido.pack(side="right", fill="both", expand=True)
 
         self._mostrar_placeholder()
+
+    def _on_menu_click(self, command, label):
+        for text, btn in self._sidebar_botones:
+            if text == label:
+                btn.configure(fg_color=COLOR_SIDEBAR_ACT, text_color="#ffffff")
+            else:
+                btn.configure(fg_color="transparent", text_color="#c0c8d4")
+        command()
 
     def _limpiar_contenido(self):
         for widget in self.contenido.winfo_children():

@@ -543,15 +543,14 @@ git push origin v1.0
 - [x] Bug #12 corregido (filtro retirados)
 - [x] Bugs #8-10 corregidos (violaciones arquitectura)
 - [x] Bug #16 corregido (dashboard_service)
+- [x] Bug #19 corregido (DB path + __pycache__ bcrypt)
+- [x] Bug #20 corregido (login ventana al frente)
 - [x] Login GUI mejorada (centrado, diseño)
 - [x] Main window mejorada (centrado, pantalla bienvenida)
-- [ ] Código muerto eliminado
-- [ ] `__init__.py` agregados
-- [ ] README.md actualizado
-- [ ] Documentación actualizada
-- [ ] `.env` implementado
-- [ ] Git commit realizado
-- [ ] Tag v1.0 creado
+- [x] Auto-categoría por edad en matrícula
+- [x] Tarifas más configurables (descripcion, observaciones)
+- [x] Categorías de edad en módulo Configuración (admin)
+- [x] Git commit + tag v1.0 + push
 
 ---
 
@@ -581,6 +580,10 @@ git push origin v1.0
 | #8-9 | pago_view.py, pago_controller.py | View ya no llama a repository directamente |
 | #10 | estudiante_view.py, estudiante_controller.py | View ya no llama a repository directamente |
 | #16 | dashboard_service.py | Service ya no usa SQL directo, usa configuracion_repository |
+| #19 | database/academia.db | DB estaba en `database/academia.db` (no raíz). `__pycache__` tenía `.pyc` viejo con SHA-256, causaba hash inválido |
+| #20 | views/login/login_view.py, main.py | Login aparecía detrás de la ventana principal. Se agregó `lift()`/`focus_force()`/`topmost` + `withdraw()` en principal |
+
+---
 
 ### Archivos Modificados
 
@@ -601,8 +604,19 @@ git push origin v1.0
 | `controllers/pago_controller.py` | `listar_matriculas_activas()` |
 | `views/estudiantes/estudiante_view.py` | Filtro retirados + sin imports de repository |
 | `views/pagos/pago_view.py` | Sin imports de repository |
-| `views/login/login_view.py` | Centrado + diseño mejorado |
-| `main.py` | Centrado + pantalla bienvenida + sidebar con emojis |
+| `views/login/login_view.py` | Centrado + diseño mejorado + fix ventana al frente |
+| `main.py` | Centrado + pantalla bienvenida + sidebar con emojis + fix withdraw durante login |
+| `views/matriculas/matricula_view.py` | Auto-categoría por edad al seleccionar estudiante |
+| `views/configuracion/configuracion_view.py` | Sección Categorías de Edad (admin CRUD) |
+| `views/tarifas/tarifa_view.py` | Vista CRUD de tarifas con nuevos campos |
+| `controllers/tarifa_controller.py` | Controller de tarifas |
+| `controllers/categoria_controller.py` | Controller de categorías |
+| `services/tarifa_service.py` | Tarifas con descripcion/observaciones |
+| `services/categoria_service.py` | Service CRUD categorías |
+| `repositories/tarifa_repository.py` | INSERT/UPDATE con nuevos campos |
+| `repositories/categoria_repository.py` | Repository CRUD categorías |
+| `models/tarifa.py` | Campos descripcion/observaciones |
+| `database/create_db.py` | Columnas tarifas + schema categorías |
 | `tests/*.py` | 8 archivos de tests |
 
 ---
@@ -623,59 +637,130 @@ Los tests usan SQLite `:memory:` (en memoria) para:
 
 ---
 
-## Ideas Futuras — Tarifas y Categorías
+## Resumen de Cambios — Sprint 10 (hasta ahora)
 
-### 1. Auto-asignación de categoría por edad (en Matrícula)
+### Tests (78 tests, 100% pasan)
 
-**Dónde:** `views/matriculas/matricula_view.py`
+| Archivo | Tests | Tipo |
+|---------|-------|------|
+| `test_validators.py` | 18 | Unitario |
+| `test_security.py` | 7 | Unitario |
+| `test_dates.py` | 15 | Unitario |
+| `test_cuota_service.py` | 11 | Service |
+| `test_estudiante_service.py` | 8 | Service |
+| `test_pago_service.py` | 7 | Service |
+| `test_login.py` | 6 | Integración |
+| `test_matriculas.py` | 6 | Integración |
+| **TOTAL** | **78** | |
 
-**Cómo:** Al seleccionar un estudiante en el combo, calcular su edad y auto-seleccionar la tarifa correspondiente:
+### Bugs Corregidos
 
+| Bug | Archivos | Descripción |
+|-----|----------|-------------|
+| #7 | services/*.py, controllers/*.py | `id_usuario=1` → parámetro dinámico desde sesión |
+| #12 | estudiante_view.py, estudiante_repository.py | Filtro "Retirados" usa `estado=RETIRADO` en vez de `activo=0` |
+| #18 | utils/security.py | SHA-256 → bcrypt (hash seguro) |
+| #8-9 | pago_view.py, pago_controller.py | View ya no llama a repository directamente |
+| #10 | estudiante_view.py, estudiante_controller.py | View ya no llama a repository directamente |
+| #16 | dashboard_service.py | Service ya no usa SQL directo, usa configuracion_repository |
+| #19 | database/academia.db | DB estaba en `database/academia.db` (no raíz). `__pycache__` tenía `.pyc` viejo con SHA-256, causaba hash inválido al regenerar DB |
+| #20 | views/login/login_view.py, main.py | Login aparecía detrás de la ventana principal. Fix: `lift()`/`focus_force()`/`topmost` temporal + `withdraw()` en principal durante login |
+
+---
+
+## Bugs #19 y #20 — Post-Sprint 10
+
+### Bug #19: Hash SHA-256 en DB a pesar de migrar a bcrypt
+
+**Fecha:** 2026-08-02
+**Causa raíz:** La `academia.db` está en `database/academia.db`, NO en la raíz del proyecto. Al intentar regenerar la DB eliminando `academia.db` (raíz), se creaba una nueva pero el `__pycache__/security.cpython-313.pyc` tenía el código viejo compilado (SHA-256), así que el seed guardaba hashes inválidos.
+
+**Síntoma:** Login mostraba "Credenciales incorrectas o usuario desactivado" con usuario `admin` / `admin123`.
+
+**Solución:**
+1. Limpiar todos los `__pycache__/` del proyecto (no del .venv)
+2. Eliminar `database/academia.db` (ruta correcta)
+3. Regenerar DB con `create_tables()` + `seed_database()` (ahora usa bcrypt correctamente)
+
+**Lección aprendida:** Después de cambiar algoritmos de hash, SIEMPRE limpiar `__pycache__` y regenerar la DB.
+
+---
+
+### Bug #20: Login aparecía detrás de la ventana principal
+
+**Fecha:** 2026-08-02
+**Causa raíz:** `LoginView` es un `CTkToplevel` que se creaba sin `lift()` ni `focus_force()`. La ventana principal (`App`) quedaba visible detrás.
+
+**Síntoma:** La pantalla de login se mostraba detrás de la ventana de bienvenida.
+
+**Solución en `views/login/login_view.py`:**
 ```python
-from utils.dates import calculate_age
-from database.connection import fetch_one
-
-edad = calculate_age(estudiante["fecha_nacimiento"])
-# Buscar categoría donde edad_min <= edad <= edad_max
-cat = fetch_one(
-    "SELECT id_categoria FROM categoria WHERE ? BETWEEN edad_min AND edad_max",
-    (edad,)
-)
-# Seleccionar自动amente la tarifa de esa categoría
+def _elevar_ventana(self):
+    self.lift()
+    self.focus_force()
+    self.attributes("-topmost", True)
+    self.after(200, lambda: self.attributes("-topmost", False))
 ```
 
-**Reglas de negocio:** Compatible con RN-006 (categorías = rangos de edad) y RN-008 (matrícula = estudiante + tarifa).
+**Solución en `main.py`:**
+```python
+def _abrir_login(self):
+    self.withdraw()  # Ocultar ventana principal
+    LoginView(self, on_login_success=self._on_login_success)
 
-### 2. Tarifas más configurables
+def _on_login_success(self, usuario):
+    self.deiconify()  # Restaurar ventana principal
+    self.lift()
+    self.focus_force()
+```
 
-**Campos a agregar a tabla `tarifa`:**
+---
+
+## Ideas Futuras — Tarifas y Categorías ✅ IMPLEMENTADAS
+
+### 1. Auto-asignación de categoría por edad (en Matrícula) ✅
+
+**Dónde:** `views/matriculas/matricula_view.py` + `controllers/matricula_controller.py`
+
+**Implementación:** Al seleccionar estudiante en el combo, se calcula edad con `calculate_age(fecha_nacimiento)`, se busca categoría con `edad_min <= edad <= edad_max`, y se auto-selecciona la tarifa correspondiente.
+
+**Archivos:**
+- `controllers/matricula_controller.py` — `obtener_tarifa_sugerida_por_edad()`
+- `views/matriculas/matricula_view.py` — callback `_on_estudiante_changed()`
+
+---
+
+### 2. Tarifas más configurables ✅
+
+**Campos agregados a tabla `tarifa`:**
 - `descripcion TEXT` — descripción de la tarifa
-- `activo INTEGER DEFAULT 1` — para desactivar sin eliminar
 - `observaciones TEXT` — notas internas
 
-**Archivos a modificar:**
-- `database/create_db.py` — agregar columnas
-- `models/tarifa.py` — agregar campos al dataclass
-- `repositories/tarifa_repository.py` — actualizar INSERT/UPDATE
-- `views/tarifas/tarifa_view.py` — formulario con nuevos campos
+**Archivos modificados:**
+- `database/create_db.py` — columnas `descripcion`, `observaciones`
+- `models/tarifa.py` — campos `descripcion`, `observaciones`
+- `repositories/tarifa_repository.py` — INSERT/UPDATE con nuevos campos
+- `services/tarifa_service.py` — crear/editar con nuevos campos
+- `views/tarifas/tarifa_view.py` — formulario completo con nuevos campos
+- `controllers/tarifa_controller.py` — controller nuevo
 
-### 3. Gestionar Categorías y Tarifas desde Configuración (Admin)
+---
+
+### 3. Gestionar Categorías y Tarifas desde Configuración (Admin) ✅
 
 **Dónde:** `views/configuracion/configuracion_view.py`
 
-**Nueva sección:** "Categorías y Tarifas" (solo visible para ADMIN)
+**Sección implementada:** "Categorías de Edad" (solo visible para ADMIN)
 
 **Funcionalidades:**
 - Ver lista de categorías activas
 - Crear/editar/desactivar categorías (nombre, edad_min, edad_max)
-- Ver tarifas por categoría
-- Crear/editar/desactivar tarifas (nombre, monto, fecha_inicio, descripcion)
+- Botones de acción en cada categoría
 
-**Archivos a crear/modificar:**
+**Archivos creados:**
 - `controllers/categoria_controller.py` — CRUD de categorías
 - `services/categoria_service.py` — lógica de negocio
-- `repositories/categoria_repository.py` — acceso a datos (NO existe aún)
-- `views/configuracion/configuracion_view.py` — agregar sección
+- `repositories/categoria_repository.py` — acceso a datos
 
 ---
 

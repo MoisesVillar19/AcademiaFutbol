@@ -1,15 +1,19 @@
 import sys
 import os
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 import customtkinter as ctk
+from PIL import Image
 from database.create_db import create_tables
 from database.seed import seed_database
 from database.connection import close_connection
 from controllers import login_controller
 from views.login.login_view import LoginView
 from views.login.cambiar_password_view import CambiarPasswordView
+
+ASSETS_DIR = Path(__file__).parent / "assets" / "images"
 
 # ── Colores globales ──────────────────────────────────────────────
 COLOR_SIDEBAR      = "#1a1a2e"
@@ -59,10 +63,21 @@ class App(ctk.CTk):
         inner = ctk.CTkFrame(frame, fg_color="transparent")
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(
-            inner, text="⚽",
-            font=ctk.CTkFont(size=72),
-        ).pack(pady=(0, 10))
+        logo_path = ASSETS_DIR / "logo_roncalli.png"
+        if logo_path.exists():
+            logo_image = ctk.CTkImage(
+                light_image=Image.open(logo_path),
+                dark_image=Image.open(logo_path),
+                size=(280, 90),
+            )
+            ctk.CTkLabel(
+                inner, image=logo_image, text="",
+            ).pack(pady=(0, 15))
+        else:
+            ctk.CTkLabel(
+                inner, text="⚽",
+                font=ctk.CTkFont(size=72),
+            ).pack(pady=(0, 10))
 
         ctk.CTkLabel(
             inner, text="Academia Deportiva",
@@ -77,7 +92,7 @@ class App(ctk.CTk):
         ).pack(pady=(0, 35))
 
         ctk.CTkButton(
-            inner, text="⚽  Iniciar Sesión", width=260, height=50,
+            inner, text="Iniciar Sesión", width=260, height=50,
             corner_radius=12,
             font=ctk.CTkFont(size=16, weight="bold"),
             fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER,
@@ -119,10 +134,21 @@ class App(ctk.CTk):
         header_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR)
         header_frame.pack(fill="x", padx=15, pady=(20, 5))
 
-        ctk.CTkLabel(
-            header_frame, text="⚽",
-            font=ctk.CTkFont(size=28),
-        ).pack(anchor="w")
+        logo_path = ASSETS_DIR / "logo_roncalli.png"
+        if logo_path.exists():
+            logo_image = ctk.CTkImage(
+                light_image=Image.open(logo_path),
+                dark_image=Image.open(logo_path),
+                size=(180, 60),
+            )
+            ctk.CTkLabel(
+                header_frame, image=logo_image, text="",
+            ).pack(anchor="w")
+        else:
+            ctk.CTkLabel(
+                header_frame, text="⚽",
+                font=ctk.CTkFont(size=28),
+            ).pack(anchor="w")
 
         ctk.CTkLabel(
             header_frame, text="Academia",

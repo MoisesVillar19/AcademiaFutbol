@@ -1,4 +1,6 @@
 import customtkinter as ctk
+from pathlib import Path
+from PIL import Image
 from controllers import login_controller
 
 COLOR_SIDEBAR  = "#1a1a2e"
@@ -6,6 +8,8 @@ COLOR_PRIMARY  = "#1f6aa5"
 COLOR_PRIMARY_H = "#155a85"
 COLOR_BG       = "#e8edf2"
 COLOR_TEXT_SEC = "#6c757d"
+
+ASSETS_DIR = Path(__file__).parent.parent.parent / "assets" / "images"
 
 
 class LoginView(ctk.CTkToplevel):
@@ -39,10 +43,21 @@ class LoginView(ctk.CTkToplevel):
         frame = ctk.CTkFrame(self, fg_color="transparent")
         frame.pack(expand=True, fill="both", padx=40, pady=30)
 
-        ctk.CTkLabel(
-            frame, text="⚽",
-            font=ctk.CTkFont(size=56),
-        ).pack(pady=(0, 8))
+        logo_path = ASSETS_DIR / "logo_roncalli.png"
+        if logo_path.exists():
+            logo_image = ctk.CTkImage(
+                light_image=Image.open(logo_path),
+                dark_image=Image.open(logo_path),
+                size=(220, 70),
+            )
+            ctk.CTkLabel(
+                frame, image=logo_image, text="",
+            ).pack(pady=(0, 8))
+        else:
+            ctk.CTkLabel(
+                frame, text="⚽",
+                font=ctk.CTkFont(size=56),
+            ).pack(pady=(0, 8))
 
         ctk.CTkLabel(
             frame, text="Academia Deportiva",

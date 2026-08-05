@@ -15,21 +15,21 @@ from views.login.cambiar_password_view import CambiarPasswordView
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "images"
 
-# ── Colores globales ──────────────────────────────────────────────
-COLOR_SIDEBAR      = "#1a1a2e"
-COLOR_SIDEBAR_HOVER= "#16213e"
-COLOR_SIDEBAR_ACT  = "#0f3460"
-COLOR_HEADER       = "#0f3460"
-COLOR_PRIMARY      = "#1f6aa5"
-COLOR_PRIMARY_HOVER= "#155a85"
-COLOR_BG           = "#e8edf2"
-COLOR_CARD         = "#ffffff"
-COLOR_TEXT         = "#1a1a2e"
-COLOR_TEXT_SEC     = "#6c757d"
-COLOR_SUCCESS      = "#28a745"
-COLOR_DANGER       = "#dc3545"
-COLOR_DANGER_HVR   = "#b02a37"
-COLOR_BORDER       = "#dee2e6"
+# ── Colores globales (Instituto Roncalli) ────────────────────────
+COLOR_SIDEBAR      = "#3D1559"  # Morado oscuro
+COLOR_SIDEBAR_HOVER= "#4E1D70"  # Morado oscuro hover
+COLOR_SIDEBAR_ACT  = "#6B21A8"  # Morado medio activo
+COLOR_HEADER       = "#6B21A8"  # Morado medio
+COLOR_PRIMARY      = "#7C3AED"  # Morado claro (botones principales)
+COLOR_PRIMARY_HOVER= "#6D28D9"  # Morado claro hover
+COLOR_BG           = "#F8F5FA"  # Blanco ligeramente morado
+COLOR_CARD         = "#FFFFFF"  # Blanco puro
+COLOR_TEXT         = "#1F0A33"  # Morado muy oscuro (texto principal)
+COLOR_TEXT_SEC     = "#6B5B7B"  # Morado gris (texto secundario)
+COLOR_SUCCESS      = "#22C55E"  # Verde (éxito)
+COLOR_DANGER       = "#DC2626"  # Rojo (peligro)
+COLOR_DANGER_HVR   = "#B91C1C"  # Rojo hover
+COLOR_BORDER       = "#DDD6E5"  # Borde morado claro
 
 
 class App(ctk.CTk):

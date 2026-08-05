@@ -3,11 +3,11 @@ from pathlib import Path
 from PIL import Image
 from controllers import login_controller
 
-COLOR_SIDEBAR  = "#1a1a2e"
-COLOR_PRIMARY  = "#1f6aa5"
-COLOR_PRIMARY_H = "#155a85"
-COLOR_BG       = "#e8edf2"
-COLOR_TEXT_SEC = "#6c757d"
+COLOR_SIDEBAR  = "#3D1559"  # Morado oscuro
+COLOR_PRIMARY  = "#7C3AED"  # Morado claro
+COLOR_PRIMARY_H = "#6D28D9" # Morado claro hover
+COLOR_BG       = "#F8F5FA"  # Blanco ligeramente morado
+COLOR_TEXT_SEC = "#6B5B7B"  # Morado gris
 
 ASSETS_DIR = Path(__file__).parent.parent.parent / "assets" / "images"
 

@@ -325,7 +325,7 @@ class InventarioView(ctk.CTkFrame):
 
         ctk.CTkButton(
             botones, text="Movimiento", width=90, height=28,
-            fg_color="blue", hover_color="darkblue",
+            fg_color="#7C3AED", hover_color="#6D28D9",  # Morado
             command=lambda p=prod: self._ir_movimiento(p),
         ).pack(side="left", padx=2)
 

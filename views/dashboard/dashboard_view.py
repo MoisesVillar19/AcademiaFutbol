@@ -24,7 +24,7 @@ class DashboardView(ctk.CTkFrame):
         self.titulo_label = ctk.CTkLabel(
             self.header, text="📊  Dashboard",
             font=ctk.CTkFont(size=24, weight="bold"),
-            text_color="#1a1a2e",
+            text_color="#3D1559",  # Morado oscuro
         )
         self.titulo_label.pack(side="left")
 
@@ -60,31 +60,31 @@ class DashboardView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row1.pack(fill="x", pady=5)
 
-        self._crear_card(row1, "Alumnos Activos", str(data["alumnos_activos"]), "blue",
+        self._crear_card(row1, "Alumnos Activos", str(data["alumnos_activos"]), "#7C3AED",
                          lambda: self._mostrar_detalle("alumnos"))
-        self._crear_card(row1, "Cuotas Vencidas", str(data["cuotas_vencidas"]), "red",
+        self._crear_card(row1, "Cuotas Vencidas", str(data["cuotas_vencidas"]), "#DC2626",
                          lambda: self._mostrar_detalle("vencidas"))
-        self._crear_card(row1, "Por Vencer", str(data["cuotas_por_vencer"]), "orange",
+        self._crear_card(row1, "Por Vencer", str(data["cuotas_por_vencer"]), "#F59E0B",
                          lambda: self._mostrar_detalle("por_vencer"))
 
         row2 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5)
 
-        self._crear_card(row2, "Pagos Hoy", str(data["pagos_hoy"]), "green",
+        self._crear_card(row2, "Pagos Hoy", str(data["pagos_hoy"]), "#22C55E",
                          lambda: self._mostrar_detalle("pagos_hoy"))
-        self._crear_card(row2, "Ingresos Hoy", f"S/{data['ingresos_hoy']:.2f}", "green",
+        self._crear_card(row2, "Ingresos Hoy", f"S/{data['ingresos_hoy']:.2f}", "#22C55E",
                          lambda: self._mostrar_detalle("ingresos_hoy"))
-        self._crear_card(row2, "Ingresos Mes", f"S/{data['ingresos_mes']:.2f}", "blue",
+        self._crear_card(row2, "Ingresos Mes", f"S/{data['ingresos_mes']:.2f}", "#6B21A8",
                          lambda: self._mostrar_detalle("ingresos_mes"))
 
         row3 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row3.pack(fill="x", pady=5)
 
-        self._crear_card(row3, "Monto Vencido", f"S/{data['monto_vencido']:.2f}", "red",
+        self._crear_card(row3, "Monto Vencido", f"S/{data['monto_vencido']:.2f}", "#DC2626",
                          lambda: self._mostrar_detalle("monto_vencido"))
-        self._crear_card(row3, "Monto por Vencer", f"S/{data['monto_por_vencer']:.2f}", "orange",
+        self._crear_card(row3, "Monto por Vencer", f"S/{data['monto_por_vencer']:.2f}", "#F59E0B",
                          lambda: self._mostrar_detalle("monto_por_vencer"))
-        self._crear_card(row3, "Stock Bajo", str(data["stock_bajo"]), "orange",
+        self._crear_card(row3, "Stock Bajo", str(data["stock_bajo"]), "#F59E0B",
                          lambda: self._mostrar_detalle("stock"))
 
         for widget in self.detalle_frame.winfo_children():
@@ -175,7 +175,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay alumnos activos").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Borde morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -184,6 +184,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(
                 header, text=texto, width=ancho,
                 font=ctk.CTkFont(size=12, weight="bold"),
+                text_color="#3D1559",  # Morado oscuro
             ).grid(row=0, column=col, padx=5, pady=5)
 
         for i, alumno in enumerate(alumnos[:50]):
@@ -217,7 +218,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text=f"No hay cuotas {tipo}").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -263,7 +264,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay pagos registrados hoy").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -329,7 +330,7 @@ class DashboardView(ctk.CTkFrame):
                 "Ingresos por Día del Mes",
             )
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
         header.pack(fill="x", padx=5, pady=2)
 
         ctk.CTkLabel(header, text="Fecha", width=120,
@@ -364,7 +365,7 @@ class DashboardView(ctk.CTkFrame):
             saldos = [c.get("saldo", 0) for c in cuotas[:10]]
             self._crear_grafico_barras_simple(nombres, saldos, f"Saldo {tipo} por Estudiante")
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -407,7 +408,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay productos con stock bajo").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#e0e0e0")
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([

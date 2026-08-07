@@ -18,9 +18,6 @@ def listar_categorias(activo: int | None = None) -> list[dict]:
 
 
 def crear_producto(data: dict) -> tuple[bool, str, int | None]:
-    error = validate_not_empty(data.get("codigo", ""), "Código")
-    if error:
-        return False, error, None
     error = validate_not_empty(data.get("nombre", ""), "Nombre")
     if error:
         return False, error, None

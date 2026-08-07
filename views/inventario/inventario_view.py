@@ -5,6 +5,8 @@ from controllers import inventario_controller, login_controller
 class InventarioView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
+        self._categorias_map = {}
+        self._productos_map = {}
         self._crear_widgets()
         self._cargar_combo_categorias()
         self._cargar_productos()
@@ -490,7 +492,6 @@ class InventarioView(ctk.CTkFrame):
 
     def _limpiar_formulario(self):
         self._id_producto_editando = None
-        self.entry_codigo.delete(0, "end")
         self.entry_nombre.delete(0, "end")
         self.combo_tipo_uso.set("CONSUMO_INTERNO")
         self.entry_stock_min.delete(0, "end")

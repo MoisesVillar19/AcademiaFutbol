@@ -6,6 +6,7 @@ from widgets.date_picker import DatePicker
 class EstudianteView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
+        self._estudiantes_map = {}
         self._crear_widgets()
         self._cargar_estudiantes(activo=1, estado="ACTIVO")
 
@@ -365,7 +366,6 @@ class EstudianteView(ctk.CTkFrame):
                 self.label_form_status.configure(text=msg, text_color="red")
                 return
 
-            from controllers import apoderado_controller
             data_ap = {
                 "dni": dni_ap,
                 "nombres": nombres_ap,
@@ -375,7 +375,7 @@ class EstudianteView(ctk.CTkFrame):
                 "direccion": self.entry_direccion_ap.get().strip(),
                 "tipo_documento": tipo_doc_ap,
             }
-            exito_ap, msg_ap, id_apoderado = apoderado_controller.crear_apoderado(data_ap)
+            exito_ap, msg_ap, id_apoderado = estudiante_controller.crear_apoderado(data_ap)
 
             if not exito_ap:
                 self.label_form_status.configure(

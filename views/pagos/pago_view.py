@@ -7,6 +7,8 @@ from widgets.date_picker import DatePicker
 class PagoView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
+        self._matriculas_map = {}
+        self._cuotas_map = {}
         self._crear_widgets()
         self._cargar_pagos()
 

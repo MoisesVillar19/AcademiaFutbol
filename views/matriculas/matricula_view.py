@@ -5,6 +5,10 @@ from controllers import matricula_controller, estudiante_controller
 class MatriculaView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
+        self._estudiantes_map = {}
+        self._tarifas_map = {}
+        self._becas_map = {}
+        self._matriculas_map = {}
         self._crear_widgets()
         self._cargar_matriculas()
 

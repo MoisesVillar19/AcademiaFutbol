@@ -4,6 +4,105 @@ from controllers import usuario_controller
 from controllers import login_controller
 
 
+class CrearUsuarioDialog(ctk.CTkToplevel):
+    def __init__(self, parent, on_save=None):
+        super().__init__(parent)
+        self.title("Nuevo Usuario")
+        self.geometry("440x420")
+        self.resizable(False, False)
+        self.configure(fg_color="#F8F5FA")
+        self.grab_set()
+        self.on_save = on_save
+        self._centrar()
+        self._crear_widgets()
+
+    def _centrar(self):
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - 220
+        y = (self.winfo_screenheight() // 2) - 210
+        self.geometry(f"440x420+{x}+{y}")
+
+    def _crear_widgets(self):
+        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame.pack(expand=True, fill="both", padx=25, pady=20)
+
+        ctk.CTkLabel(
+            frame, text="Nuevo Usuario",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#3D1559",
+        ).pack(anchor="w", pady=(0, 15))
+
+        ctk.CTkLabel(frame, text="DNI de la persona:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_dni = ctk.CTkEntry(frame, width=390, height=38, placeholder_text="8 dígitos")
+        self.entry_dni.pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(frame, text="Nombre de usuario:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_username = ctk.CTkEntry(frame, width=390, height=38, placeholder_text="Username")
+        self.entry_username.pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(frame, text="Rol:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.combo_rol = ctk.CTkComboBox(
+            frame, values=["ADMIN", "SECRETARIA"], width=390, height=38,
+        )
+        self.combo_rol.set("SECRETARIA")
+        self.combo_rol.pack(anchor="w", pady=(0, 15))
+
+        self.label_status = ctk.CTkLabel(frame, text="", font=ctk.CTkFont(size=11))
+        self.label_status.pack(anchor="w", pady=(0, 5))
+
+        btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_frame.pack(anchor="w", pady=(5, 0))
+
+        ctk.CTkButton(
+            btn_frame, text="Cancelar", width=180, height=40,
+            fg_color="#6c757d", hover_color="#5a6268",
+            corner_radius=8, command=self.destroy,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame, text="Crear Usuario", width=180, height=40,
+            fg_color="#7C3AED", hover_color="#6D28D9",
+            corner_radius=8, command=self._guardar,
+        ).pack(side="left", padx=5)
+
+        self.entry_dni.bind("<Return>", lambda e: self._guardar())
+        self.entry_username.bind("<Return>", lambda e: self._guardar())
+
+    def _guardar(self):
+        dni = self.entry_dni.get().strip()
+        username = self.entry_username.get().strip()
+        rol = self.combo_rol.get()
+
+        if not username:
+            self.label_status.configure(text="El username es obligatorio", text_color="red")
+            return
+
+        if not dni:
+            self.label_status.configure(text="El DNI es obligatorio", text_color="red")
+            return
+
+        persona_data = {
+            "dni": dni,
+            "nombres": "",
+            "apellidos": "",
+        }
+
+        exito, msg, id_usuario = usuario_controller.crear_usuario(persona_data, username, rol)
+
+        if exito:
+            messagebox.showinfo(
+                "Usuario Creado",
+                f"Usuario: {username}\n\n"
+                f"Contraseña temporal: {msg}\n\n"
+                f"El usuario debe cambiarla al iniciar sesión.",
+            )
+            if self.on_save:
+                self.on_save()
+            self.destroy()
+        else:
+            self.label_status.configure(text=msg, text_color="red")
+
+
 class EditarUsuarioDialog(ctk.CTkToplevel):
     def __init__(self, parent, usuario, on_save=None):
         super().__init__(parent)
@@ -240,45 +339,7 @@ class UsuarioView(ctk.CTkFrame):
             )
 
     def _abrir_formulario(self):
-        dialog = ctk.CTkInputDialog(
-            text="Ingrese el nombre de usuario:", title="Nuevo Usuario",
-        )
-        username = dialog.get_input()
-        if not username:
-            return
-
-        dialog2 = ctk.CTkInputDialog(
-            text="Ingrese el DNI de la persona:", title="DNI",
-        )
-        dni = dialog2.get_input()
-        if not dni:
-            return
-
-        persona_data = {
-            "dni": dni,
-            "nombres": "",
-            "apellidos": "",
-        }
-
-        dialog3 = ctk.CTkInputDialog(
-            text="Rol (ADMIN o SECRETARIA):", title="Rol",
-        )
-        rol = dialog3.get_input()
-        if not rol:
-            return
-
-        exito, mensaje, id_usuario = usuario_controller.crear_usuario(persona_data, username, rol)
-
-        if exito:
-            messagebox.showinfo(
-                "Usuario Creado",
-                f"Usuario: {username}\n\n"
-                f"Contraseña temporal: {mensaje}\n\n"
-                f"El usuario debe cambiarla al iniciar sesión.",
-            )
-            self._cargar_usuarios()
-        else:
-            messagebox.showerror("Error", mensaje)
+        CrearUsuarioDialog(self, on_save=self._cargar_usuarios)
 
     def _activar(self, usuario):
         exito, mensaje = usuario_controller.activar_usuario(usuario["id_usuario"])

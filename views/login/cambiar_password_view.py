@@ -11,28 +11,22 @@ class CambiarPasswordView(ctk.CTkToplevel):
     def __init__(self, parent, on_success=None):
         super().__init__(parent)
         self.title("Cambiar Contraseña - Primer Acceso")
-        self.geometry("440x460")
         self.resizable(False, False)
         self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self.on_success = on_success
-        self._centrar_ventana()
         self._crear_widgets()
-        self.after(50, self._elevar_ventana)
+        self._centrar_ventana()
 
     def _centrar_ventana(self):
         self.update_idletasks()
-        ancho = 420
-        alto = 420
+        ancho = 440
+        alto = 460
         x = (self.winfo_screenwidth() // 2) - (ancho // 2)
         y = (self.winfo_screenheight() // 2) - (alto // 2)
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
-
-    def _elevar_ventana(self):
         self.lift()
         self.focus_force()
-        self.attributes("-topmost", True)
-        self.after(200, lambda: self.attributes("-topmost", False))
 
     def _crear_widgets(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")

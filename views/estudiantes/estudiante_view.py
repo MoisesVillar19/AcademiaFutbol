@@ -67,9 +67,20 @@ class EstudianteView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        ctk.CTkLabel(scroll, text="DNI *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_dni = ctk.CTkEntry(scroll, placeholder_text="8 dígitos", width=300)
-        self.entry_dni.pack(anchor="w", pady=(0, 5))
+        row_doc = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_doc.pack(fill="x", anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(row_doc, text="Tipo Doc. *").pack(side="left", padx=(0, 5))
+        self.combo_tipo_doc = ctk.CTkComboBox(
+            row_doc, values=["DNI", "CARNET"], width=120,
+        )
+        self.combo_tipo_doc.set("DNI")
+        self.combo_tipo_doc.pack(side="left", padx=(0, 10))
+
+        self.label_dni_est = ctk.CTkLabel(row_doc, text="DNI *", font=ctk.CTkFont(size=12))
+        self.label_dni_est.pack(side="left", padx=(0, 5))
+        self.entry_dni = ctk.CTkEntry(row_doc, placeholder_text="8 dígitos", width=200)
+        self.entry_dni.pack(side="left")
 
         ctk.CTkLabel(scroll, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_nombres = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
@@ -103,6 +114,55 @@ class EstudianteView(ctk.CTkFrame):
         ctk.CTkLabel(row2, text="Correo:").pack(side="left", padx=(20, 5))
         self.entry_correo = ctk.CTkEntry(row2, placeholder_text="Correo", width=200)
         self.entry_correo.pack(side="left")
+
+        separador = ctk.CTkFrame(scroll, fg_color="#DDD6E5", height=2)
+        separador.pack(fill="x", pady=15)
+
+        ctk.CTkLabel(
+            scroll, text="Apoderado Principal (obligatorio)",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", pady=(0, 10))
+
+        row_doc_ap = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_doc_ap.pack(fill="x", anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(row_doc_ap, text="Tipo Doc. *").pack(side="left", padx=(0, 5))
+        self.combo_tipo_doc_ap = ctk.CTkComboBox(
+            row_doc_ap, values=["DNI", "CARNET"], width=120,
+        )
+        self.combo_tipo_doc_ap.set("DNI")
+        self.combo_tipo_doc_ap.pack(side="left", padx=(0, 10))
+
+        self.label_dni_ap = ctk.CTkLabel(row_doc_ap, text="DNI *", font=ctk.CTkFont(size=12))
+        self.label_dni_ap.pack(side="left", padx=(0, 5))
+        self.entry_dni_ap = ctk.CTkEntry(row_doc_ap, placeholder_text="8 dígitos", width=200)
+        self.entry_dni_ap.pack(side="left")
+
+        ctk.CTkLabel(scroll, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_nombres_ap = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
+        self.entry_nombres_ap.pack(anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(scroll, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_apellidos_ap = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
+        self.entry_apellidos_ap.pack(anchor="w", pady=(0, 5))
+
+        row3 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row3.pack(fill="x", anchor="w", pady=3)
+
+        ctk.CTkLabel(row3, text="Parentesco *").pack(side="left", padx=(0, 5))
+        self.combo_parentesco = ctk.CTkComboBox(
+            row3, values=["Padre", "Madre", "Tío", "Abuelo", "Hermano", "Otro"],
+            width=150,
+        )
+        self.combo_parentesco.set("Padre")
+        self.combo_parentesco.pack(side="left")
+
+        ctk.CTkLabel(row3, text="Teléfono:").pack(side="left", padx=(20, 5))
+        self.entry_telefono_ap = ctk.CTkEntry(row3, placeholder_text="Teléfono", width=150)
+        self.entry_telefono_ap.pack(side="left")
+
+        self.entry_direccion_ap = ctk.CTkEntry(scroll, placeholder_text="Dirección del apoderado", width=400)
+        self.entry_direccion_ap.pack(anchor="w", pady=3)
 
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
@@ -221,6 +281,7 @@ class EstudianteView(ctk.CTkFrame):
 
         estudiante = estudiante_controller.obtener_estudiante(est["id_estudiante"])
         if estudiante:
+            self.combo_tipo_doc.set(estudiante.get("tipo_documento", "DNI") or "DNI")
             self.entry_dni.insert(0, estudiante.get("dni", ""))
             self.entry_nombres.insert(0, estudiante.get("nombres", ""))
             self.entry_apellidos.insert(0, estudiante.get("apellidos", ""))
@@ -233,8 +294,18 @@ class EstudianteView(ctk.CTkFrame):
         self.tabview.set("Registrar / Editar")
 
     def _guardar_estudiante(self):
+        tipo_doc = self.combo_tipo_doc.get()
+        documento = self.entry_dni.get().strip()
+
+        if tipo_doc == "DNI" and len(documento) != 8:
+            self.label_form_status.configure(text="El DNI debe tener 8 dígitos", text_color="red")
+            return
+        if tipo_doc == "CARNET" and len(documento) != 9:
+            self.label_form_status.configure(text="El Carnet debe tener 9 dígitos", text_color="red")
+            return
+
         data = {
-            "dni": self.entry_dni.get().strip(),
+            "dni": documento,
             "nombres": self.entry_nombres.get().strip(),
             "apellidos": self.entry_apellidos.get().strip(),
             "fecha_nacimiento": self.date_picker_nac.get(),
@@ -242,23 +313,81 @@ class EstudianteView(ctk.CTkFrame):
             "direccion": self.entry_direccion.get().strip(),
             "telefono": self.entry_telefono.get().strip(),
             "correo": self.entry_correo.get().strip(),
+            "tipo_documento": tipo_doc,
         }
 
         if self._id_estudiante_editando:
             exito, msg = estudiante_controller.editar_estudiante(
                 self._id_estudiante_editando, data,
             )
+            if exito:
+                self.label_form_status.configure(text=msg, text_color="green")
+                self._limpiar_formulario()
+                self._cargar_estudiantes()
+                self._cargar_combo_estudiantes()
+                self.tabview.set("Estudiantes")
+            else:
+                self.label_form_status.configure(text=msg, text_color="red")
         else:
-            exito, msg, _ = estudiante_controller.crear_estudiante(data)
+            tipo_doc_ap = self.combo_tipo_doc_ap.get()
+            dni_ap = self.entry_dni_ap.get().strip()
+            nombres_ap = self.entry_nombres_ap.get().strip()
+            apellidos_ap = self.entry_apellidos_ap.get().strip()
+            parentesco = self.combo_parentesco.get()
 
-        if exito:
-            self.label_form_status.configure(text=msg, text_color="green")
+            if not dni_ap:
+                self.label_form_status.configure(text="El documento del apoderado es obligatorio", text_color="red")
+                return
+            if tipo_doc_ap == "DNI" and len(dni_ap) != 8:
+                self.label_form_status.configure(text="El DNI del apoderado debe tener 8 dígitos", text_color="red")
+                return
+            if tipo_doc_ap == "CARNET" and len(dni_ap) != 9:
+                self.label_form_status.configure(text="El Carnet del apoderado debe tener 9 dígitos", text_color="red")
+                return
+            if not nombres_ap:
+                self.label_form_status.configure(text="Los nombres del apoderado son obligatorios", text_color="red")
+                return
+            if not apellidos_ap:
+                self.label_form_status.configure(text="Los apellidos del apoderado son obligatorios", text_color="red")
+                return
+
+            exito, msg, id_estudiante = estudiante_controller.crear_estudiante(data)
+
+            if not exito:
+                self.label_form_status.configure(text=msg, text_color="red")
+                return
+
+            from controllers import apoderado_controller
+            data_ap = {
+                "dni": dni_ap,
+                "nombres": nombres_ap,
+                "apellidos": apellidos_ap,
+                "parentesco": parentesco,
+                "telefono": self.entry_telefono_ap.get().strip(),
+                "direccion": self.entry_direccion_ap.get().strip(),
+                "tipo_documento": tipo_doc_ap,
+            }
+            exito_ap, msg_ap, id_apoderado = apoderado_controller.crear_apoderado(data_ap)
+
+            if not exito_ap:
+                self.label_form_status.configure(
+                    text=f"Estudiante creado, pero error con apoderado: {msg_ap}",
+                    text_color="orange",
+                )
+                self._limpiar_formulario()
+                self._cargar_estudiantes()
+                self._cargar_combo_estudiantes()
+                self.tabview.set("Estudiantes")
+                return
+
+            from controllers import estudiante_controller as ec
+            ec.asociar_apoderado(id_estudiante, id_apoderado, es_principal=True)
+
+            self.label_form_status.configure(text="Estudiante y apoderado registrados correctamente", text_color="green")
             self._limpiar_formulario()
             self._cargar_estudiantes()
             self._cargar_combo_estudiantes()
             self.tabview.set("Estudiantes")
-        else:
-            self.label_form_status.configure(text=msg, text_color="red")
 
     def _cancelar_formulario(self):
         self._limpiar_formulario()
@@ -266,6 +395,7 @@ class EstudianteView(ctk.CTkFrame):
 
     def _limpiar_formulario(self):
         self._id_estudiante_editando = None
+        self.combo_tipo_doc.set("DNI")
         self.entry_dni.delete(0, "end")
         self.entry_nombres.delete(0, "end")
         self.entry_apellidos.delete(0, "end")
@@ -274,6 +404,13 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_direccion.delete(0, "end")
         self.entry_telefono.delete(0, "end")
         self.entry_correo.delete(0, "end")
+        self.combo_tipo_doc_ap.set("DNI")
+        self.entry_dni_ap.delete(0, "end")
+        self.entry_nombres_ap.delete(0, "end")
+        self.entry_apellidos_ap.delete(0, "end")
+        self.combo_parentesco.set("Padre")
+        self.entry_telefono_ap.delete(0, "end")
+        self.entry_direccion_ap.delete(0, "end")
         self.label_form_status.configure(text="")
 
     def _retirar(self, est):

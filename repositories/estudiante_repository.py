@@ -36,7 +36,7 @@ def obtener_por_persona(id_persona: int) -> dict | None:
     )
 
 
-def obtener_todos(activo: int | None = None, estado: str | None = None) -> list[dict]:
+def obtener_todos(activo: int | None = None, estado=None) -> list[dict]:
     sql = """
         SELECT e.*, p.dni, p.nombres, p.apellidos, p.fecha_nacimiento,
                p.sexo, p.telefono, p.correo
@@ -49,8 +49,13 @@ def obtener_todos(activo: int | None = None, estado: str | None = None) -> list[
         conditions.append("e.activo = ?")
         params.append(activo)
     if estado is not None:
-        conditions.append("e.estado = ?")
-        params.append(estado)
+        if isinstance(estado, (list, tuple)):
+            placeholders = ",".join("?" * len(estado))
+            conditions.append(f"e.estado IN ({placeholders})")
+            params.extend(estado)
+        else:
+            conditions.append("e.estado = ?")
+            params.append(estado)
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
     return fetch_all(sql, tuple(params))

@@ -41,15 +41,21 @@ class PagoView(ctk.CTkFrame):
         filtros = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
         filtros.pack(fill="x", padx=5, pady=5)
 
-        self.date_picker_inicio = DatePicker(filtros, label_text="Desde:")
+        self.date_picker_inicio = DatePicker(filtros, label_text="Fecha Inicio:", default="start_of_month")
         self.date_picker_inicio.pack(side="left", padx=(0, 10))
 
-        self.date_picker_fin = DatePicker(filtros, label_text="Hasta:")
+        self.date_picker_fin = DatePicker(filtros, label_text="Fecha Fin:", default="today")
         self.date_picker_fin.pack(side="left", padx=(0, 10))
 
         ctk.CTkButton(
-            filtros, text="Buscar fechas", width=100,
+            filtros, text="Buscar", width=80,
             command=self._buscar_por_fecha,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            filtros, text="Limpiar", width=80,
+            fg_color="#DDD6E5", hover_color="#c0c8d4", text_color="#1F0A33",
+            command=self._limpiar_fechas,
         ).pack(side="left", padx=5)
 
         ctk.CTkLabel(filtros, text="  |  ").pack(side="left")
@@ -206,10 +212,20 @@ class PagoView(ctk.CTkFrame):
         fecha_fin = self.date_picker_fin.get()
 
         if not fecha_inicio or not fecha_fin:
+            self.label_status.configure(text="Selecciona ambas fechas", text_color="orange")
+            return
+
+        if fecha_inicio > fecha_fin:
+            self.label_status.configure(text="La fecha de inicio debe ser anterior a la fecha fin", text_color="red")
             return
 
         pagos = pago_controller.listar_por_fecha(fecha_inicio, fecha_fin)
         self._cargar_pagos(pagos)
+
+    def _limpiar_fechas(self):
+        self.date_picker_inicio.delete()
+        self.date_picker_fin.delete()
+        self.label_status.configure(text="")
 
     def _nuevo_pago(self):
         self._cargar_combo_estudiantes()

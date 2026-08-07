@@ -80,12 +80,20 @@ def actualizar_pago(id_cuota: int, monto_pagado: float) -> tuple[bool, str]:
 
 
 def actualizar_estados_vencidos() -> int:
+    from services import configuracion_service
     today = get_today()
     cuotas = cuota_repository.obtener_todas_pendientes()
+
+    mora_habilitada = configuracion_service.esta_mora_habilitada()
+    porcentaje_mora = configuracion_service.obtener_porcentaje_mora() if mora_habilitada else 0
 
     actualizadas = 0
     for cuota in cuotas:
         if cuota["fecha_vencimiento"] < today and cuota["saldo"] > 0:
+            monto_mora = cuota.get("monto_mora", 0)
+            if mora_habilitada and monto_mora == 0:
+                monto_mora = round(cuota["saldo"] * porcentaje_mora / 100, 2)
+            nuevo_saldo = cuota["saldo"] + monto_mora
             cuota_obj = Cuota(
                 id_cuota=cuota["id_cuota"],
                 id_matricula=cuota["id_matricula"],
@@ -93,7 +101,8 @@ def actualizar_estados_vencidos() -> int:
                 fecha_vencimiento=cuota["fecha_vencimiento"],
                 monto_total=cuota["monto_total"],
                 monto_pagado=cuota["monto_pagado"],
-                saldo=cuota["saldo"],
+                monto_mora=monto_mora,
+                saldo=nuevo_saldo,
                 estado="VENCIDO",
                 activo=cuota["activo"],
             )

@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 
 def obtener_indicadores() -> dict:
+    cuota_service.actualizar_estados_vencidos()
+
     alumnos_activos = estudiante_repository.obtener_todos(activo=1)
     total_activos = len(alumnos_activos)
 

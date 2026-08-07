@@ -105,7 +105,7 @@ def obtener_vencidas() -> list[dict]:
            JOIN matricula m ON cu.id_matricula = m.id_matricula
            JOIN estudiante e ON m.id_estudiante = e.id_estudiante
            JOIN persona p ON e.id_persona = p.id_persona
-           WHERE cu.estado IN ('PENDIENTE', 'PARCIAL')
+           WHERE cu.estado IN ('PENDIENTE', 'PARCIAL', 'VENCIDO')
            AND cu.fecha_vencimiento < ?
            AND cu.activo = 1
            ORDER BY cu.fecha_vencimiento""",

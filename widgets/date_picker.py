@@ -3,10 +3,11 @@ from datetime import date
 
 
 class DatePicker(ctk.CTkFrame):
-    def __init__(self, parent, label_text="", width=300, **kwargs):
+    def __init__(self, parent, label_text="", width=300, default=None, **kwargs):
         super().__init__(parent, fg_color="transparent", **kwargs)
         self._label_text = label_text
         self._width = width
+        self._default = default
         self._crear_widgets()
 
     def _crear_widgets(self):
@@ -23,7 +24,6 @@ class DatePicker(ctk.CTkFrame):
         self.combo_dia = ctk.CTkComboBox(
             row, width=55, values=[str(i).zfill(2) for i in range(1, 32)],
         )
-        self.combo_dia.set("")
         self.combo_dia.pack(side="left", padx=(2, 8))
 
         ctk.CTkLabel(row, text="Mes", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left")
@@ -32,7 +32,6 @@ class DatePicker(ctk.CTkFrame):
         self.combo_mes = ctk.CTkComboBox(
             row, width=55, values=meses,
         )
-        self.combo_mes.set("")
         self.combo_mes.pack(side="left", padx=(2, 8))
 
         ctk.CTkLabel(row, text="Año", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left")
@@ -41,8 +40,9 @@ class DatePicker(ctk.CTkFrame):
         self.combo_anio = ctk.CTkComboBox(
             row, width=75, values=anios,
         )
-        self.combo_anio.set("")
         self.combo_anio.pack(side="left", padx=2)
+
+        self._aplicar_default()
 
     def get(self) -> str:
         dia = self.combo_dia.get().strip()
@@ -68,3 +68,16 @@ class DatePicker(ctk.CTkFrame):
         self.combo_dia.set("")
         self.combo_mes.set("")
         self.combo_anio.set("")
+
+    def _aplicar_default(self):
+        hoy = date.today()
+        if self._default == "today":
+            self.set(hoy.strftime("%Y-%m-%d"))
+        elif self._default == "start_of_month":
+            self.set(hoy.strftime("%Y-%m-01"))
+        elif self._default == "start_of_year":
+            self.set(hoy.strftime("%Y-01-01"))
+        else:
+            self.combo_dia.set("")
+            self.combo_mes.set("")
+            self.combo_anio.set("")

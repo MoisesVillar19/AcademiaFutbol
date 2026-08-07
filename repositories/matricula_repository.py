@@ -47,7 +47,7 @@ def obtener_por_estudiante(id_estudiante: int) -> list[dict]:
            FROM matricula m
            JOIN tarifa t ON m.id_tarifa = t.id_tarifa
            JOIN categoria c ON t.id_categoria = c.id_categoria
-           WHERE m.id_estudiante = ?
+           WHERE m.id_estudiante = ? AND m.activo = 1
            ORDER BY m.fecha_inicio DESC""",
         (id_estudiante,),
     )

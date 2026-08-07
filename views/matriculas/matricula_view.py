@@ -201,7 +201,7 @@ class MatriculaView(ctk.CTkFrame):
         self.tabview.set("Registrar")
 
     def _cargar_combo_estudiantes(self):
-        estudiantes = estudiante_controller.listar_estudiantes(activo=1)
+        estudiantes = estudiante_controller.listar_estudiantes(activo=1, estado=["ACTIVO", "REINGRESANTE"])
         nombres = [f"{e.get('nombres', '')} {e.get('apellidos', '')}" for e in estudiantes]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin estudiantes"])
         self._estudiantes_map = {n: e for n, e in zip(nombres, estudiantes)}

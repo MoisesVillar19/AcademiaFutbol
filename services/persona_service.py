@@ -21,6 +21,7 @@ def crear_persona(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | Non
 
     persona = Persona(
         dni=dni,
+        tipo_documento=data.get("tipo_documento", "DNI"),
         nombres=nombres,
         apellidos=apellidos,
         fecha_nacimiento=data.get("fecha_nacimiento", ""),

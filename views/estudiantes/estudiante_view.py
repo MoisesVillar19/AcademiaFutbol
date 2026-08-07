@@ -49,7 +49,7 @@ class EstudianteView(ctk.CTkFrame):
         self.filtro_estado.pack(side="left", padx=(0, 10))
 
         self.entry_busqueda = ctk.CTkEntry(
-            filtros, placeholder_text="Buscar por nombre o DNI...",
+            filtros, placeholder_text="Buscar por nombre, DNI o Carnet...",
             width=250,
         )
         self.entry_busqueda.pack(side="left", padx=5)

@@ -42,7 +42,7 @@ class MatriculaView(ctk.CTkFrame):
         filtros.pack(fill="x", padx=5, pady=5)
 
         self.entry_busqueda = ctk.CTkEntry(
-            filtros, placeholder_text="Buscar por DNI o nombre...",
+            filtros, placeholder_text="Buscar por DNI, Carnet o nombre...",
             width=250,
         )
         self.entry_busqueda.pack(side="left", padx=5)

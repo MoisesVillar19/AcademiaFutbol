@@ -27,6 +27,7 @@ def crear_apoderado(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
 
         persona_obj = Persona(
             dni=dni,
+            tipo_documento=data.get("tipo_documento", "DNI"),
             nombres=nombres,
             apellidos=apellidos,
             fecha_nacimiento=data.get("fecha_nacimiento", ""),
@@ -70,6 +71,7 @@ def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
         persona_obj = Persona(
             id_persona=apoderado["id_persona"],
             dni=data.get("dni", persona_actual["dni"]),
+            tipo_documento=data.get("tipo_documento", persona_actual.get("tipo_documento", "DNI")),
             nombres=data.get("nombres", persona_actual["nombres"]),
             apellidos=data.get("apellidos", persona_actual["apellidos"]),
             fecha_nacimiento=persona_actual.get("fecha_nacimiento", ""),

@@ -1,5 +1,5 @@
 from services import persona_service, auth_service
-from utils.validators import validate_dni, validate_not_empty, validate_sex, validate_email
+from utils.validators import validate_documento, validate_not_empty, validate_sex, validate_email
 
 
 def _get_id_usuario() -> int:
@@ -9,9 +9,12 @@ def _get_id_usuario() -> int:
 
 def crear_persona(data: dict) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
+    tipo_doc = data.get("tipo_documento", "DNI")
     if not dni:
-        return False, "El DNI es obligatorio", None
-    if not validate_dni(dni):
+        return False, "El documento es obligatorio", None
+    if not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos", None
         return False, "El DNI debe tener 8 dígitos", None
 
     nombres = data.get("nombres", "")
@@ -37,7 +40,10 @@ def crear_persona(data: dict) -> tuple[bool, str, int | None]:
 
 def editar_persona(id_persona: int, data: dict) -> tuple[bool, str]:
     dni = data.get("dni", "")
-    if dni and not validate_dni(dni):
+    tipo_doc = data.get("tipo_documento", "DNI")
+    if dni and not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos"
         return False, "El DNI debe tener 8 dígitos"
 
     sexo = data.get("sexo", "")

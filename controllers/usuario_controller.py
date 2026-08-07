@@ -1,5 +1,5 @@
 from services import usuario_service
-from utils.validators import validate_not_empty, validate_rol, validate_dni
+from utils.validators import validate_not_empty, validate_rol, validate_documento
 
 
 def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, str, int | None]:
@@ -15,7 +15,10 @@ def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, st
         return False, "Rol no válido. Use ADMIN o SECRETARIA", None
 
     dni = persona_data.get("dni", "")
-    if dni and not validate_dni(dni):
+    tipo_doc = persona_data.get("tipo_documento", "DNI")
+    if dni and not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos", None
         return False, "El DNI debe tener 8 dígitos", None
 
     return usuario_service.crear_usuario(persona_data, username, rol)
@@ -32,7 +35,10 @@ def editar_usuario(id_usuario: int, data: dict) -> tuple[bool, str]:
             return False, "Rol no válido. Use ADMIN o SECRETARIA"
 
     if "dni" in data and data["dni"]:
-        if not validate_dni(data["dni"]):
+        tipo_doc = data.get("tipo_documento", "DNI")
+        if not validate_documento(data["dni"], tipo_doc):
+            if tipo_doc == "CARNET":
+                return False, "El Carnet debe tener 9 dígitos"
             return False, "El DNI debe tener 8 dígitos"
 
     return usuario_service.editar_usuario(id_usuario, data)

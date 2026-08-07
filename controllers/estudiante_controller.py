@@ -1,5 +1,5 @@
 from services import estudiante_service, apoderado_service, auth_service
-from utils.validators import (validate_dni, validate_not_empty, validate_sex,
+from utils.validators import (validate_documento, validate_not_empty, validate_sex,
                                validate_estado_estudiante)
 
 
@@ -10,9 +10,12 @@ def _get_id_usuario() -> int:
 
 def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
+    tipo_doc = data.get("tipo_documento", "DNI")
     if not dni:
-        return False, "El DNI es obligatorio", None
-    if not validate_dni(dni):
+        return False, "El documento es obligatorio", None
+    if not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos", None
         return False, "El DNI debe tener 8 dígitos", None
 
     nombres = data.get("nombres", "")
@@ -34,7 +37,10 @@ def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
 
 def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
     dni = data.get("dni", "")
-    if dni and not validate_dni(dni):
+    tipo_doc = data.get("tipo_documento", "DNI")
+    if dni and not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos"
         return False, "El DNI debe tener 8 dígitos"
 
     sexo = data.get("sexo", "")
@@ -75,9 +81,12 @@ def obtener_apoderados_por_estudiante(id_estudiante: int) -> list[dict]:
 
 def crear_apoderado(data: dict) -> tuple[bool, str, int | None]:
     dni = data.get("dni", "")
+    tipo_doc = data.get("tipo_documento", "DNI")
     if not dni:
-        return False, "El DNI es obligatorio", None
-    if not validate_dni(dni):
+        return False, "El documento es obligatorio", None
+    if not validate_documento(dni, tipo_doc):
+        if tipo_doc == "CARNET":
+            return False, "El Carnet debe tener 9 dígitos", None
         return False, "El DNI debe tener 8 dígitos", None
 
     parentesco = data.get("parentesco", "")

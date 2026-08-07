@@ -55,7 +55,7 @@ class PagoView(ctk.CTkFrame):
         ctk.CTkLabel(filtros, text="  |  ").pack(side="left")
 
         self.entry_busqueda = ctk.CTkEntry(
-            filtros, placeholder_text="Buscar por DNI, recibo o método...",
+            filtros, placeholder_text="Buscar por DNI, Carnet, recibo o método...",
             width=250,
         )
         self.entry_busqueda.pack(side="left", padx=5)

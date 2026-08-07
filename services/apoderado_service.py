@@ -62,17 +62,36 @@ def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
     if not apoderado:
         return False, "Apoderado no encontrado"
 
+    from repositories import persona_repository
+    from models.persona import Persona
+
+    persona_actual = persona_repository.obtener_por_id(apoderado["id_persona"])
+    if persona_actual:
+        persona_obj = Persona(
+            id_persona=apoderado["id_persona"],
+            dni=data.get("dni", persona_actual["dni"]),
+            nombres=data.get("nombres", persona_actual["nombres"]),
+            apellidos=data.get("apellidos", persona_actual["apellidos"]),
+            fecha_nacimiento=persona_actual.get("fecha_nacimiento", ""),
+            sexo=persona_actual.get("sexo", ""),
+            telefono=data.get("telefono", persona_actual.get("telefono", "")),
+            direccion=data.get("direccion", persona_actual.get("direccion", "")),
+            correo=persona_actual.get("correo", ""),
+        )
+        persona_repository.actualizar(persona_obj)
+
     parentesco = data.get("parentesco", apoderado["parentesco"])
 
     apoderado_obj = Apoderado(
         id_apoderado=id_apoderado,
         id_persona=apoderado["id_persona"],
         parentesco=parentesco,
-        ocupacion=data.get("ocupacion", apoderado["ocupacion"] or ""),
+        ocupacion=data.get("ocupacion", apoderado["occupacion"] if apoderado.get("occupacion") else apoderado.get("ocupacion", "")),
         activo=apoderado["activo"],
     )
     apoderado_repository.actualizar(apoderado_obj)
 
+    logger.info(f"Apoderado actualizado: id={id_apoderado}")
     return True, "Apoderado actualizado correctamente"
 
 

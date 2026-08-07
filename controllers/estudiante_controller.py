@@ -99,3 +99,7 @@ def obtener_apoderado(id_apoderado: int) -> dict | None:
 def obtener_apoderado_por_persona(id_persona: int) -> dict | None:
     from repositories import apoderado_repository
     return apoderado_repository.obtener_por_persona(id_persona)
+
+
+def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
+    return apoderado_service.editar_apoderado(id_apoderado, data)

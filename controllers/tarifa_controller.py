@@ -28,3 +28,15 @@ def listar_por_categoria(id_categoria: int) -> list[dict]:
 
 def desactivar_tarifa(id_tarifa: int) -> tuple[bool, str]:
     return tarifa_service.editar_tarifa(id_tarifa, {"activo": 0})
+
+
+def activar_tarifa(id_tarifa: int) -> tuple[bool, str]:
+    return tarifa_service.activar_tarifa(id_tarifa)
+
+
+def eliminar_tarifa(id_tarifa: int) -> tuple[bool, str]:
+    return tarifa_service.eliminar_tarifa(id_tarifa)
+
+
+def listar_tarifas_inactivas() -> list[dict]:
+    return tarifa_service.listar_tarifas_inactivas()

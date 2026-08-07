@@ -16,7 +16,7 @@ def setup_logger(name: str = "academia") -> logging.Logger:
         os.path.join(LOG_DIR, "academia.log"),
         encoding="utf-8",
     )
-    file_handler.setLevel(logging.WARNING)
+    file_handler.setLevel(logging.INFO)
 
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)

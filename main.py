@@ -185,11 +185,11 @@ class App(ctk.CTk):
             ("📋  Matrículas",  self._mostrar_matriculas),
             ("💰  Pagos",       self._mostrar_pagos),
             ("📦  Inventario",  self._mostrar_inventario),
-            ("📤  Importar",    self._mostrar_importar),
             ("📈  Reportes",    self._mostrar_reportes),
         ]
 
         if login_controller.es_admin():
+            botones_data.append(("📤  Importar",    self._mostrar_importar))
             botones_data.append(("🔑  Usuarios",      self._mostrar_usuarios))
             botones_data.append(("🏷️  Tarifas",      self._mostrar_tarifas))
             botones_data.append(("📝  Auditoría",     self._mostrar_auditoria))

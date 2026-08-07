@@ -1,11 +1,15 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from controllers import tarifa_controller, configuracion_controller
+from utils.logger import logger
 
 
 class TarifaView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         self._cats_map = {}
+        self._filtro_actual = "Activas"
+        self._editing_id = None
         self._crear_widgets()
         self._cargar_tarifas()
 
@@ -22,6 +26,16 @@ class TarifaView(ctk.CTkFrame):
             header, text="+ Nueva", width=100,
             command=self._nueva_tarifa,
         ).pack(side="right")
+
+        filtros = ctk.CTkFrame(self, fg_color="transparent")
+        filtros.pack(fill="x", padx=5, pady=(0, 5))
+
+        self.filtro_estado = ctk.CTkSegmentedButton(
+            filtros, values=["Activas", "Desactivadas"],
+            command=self._filtrar,
+        )
+        self.filtro_estado.set("Activas")
+        self.filtro_estado.pack(side="left")
 
         self.scroll = ctk.CTkScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
@@ -40,10 +54,11 @@ class TarifaView(ctk.CTkFrame):
         scroll = ctk.CTkScrollableFrame(self.form_window)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(
+        self.label_form_title = ctk.CTkLabel(
             scroll, text="Nueva Tarifa",
             font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        )
+        self.label_form_title.pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(scroll, text="Categoría:").pack(anchor="w")
         self.combo_categoria = ctk.CTkComboBox(scroll, width=380, values=["Cargando..."])
@@ -87,13 +102,45 @@ class TarifaView(ctk.CTkFrame):
         self.combo_categoria.configure(values=nombres if nombres else ["Sin categorías"])
         self._cats_map = {n: c["id_categoria"] for n, c in zip(nombres, cats)}
 
+    def _filtrar(self, valor):
+        self._filtro_actual = valor
+        self._cargar_tarifas()
+
     def _nueva_tarifa(self):
         self._cargar_categorias()
+        self.label_form_title.configure(text="Nueva Tarifa")
+        self._editing_id = None
         self.entry_nombre.delete(0, "end")
         self.entry_monto.delete(0, "end")
         self.entry_descripcion.delete(0, "end")
         self.entry_observaciones.delete(0, "end")
         self.label_form_status.configure(text="")
+        self.form_window.deiconify()
+
+    def _editar_tarifa(self, t):
+        self._cargar_categorias()
+        self.label_form_title.configure(text="Editar Tarifa")
+
+        cat_id = t["id_categoria"]
+        for nombre, cid in self._cats_map.items():
+            if cid == cat_id:
+                self.combo_categoria.set(nombre)
+                break
+
+        self.entry_nombre.delete(0, "end")
+        self.entry_nombre.insert(0, t["nombre"])
+
+        self.entry_monto.delete(0, "end")
+        self.entry_monto.insert(0, str(t["monto"]))
+
+        self.entry_descripcion.delete(0, "end")
+        self.entry_descripcion.insert(0, t.get("descripcion", "") or "")
+
+        self.entry_observaciones.delete(0, "end")
+        self.entry_observaciones.insert(0, t.get("observaciones", "") or "")
+
+        self.label_form_status.configure(text="")
+        self._editing_id = t["id_tarifa"]
         self.form_window.deiconify()
 
     def _guardar_tarifa(self):
@@ -125,9 +172,14 @@ class TarifaView(ctk.CTkFrame):
             "observaciones": self.entry_observaciones.get().strip(),
         }
 
-        exito, msg, _ = tarifa_controller.crear_tarifa(data)
+        if hasattr(self, "_editing_id") and self._editing_id:
+            exito, msg = tarifa_controller.editar_tarifa(self._editing_id, data)
+            self._editing_id = None
+        else:
+            exito, msg, _ = tarifa_controller.crear_tarifa(data)
+
         if exito:
-            self.label_form_status.configure(text=msg, text_color="green")
+            self.label_status.configure(text=msg, text_color="green")
             self.form_window.withdraw()
             self._cargar_tarifas()
         else:
@@ -137,14 +189,18 @@ class TarifaView(ctk.CTkFrame):
         for widget in self.scroll.winfo_children():
             widget.destroy()
 
-        tarifas = tarifa_controller.listar_tarifas_activas()
+        if self._filtro_actual == "Activas":
+            tarifas = tarifa_controller.listar_tarifas_activas()
+        else:
+            tarifas = tarifa_controller.listar_tarifas_inactivas()
 
         if not tarifas:
+            texto = "No hay tarifas activas" if self._filtro_actual == "Activas" else "No hay tarifas desactivadas"
             ctk.CTkLabel(
-                self.scroll, text="No hay tarifas registradas",
+                self.scroll, text=texto,
                 text_color="gray",
             ).pack(pady=20)
-            self.label_status.configure(text="Total: 0")
+            self.label_status.configure(text=f"Total: 0")
             return
 
         for t in tarifas:
@@ -183,21 +239,74 @@ class TarifaView(ctk.CTkFrame):
         botones = ctk.CTkFrame(card, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
 
-        ctk.CTkButton(
-            botones, text="Editar", width=80, height=28,
-            command=lambda t=t: self._editar_tarifa(t),
-        ).pack(side="left", padx=2)
+        if t["activo"]:
+            ctk.CTkButton(
+                botones, text="Editar", width=80, height=28,
+                command=lambda t=t: self._editar_tarifa(t),
+            ).pack(side="left", padx=2)
 
-        ctk.CTkButton(
-            botones, text="Desactivar", width=90, height=28,
-            fg_color="#d9534f",
-            command=lambda t=t: self._desactivar_tarifa(t),
-        ).pack(side="left", padx=2)
+            ctk.CTkButton(
+                botones, text="Desactivar", width=90, height=28,
+                fg_color="#d9534f", hover_color="#c9302c",
+                command=lambda t=t: self._desactivar_tarifa(t),
+            ).pack(side="left", padx=2)
+        else:
+            ctk.CTkButton(
+                botones, text="Activar", width=80, height=28,
+                fg_color="#28a745", hover_color="#218838",
+                command=lambda t=t: self._activar_tarifa(t),
+            ).pack(side="left", padx=2)
 
-    def _editar_tarifa(self, t):
-        pass
+            ctk.CTkButton(
+                botones, text="Eliminar", width=80, height=28,
+                fg_color="#dc3545", hover_color="#c82333",
+                command=lambda t=t: self._eliminar_tarifa(t),
+            ).pack(side="left", padx=2)
 
     def _desactivar_tarifa(self, t):
+        respuesta = messagebox.askyesno(
+            "Confirmar desactivación",
+            f"¿Desactivar la tarifa '{t['nombre']}'?\n\n"
+            "La tarifa dejará de estar disponible para nuevas matrículas.",
+        )
+        if not respuesta:
+            return
+
         exito, msg = tarifa_controller.desactivar_tarifa(t["id_tarifa"])
         if exito:
+            self.label_status.configure(text=msg, text_color="green")
             self._cargar_tarifas()
+        else:
+            self.label_status.configure(text=f"Error: {msg}", text_color="red")
+
+    def _activar_tarifa(self, t):
+        respuesta = messagebox.askyesno(
+            "Confirmar activación",
+            f"¿Activar la tarifa '{t['nombre']}'?",
+        )
+        if not respuesta:
+            return
+
+        exito, msg = tarifa_controller.activar_tarifa(t["id_tarifa"])
+        if exito:
+            self.label_status.configure(text=msg, text_color="green")
+            self._cargar_tarifas()
+        else:
+            self.label_status.configure(text=f"Error: {msg}", text_color="red")
+
+    def _eliminar_tarifa(self, t):
+        respuesta = messagebox.askyesno(
+            "Confirmar eliminación",
+            f"¿Eliminar permanentemente la tarifa '{t['nombre']}'?\n\n"
+            "Esta acción no se puede deshacer.",
+            icon="warning",
+        )
+        if not respuesta:
+            return
+
+        exito, msg = tarifa_controller.eliminar_tarifa(t["id_tarifa"])
+        if exito:
+            self.label_status.configure(text=msg, text_color="green")
+            self._cargar_tarifas()
+        else:
+            self.label_status.configure(text=f"Error: {msg}", text_color="red")

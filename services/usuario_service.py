@@ -34,7 +34,7 @@ def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, st
             return False, "El DNI ya está registrado", None
         id_persona = persona_repository.insertar(persona)
 
-    temp_password = generate_temp_password()
+    temp_password = "usuario"
     usuario = Usuario(
         id_persona=id_persona,
         username=username,
@@ -66,16 +66,17 @@ def editar_usuario(id_usuario: int, data: dict) -> tuple[bool, str]:
     if usuario_repository.existe_username(username, exclude_id=id_usuario):
         return False, "El nombre de usuario ya existe"
 
+    persona_actual = persona_repository.obtener_por_id(usuario["id_persona"])
     persona = Persona(
         id_persona=usuario["id_persona"],
-        dni=data.get("dni", ""),
-        nombres=data.get("nombres", ""),
-        apellidos=data.get("apellidos", ""),
-        fecha_nacimiento=data.get("fecha_nacimiento", ""),
-        sexo=data.get("sexo", ""),
-        direccion=data.get("direccion", ""),
-        telefono=data.get("telefono", ""),
-        correo=data.get("correo", ""),
+        dni=data.get("dni", persona_actual["dni"] if persona_actual else ""),
+        nombres=data.get("nombres", persona_actual["nombres"] if persona_actual else ""),
+        apellidos=data.get("apellidos", persona_actual["apellidos"] if persona_actual else ""),
+        fecha_nacimiento=data.get("fecha_nacimiento", persona_actual["fecha_nacimiento"] if persona_actual else ""),
+        sexo=data.get("sexo", persona_actual["sexo"] if persona_actual else ""),
+        direccion=data.get("direccion", persona_actual["direccion"] if persona_actual else ""),
+        telefono=data.get("telefono", persona_actual["telefono"] if persona_actual else ""),
+        correo=data.get("correo", persona_actual["correo"] if persona_actual else ""),
     )
     persona_repository.actualizar(persona)
 
@@ -155,7 +156,7 @@ def desactivar_usuario(id_usuario: int) -> tuple[bool, str]:
         tabla="usuario",
         id_registro=id_usuario,
         valores_anteriores="activo=1",
-        valor_nuevos="activo=0",
+        valores_nuevos="activo=0",
     )
 
     logger.info(f"Usuario desactivado: ID={id_usuario}")
@@ -167,7 +168,7 @@ def restablecer_password(id_usuario: int) -> tuple[bool, str, str]:
     if not usuario:
         return False, "Usuario no encontrado", ""
 
-    temp_password = generate_temp_password()
+    temp_password = "usuario"
     usuario_repository.cambiar_password(id_usuario, hash_password(temp_password))
 
     auditoria_service.registrar_log(

@@ -107,7 +107,7 @@ class EditarUsuarioDialog(ctk.CTkToplevel):
     def __init__(self, parent, usuario, on_save=None):
         super().__init__(parent)
         self.title(f"Editar Usuario - {usuario['username']}")
-        self.geometry("400x420")
+        self.geometry("440x520")
         self.resizable(False, False)
         self.configure(fg_color="#F8F5FA")
         self.grab_set()
@@ -118,12 +118,12 @@ class EditarUsuarioDialog(ctk.CTkToplevel):
 
     def _centrar(self):
         self.update_idletasks()
-        x = (self.winfo_screenwidth() // 2) - 200
-        y = (self.winfo_screenheight() // 2) - 210
-        self.geometry(f"400x420+{x}+{y}")
+        x = (self.winfo_screenwidth() // 2) - 220
+        y = (self.winfo_screenheight() // 2) - 260
+        self.geometry(f"440x520+{x}+{y}")
 
     def _crear_widgets(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         frame.pack(expand=True, fill="both", padx=25, pady=20)
 
         ctk.CTkLabel(

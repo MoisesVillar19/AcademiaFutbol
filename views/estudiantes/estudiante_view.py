@@ -1,12 +1,14 @@
 import customtkinter as ctk
 from controllers import estudiante_controller
 from widgets.date_picker import DatePicker
+from utils.logger import logger
 
 
 class EstudianteView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         self._estudiantes_map = {}
+        self._id_apoderado_editando = None
         self._crear_widgets()
         self._cargar_estudiantes(activo=1, estado="ACTIVO")
 
@@ -300,16 +302,45 @@ class EstudianteView(ctk.CTkFrame):
             self.entry_telefono.insert(0, estudiante.get("telefono", "") or "")
             self.entry_correo.insert(0, estudiante.get("correo", "") or "")
 
+            apoderados = estudiante_controller.obtener_apoderados_por_estudiante(est["id_estudiante"])
+            ap_principales = [a for a in apoderados if a.get("es_principal")]
+            if ap_principales:
+                ap = ap_principales[0]
+                self.entry_dni_ap.insert(0, ap.get("dni", "") or "")
+                self.entry_nombres_ap.insert(0, ap.get("nombres", "") or "")
+                self.entry_apellidos_ap.insert(0, ap.get("apellidos", "") or "")
+                self.combo_parentesco.set(ap.get("parentesco", "Padre") or "Padre")
+                self.entry_telefono_ap.insert(0, ap.get("telefono", "") or "")
+                self.entry_direccion_ap.insert(0, ap.get("direccion", "") or "")
+                self._id_apoderado_editando = ap.get("id_apoderado")
+            else:
+                self._id_apoderado_editando = None
+        else:
+            self._id_apoderado_editando = None
+
         self.tabview.set("Registrar / Editar")
 
     def _guardar_estudiante(self):
+        logger.info("[GUARDAR] Boton Guardar presionado")
+        try:
+            self._guardar_estudiante_impl()
+        except Exception as e:
+            logger.error(f"Error inesperado al guardar estudiante: {e}", exc_info=True)
+            self.label_form_status.configure(
+                text=f"Error inesperado: {e}", text_color="red",
+            )
+
+    def _guardar_estudiante_impl(self):
         tipo_doc = self.combo_tipo_doc.get()
         documento = self.entry_dni.get().strip()
+        logger.info(f"[GUARDAR] tipo_doc={tipo_doc} documento={documento}")
 
         if tipo_doc == "DNI" and len(documento) != 8:
+            logger.info(f"[GUARDAR] FAIL: DNI length={len(documento)}")
             self.label_form_status.configure(text="El DNI debe tener 8 dígitos", text_color="red")
             return
         if tipo_doc == "CARNET" and len(documento) != 9:
+            logger.info(f"[GUARDAR] FAIL: Carnet length={len(documento)}")
             self.label_form_status.configure(text="El Carnet debe tener 9 dígitos", text_color="red")
             return
 
@@ -326,10 +357,33 @@ class EstudianteView(ctk.CTkFrame):
         }
 
         if self._id_estudiante_editando:
+            logger.info(f"[GUARDAR] Modo edicion id={self._id_estudiante_editando}")
             exito, msg = estudiante_controller.editar_estudiante(
                 self._id_estudiante_editando, data,
             )
+            logger.info(f"[GUARDAR] editar_estudiante: exito={exito} msg={msg}")
+
             if exito:
+                dni_ap = self.entry_dni_ap.get().strip()
+                if dni_ap:
+                    data_ap = {
+                        "dni": dni_ap,
+                        "nombres": self.entry_nombres_ap.get().strip(),
+                        "apellidos": self.entry_apellidos_ap.get().strip(),
+                        "parentesco": self.combo_parentesco.get(),
+                        "telefono": self.entry_telefono_ap.get().strip(),
+                        "direccion": self.entry_direccion_ap.get().strip(),
+                        "tipo_documento": self.combo_tipo_doc_ap.get(),
+                    }
+                    if hasattr(self, "_id_apoderado_editando") and self._id_apoderado_editando:
+                        estudiante_controller.editar_apoderado(self._id_apoderado_editando, data_ap)
+                    else:
+                        exito_ap, msg_ap, id_ap = estudiante_controller.crear_apoderado(data_ap)
+                        if exito_ap:
+                            estudiante_controller.asociar_apoderado(
+                                self._id_estudiante_editando, id_ap, es_principal=True,
+                            )
+
                 self.label_form_status.configure(text=msg, text_color="green")
                 self._limpiar_formulario()
                 self._cargar_estudiantes()
@@ -338,11 +392,13 @@ class EstudianteView(ctk.CTkFrame):
             else:
                 self.label_form_status.configure(text=msg, text_color="red")
         else:
+            logger.info("[GUARDAR] Modo creacion nuevo estudiante")
             tipo_doc_ap = self.combo_tipo_doc_ap.get()
             dni_ap = self.entry_dni_ap.get().strip()
             nombres_ap = self.entry_nombres_ap.get().strip()
             apellidos_ap = self.entry_apellidos_ap.get().strip()
             parentesco = self.combo_parentesco.get()
+            logger.info(f"[GUARDAR] Apoderado: dni={dni_ap} nombres={nombres_ap} apellidos={apellidos_ap}")
 
             if not dni_ap:
                 self.label_form_status.configure(text="El documento del apoderado es obligatorio", text_color="red")
@@ -360,7 +416,9 @@ class EstudianteView(ctk.CTkFrame):
                 self.label_form_status.configure(text="Los apellidos del apoderado son obligatorios", text_color="red")
                 return
 
+            logger.info(f"[GUARDAR] Llamando crear_estudiante con data={data}")
             exito, msg, id_estudiante = estudiante_controller.crear_estudiante(data)
+            logger.info(f"[GUARDAR] crear_estudiante: exito={exito} msg={msg} id={id_estudiante}")
 
             if not exito:
                 self.label_form_status.configure(text=msg, text_color="red")
@@ -389,8 +447,10 @@ class EstudianteView(ctk.CTkFrame):
                 return
 
             from controllers import estudiante_controller as ec
+            logger.info(f"[GUARDAR] Asociando estudiante={id_estudiante} apoderado={id_apoderado}")
             ec.asociar_apoderado(id_estudiante, id_apoderado, es_principal=True)
 
+            logger.info("[GUARDAR] EXITO: Estudiante y apoderado registrados")
             self.label_form_status.configure(text="Estudiante y apoderado registrados correctamente", text_color="green")
             self._limpiar_formulario()
             self._cargar_estudiantes()
@@ -403,6 +463,7 @@ class EstudianteView(ctk.CTkFrame):
 
     def _limpiar_formulario(self):
         self._id_estudiante_editando = None
+        self._id_apoderado_editando = None
         self.combo_tipo_doc.set("DNI")
         self.entry_dni.delete(0, "end")
         self.entry_nombres.delete(0, "end")
@@ -545,56 +606,100 @@ class EstudianteView(ctk.CTkFrame):
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("Asociar Apoderado")
-        dialog.geometry("400x300")
+        dialog.geometry("440x520")
         dialog.transient(self)
         dialog.grab_set()
 
-        ctk.CTkLabel(
-            dialog, text="DNI del Apoderado *",
-            font=ctk.CTkFont(size=12),
-        ).pack(anchor="w", padx=15, pady=(15, 2))
-        entry_dni = ctk.CTkEntry(dialog, width=350, placeholder_text="8 dígitos")
-        entry_dni.pack(padx=15)
+        scroll = ctk.CTkScrollableFrame(dialog)
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
         ctk.CTkLabel(
-            dialog, text="Parentesco *",
-            font=ctk.CTkFont(size=12),
-        ).pack(anchor="w", padx=15, pady=(10, 2))
-        entry_parentesco = ctk.CTkEntry(dialog, width=350, placeholder_text="Ej: Madre, Padre, Tutor")
-        entry_parentesco.pack(padx=15)
+            scroll, text="Datos del Apoderado",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", pady=(0, 10))
 
-        label_status = ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=11))
-        label_status.pack(padx=15, pady=5)
+        row_doc = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_doc.pack(fill="x", anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(row_doc, text="Tipo Doc. *").pack(side="left", padx=(0, 5))
+        combo_tipo_doc = ctk.CTkComboBox(row_doc, values=["DNI", "CARNET"], width=120)
+        combo_tipo_doc.set("DNI")
+        combo_tipo_doc.pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(row_doc, text="DNI *").pack(side="left", padx=(0, 5))
+        entry_dni = ctk.CTkEntry(row_doc, placeholder_text="8 dígitos", width=200)
+        entry_dni.pack(side="left")
+
+        ctk.CTkLabel(scroll, text="Nombres *").pack(anchor="w")
+        entry_nombres = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
+        entry_nombres.pack(anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(scroll, text="Apellidos *").pack(anchor="w")
+        entry_apellidos = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
+        entry_apellidos.pack(anchor="w", pady=(0, 5))
+
+        row_par = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_par.pack(fill="x", anchor="w", pady=3)
+
+        ctk.CTkLabel(row_par, text="Parentesco *").pack(side="left", padx=(0, 5))
+        combo_parentesco = ctk.CTkComboBox(
+            row_par, values=["Padre", "Madre", "Tío", "Abuelo", "Hermano", "Otro"],
+            width=150,
+        )
+        combo_parentesco.set("Padre")
+        combo_parentesco.pack(side="left")
+
+        ctk.CTkLabel(row_par, text="Teléfono:").pack(side="left", padx=(20, 5))
+        entry_telefono = ctk.CTkEntry(row_par, placeholder_text="Teléfono", width=150)
+        entry_telefono.pack(side="left")
+
+        entry_direccion = ctk.CTkEntry(scroll, placeholder_text="Dirección del apoderado", width=400)
+        entry_direccion.pack(anchor="w", pady=3)
+
+        label_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
+        label_status.pack(anchor="w", pady=5)
 
         def confirmar():
             dni = entry_dni.get().strip()
-            parentesco = entry_parentesco.get().strip()
+            nombres = entry_nombres.get().strip()
+            apellidos = entry_apellidos.get().strip()
+            parentesco = combo_parentesco.get()
+            tipo_doc = combo_tipo_doc.get()
 
             if not dni:
                 label_status.configure(text="El DNI es obligatorio", text_color="red")
                 return
-            if not parentesco:
-                label_status.configure(text="El parentesco es obligatorio", text_color="red")
+            if tipo_doc == "DNI" and len(dni) != 8:
+                label_status.configure(text="El DNI debe tener 8 dígitos", text_color="red")
                 return
+            if tipo_doc == "CARNET" and len(dni) != 9:
+                label_status.configure(text="El Carnet debe tener 9 dígitos", text_color="red")
+                return
+            if not nombres:
+                label_status.configure(text="Los nombres son obligatorios", text_color="red")
+                return
+            if not apellidos:
+                label_status.configure(text="Los apellidos son obligatorios", text_color="red")
+                return
+
+            data_ap = {
+                "dni": dni,
+                "nombres": nombres,
+                "apellidos": apellidos,
+                "parentesco": parentesco,
+                "telefono": entry_telefono.get().strip(),
+                "direccion": entry_direccion.get().strip(),
+                "tipo_documento": tipo_doc,
+            }
 
             from controllers import persona_controller
             persona = persona_controller.buscar_por_dni(dni)
 
-            if not persona:
-                exito, msg, id_apoderado = estudiante_controller.crear_apoderado({
-                    "dni": dni,
-                    "nombres": "",
-                    "apellidos": "",
-                    "parentesco": parentesco,
-                })
-                if not exito:
-                    label_status.configure(text=msg, text_color="red")
-                    return
-            else:
-                exito2, msg2, id_apoderado = estudiante_controller.crear_apoderado({
-                    "dni": dni,
-                    "parentesco": parentesco,
-                })
+            exito_ap, msg_ap, id_apoderado = estudiante_controller.crear_apoderado(data_ap)
+
+            if not exito_ap:
+                label_status.configure(text=msg_ap, text_color="red")
+                return
 
             if not id_apoderado:
                 apo = estudiante_controller.obtener_apoderado_por_persona(persona["id_persona"] if persona else None)
@@ -609,13 +714,14 @@ class EstudianteView(ctk.CTkFrame):
 
             exito, msg = estudiante_controller.asociar_apoderado(id_est, id_apoderado, es_principal)
             if exito:
-                dialog.destroy()
+                label_status.configure(text="Apoderado asociado correctamente", text_color="green")
+                dialog.after(500, dialog.destroy)
                 self._cargar_apoderados_estudiante(selection)
             else:
                 label_status.configure(text=msg, text_color="red")
 
-        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        btn_frame.pack(anchor="w", pady=10)
 
         ctk.CTkButton(
             btn_frame, text="Cancelar", width=100, fg_color="gray",

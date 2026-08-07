@@ -70,10 +70,46 @@ def actualizar(tarifa: Tarifa) -> None:
     conn.commit()
 
 
+def obtener_inactivas() -> list[dict]:
+    return fetch_all(
+        """SELECT t.*, c.nombre as categoria_nombre
+           FROM tarifa t
+           JOIN categoria c ON t.id_categoria = c.id_categoria
+           WHERE t.activo = 0
+           ORDER BY c.nombre, t.nombre""",
+    )
+
+
 def soft_delete(id_tarifa: int) -> None:
     conn = get_connection()
     conn.execute(
         "UPDATE tarifa SET activo = 0 WHERE id_tarifa = ?",
+        (id_tarifa,),
+    )
+    conn.commit()
+
+
+def activar(id_tarifa: int) -> None:
+    conn = get_connection()
+    conn.execute(
+        "UPDATE tarifa SET activo = 1 WHERE id_tarifa = ?",
+        (id_tarifa,),
+    )
+    conn.commit()
+
+
+def contar_matriculas_por_tarifa(id_tarifa: int) -> int:
+    row = fetch_one(
+        "SELECT COUNT(*) as cnt FROM matricula WHERE id_tarifa = ?",
+        (id_tarifa,),
+    )
+    return row["cnt"] if row else 0
+
+
+def eliminar(id_tarifa: int) -> None:
+    conn = get_connection()
+    conn.execute(
+        "DELETE FROM tarifa WHERE id_tarifa = ?",
         (id_tarifa,),
     )
     conn.commit()

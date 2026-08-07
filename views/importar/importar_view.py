@@ -10,6 +10,12 @@ class ImportarView(ctk.CTkFrame):
         self._datos_cargados = []
         self._columnas_archivo = []
         self._mapeo_actual = {}
+        if not importar_controller.puede_acceder():
+            ctk.CTkLabel(
+                self, text="Acceso denegado. Solo administradores.",
+                font=ctk.CTkFont(size=16), text_color="red",
+            ).pack(expand=True)
+            return
         self._crear_widgets()
 
     def _crear_widgets(self):

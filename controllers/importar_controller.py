@@ -5,6 +5,10 @@ from controllers import login_controller
 from utils.logger import logger
 
 
+def puede_acceder() -> bool:
+    return login_controller.es_admin()
+
+
 def cargar_archivo(ruta_archivo: str, hoja: str | None = None) -> tuple[bool, str, list[dict]]:
     extension = ruta_archivo.rsplit(".", 1)[-1].lower() if "." in ruta_archivo else ""
 

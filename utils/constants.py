@@ -1,7 +1,21 @@
 import os
 
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+# ── Versión ─────────────────────────────────────────────────────
+def _leer_version() -> str:
+    version_file = os.path.join(BASE_DIR, "VERSION")
+    try:
+        with open(version_file, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "0.0.0"
+
+__version__ = _leer_version()
+
+# ── Base de datos ───────────────────────────────────────────────
 DB_NAME = os.getenv("DB_NAME", "academia.db")
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", DB_NAME)
+DB_PATH = os.path.join(BASE_DIR, "database", DB_NAME)
 
 ROLE_ADMIN = "ADMIN"
 ROLE_SECRETARIA = "SECRETARIA"
@@ -46,4 +60,24 @@ CATEGORIA_PRODUCTO_INICIAL = [
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
 
-BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backups")
+
+# ── Detección de OneDrive ──────────────────────────────────────
+def detectar_onedrive() -> str | None:
+    for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
+        ruta = os.environ.get(var)
+        if ruta and os.path.isdir(ruta):
+            return ruta
+    ruta_fallback = os.path.join(os.path.expanduser("~"), "OneDrive")
+    if os.path.isdir(ruta_fallback):
+        return ruta_fallback
+    return None
+
+
+def _obtener_ruta_backup() -> str:
+    ruta_onedrive = detectar_onedrive()
+    if ruta_onedrive:
+        return os.path.join(ruta_onedrive, "BackupsAcademia")
+    return os.path.join(BASE_DIR, "backups")
+
+
+BACKUP_DIR = _obtener_ruta_backup()

@@ -12,6 +12,8 @@ from database.connection import close_connection
 from controllers import login_controller
 from views.login.login_view import LoginView
 from views.login.cambiar_password_view import CambiarPasswordView
+from utils.constants import __version__
+from updater import update_view
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "images"
 
@@ -86,7 +88,7 @@ class App(ctk.CTk):
         ).pack(pady=(0, 5))
 
         ctk.CTkLabel(
-            inner, text="Sistema de Gestión v1.0",
+            inner, text=f"Sistema de Gestión v{__version__}",
             font=ctk.CTkFont(size=14),
             text_color=COLOR_TEXT_SEC,
         ).pack(pady=(0, 35))
@@ -312,6 +314,7 @@ def main() -> None:
     try:
         initialize_system()
         app = App()
+        app.after(2000, lambda: update_view.verificar_y_mostrar(app))
         app.mainloop()
     except Exception as e:
         print(f"Error al inicializar el sistema: {e}")

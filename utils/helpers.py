@@ -3,8 +3,10 @@ import re
 
 def generate_receipt_number() -> str:
     from datetime import datetime
+    import random
     now = datetime.now()
-    return now.strftime("R%Y%m%d%H%M%S")
+    rand = random.randint(10, 99)
+    return now.strftime("R%Y%m%d%H%M%S") + str(rand)
 
 
 def generate_product_code() -> str:

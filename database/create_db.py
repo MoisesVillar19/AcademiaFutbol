@@ -238,7 +238,19 @@ def create_tables() -> None:
     cursor = conn.cursor()
     cursor.executescript(TABLES_SQL)
     cursor.executescript(INDEXES_SQL)
+    _migrar_columnas_faltantes(cursor)
     conn.commit()
+
+
+def _migrar_columnas_faltantes(cursor) -> None:
+    columnas_existentes = _obtener_columnas(cursor, "cuota")
+    if "monto_mora" not in columnas_existentes:
+        cursor.execute("ALTER TABLE cuota ADD COLUMN monto_mora REAL DEFAULT 0")
+
+
+def _obtener_columnas(cursor, tabla: str) -> list[str]:
+    cursor.execute(f"PRAGMA table_info({tabla})")
+    return [fila[1] for fila in cursor.fetchall()]
 
 
 if __name__ == "__main__":

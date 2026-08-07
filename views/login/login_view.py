@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from pathlib import Path
 from PIL import Image
 from controllers import login_controller
@@ -104,6 +105,16 @@ class LoginView(ctk.CTkToplevel):
         )
         self.label_error.pack()
 
+        self.btn_olvidar = ctk.CTkButton(
+            frame, text="¿Olvidaste tu contraseña?",
+            fg_color="transparent", hover_color="#e0e0e0",
+            text_color=COLOR_TEXT_SEC,
+            font=ctk.CTkFont(size=11, underline=True),
+            width=200, height=30,
+            command=self._mostrar_ayuda_password,
+        )
+        self.btn_olvidar.pack(pady=(5, 0))
+
         self.entry_password.bind("<Return>", lambda e: self._on_login())
         self.entry_usuario.focus()
 
@@ -120,6 +131,16 @@ class LoginView(ctk.CTkToplevel):
             self.destroy()
         else:
             self.label_error.configure(text=mensaje)
+
+    def _mostrar_ayuda_password(self):
+        messagebox.showinfo(
+            "Recuperar Contraseña",
+            "Si olvidó su contraseña, contacte al administrador del sistema.\n\n"
+            "El administrador puede restablecer la contraseña desde "
+            "la terminal ejecutando:\n\n"
+            "  python reset_password.py\n\n"
+            "PIN de emergencia: roncalli2026",
+        )
 
     def _on_cerrar(self):
         from database.connection import close_connection

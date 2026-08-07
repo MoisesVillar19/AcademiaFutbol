@@ -39,7 +39,6 @@ def _crear_estudiante_con_matricula():
             id_categoria=cat["id_categoria"],
             nombre="Tarifa Test",
             monto=200.0,
-            fecha_inicio=get_today(),
         )
         id_tarifa = insertar_tarifa(tarifa)
 

@@ -8,10 +8,11 @@ def insertar(persona: Persona) -> int:
     now = get_now()
     cursor = conn.execute(
         """INSERT INTO persona
-           (dni, nombres, apellidos, fecha_nacimiento, sexo, direccion, telefono, correo, activo, fecha_creacion, fecha_actualizacion)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (dni, tipo_documento, nombres, apellidos, fecha_nacimiento, sexo, direccion, telefono, correo, activo, fecha_creacion, fecha_actualizacion)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             persona.dni,
+            persona.tipo_documento,
             persona.nombres,
             persona.apellidos,
             persona.fecha_nacimiento,
@@ -61,12 +62,13 @@ def actualizar(persona: Persona) -> None:
     now = get_now()
     conn.execute(
         """UPDATE persona SET
-           dni = ?, nombres = ?, apellidos = ?, fecha_nacimiento = ?,
+           dni = ?, tipo_documento = ?, nombres = ?, apellidos = ?, fecha_nacimiento = ?,
            sexo = ?, direccion = ?, telefono = ?, correo = ?,
            activo = ?, fecha_actualizacion = ?
            WHERE id_persona = ?""",
         (
             persona.dni,
+            persona.tipo_documento,
             persona.nombres,
             persona.apellidos,
             persona.fecha_nacimiento,

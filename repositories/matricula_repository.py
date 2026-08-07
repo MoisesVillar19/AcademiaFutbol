@@ -8,13 +8,15 @@ def insertar(matricula: Matricula) -> int:
     now = get_now()
     cursor = conn.execute(
         """INSERT INTO matricula
-           (id_estudiante, id_tarifa, monto_pactado, fecha_inicio, fecha_fin,
-            dia_vencimiento, estado, activo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           (id_estudiante, id_tarifa, monto_pactado, pago_matricula, monto_matricula,
+            fecha_inicio, fecha_fin, dia_vencimiento, estado, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             matricula.id_estudiante,
             matricula.id_tarifa,
             matricula.monto_pactado,
+            matricula.pago_matricula,
+            matricula.monto_matricula,
             matricula.fecha_inicio,
             matricula.fecha_fin,
             matricula.dia_vencimiento,
@@ -71,6 +73,7 @@ def actualizar(matricula: Matricula) -> None:
     conn.execute(
         """UPDATE matricula SET
            id_estudiante = ?, id_tarifa = ?, monto_pactado = ?,
+           pago_matricula = ?, monto_matricula = ?,
            fecha_inicio = ?, fecha_fin = ?, dia_vencimiento = ?,
            estado = ?, activo = ?
            WHERE id_matricula = ?""",
@@ -78,6 +81,8 @@ def actualizar(matricula: Matricula) -> None:
             matricula.id_estudiante,
             matricula.id_tarifa,
             matricula.monto_pactado,
+            matricula.pago_matricula,
+            matricula.monto_matricula,
             matricula.fecha_inicio,
             matricula.fecha_fin,
             matricula.dia_vencimiento,

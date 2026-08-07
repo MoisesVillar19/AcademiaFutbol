@@ -8,7 +8,5 @@ class Tarifa:
     nombre: str = ""
     monto: float = 0.0
     descripcion: str = ""
-    fecha_inicio: str = ""
-    fecha_fin: str = ""
     observaciones: str = ""
     activo: int = 1

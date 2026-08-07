@@ -8,14 +8,15 @@ def insertar(cuota: Cuota) -> int:
     cursor = conn.execute(
         """INSERT INTO cuota
            (id_matricula, periodo, fecha_vencimiento, monto_total,
-            monto_pagado, saldo, estado, activo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            monto_pagado, monto_mora, saldo, estado, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             cuota.id_matricula,
             cuota.periodo,
             cuota.fecha_vencimiento,
             cuota.monto_total,
             cuota.monto_pagado,
+            cuota.monto_mora,
             cuota.saldo,
             cuota.estado,
             cuota.activo,
@@ -68,8 +69,8 @@ def actualizar(cuota: Cuota) -> None:
     conn.execute(
         """UPDATE cuota SET
            id_matricula = ?, periodo = ?, fecha_vencimiento = ?,
-           monto_total = ?, monto_pagado = ?, saldo = ?,
-           estado = ?, activo = ?
+           monto_total = ?, monto_pagado = ?, monto_mora = ?,
+           saldo = ?, estado = ?, activo = ?
            WHERE id_cuota = ?""",
         (
             cuota.id_matricula,
@@ -77,6 +78,7 @@ def actualizar(cuota: Cuota) -> None:
             cuota.fecha_vencimiento,
             cuota.monto_total,
             cuota.monto_pagado,
+            cuota.monto_mora,
             cuota.saldo,
             cuota.estado,
             cuota.activo,

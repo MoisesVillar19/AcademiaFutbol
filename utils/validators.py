@@ -5,6 +5,16 @@ def validate_dni(dni: str) -> bool:
     return bool(re.fullmatch(r"\d{8}", dni))
 
 
+def validate_carnet(carnet: str) -> bool:
+    return bool(re.fullmatch(r"\d{9}", carnet))
+
+
+def validate_documento(documento: str, tipo_documento: str = "DNI") -> bool:
+    if tipo_documento == "CARNET":
+        return validate_carnet(documento)
+    return validate_dni(documento)
+
+
 def validate_email(email: str) -> bool:
     if not email:
         return True

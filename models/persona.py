@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 class Persona:
     id_persona: int | None = None
     dni: str = ""
+    tipo_documento: str = "DNI"
     nombres: str = ""
     apellidos: str = ""
     fecha_nacimiento: str = ""

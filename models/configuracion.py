@@ -9,7 +9,9 @@ class Configuracion:
     telefono: str = ""
     correo: str = ""
     mora_habilitada: int = 0
+    tipo_mora: str = "PORCENTAJE"
     porcentaje_mora: float = 0.0
+    monto_mora: float = 0.0
     dias_por_vencer: int = 3
     permitir_multiples_becas: int = 1
     backup_automatico: int = 1

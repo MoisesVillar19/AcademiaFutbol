@@ -33,7 +33,7 @@ def _crear_datos_base():
         cat = fetch_one("SELECT id_categoria FROM categoria LIMIT 1")
         tarifa = Tarifa(
             id_categoria=cat["id_categoria"], nombre="Tarifa Int",
-            monto=150.0, fecha_inicio=get_today(),
+            monto=150.0,
         )
         id_tarifa = insertar_tarifa(tarifa)
 

@@ -8,12 +8,15 @@ def insertar(apoderado: Apoderado) -> int:
     now = get_now()
     cursor = conn.execute(
         """INSERT INTO apoderado
-           (id_persona, parentesco, ocupacion, activo, fecha_creacion, fecha_actualizacion)
-           VALUES (?, ?, ?, ?, ?, ?)""",
+           (id_persona, tipo_documento, parentesco, ocupacion, telefono, direccion, activo, fecha_creacion, fecha_actualizacion)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             apoderado.id_persona,
+            apoderado.tipo_documento,
             apoderado.parentesco,
             apoderado.ocupacion,
+            apoderado.telefono,
+            apoderado.direccion,
             apoderado.activo,
             now,
             now,
@@ -64,13 +67,16 @@ def actualizar(apoderado: Apoderado) -> None:
     now = get_now()
     conn.execute(
         """UPDATE apoderado SET
-           id_persona = ?, parentesco = ?, ocupacion = ?,
-           activo = ?, fecha_actualizacion = ?
+           id_persona = ?, tipo_documento = ?, parentesco = ?, ocupacion = ?,
+           telefono = ?, direccion = ?, activo = ?, fecha_actualizacion = ?
            WHERE id_apoderado = ?""",
         (
             apoderado.id_persona,
+            apoderado.tipo_documento,
             apoderado.parentesco,
             apoderado.ocupacion,
+            apoderado.telefono,
+            apoderado.direccion,
             apoderado.activo,
             now,
             apoderado.id_apoderado,

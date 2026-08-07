@@ -185,6 +185,7 @@ class App(ctk.CTk):
             ("📋  Matrículas",  self._mostrar_matriculas),
             ("💰  Pagos",       self._mostrar_pagos),
             ("📦  Inventario",  self._mostrar_inventario),
+            ("📤  Importar",    self._mostrar_importar),
             ("📈  Reportes",    self._mostrar_reportes),
         ]
 
@@ -266,6 +267,11 @@ class App(ctk.CTk):
         self._limpiar_contenido()
         from views.inventario.inventario_view import InventarioView
         InventarioView(self.contenido).pack(fill="both", expand=True)
+
+    def _mostrar_importar(self):
+        self._limpiar_contenido()
+        from views.importar.importar_view import ImportarView
+        ImportarView(self.contenido).pack(fill="both", expand=True)
 
     def _mostrar_reportes(self):
         self._limpiar_contenido()

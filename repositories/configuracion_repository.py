@@ -13,9 +13,10 @@ def actualizar(config: Configuracion) -> None:
     conn.execute(
         """UPDATE configuracion SET
            nombre_academia = ?, direccion = ?, telefono = ?, correo = ?,
-           mora_habilitada = ?, porcentaje_mora = ?, dias_por_vencer = ?,
-           permitir_multiples_becas = ?, backup_automatico = ?,
-           frecuencia_backup = ?, ruta_backup = ?, correo_onedrive = ?,
+           mora_habilitada = ?, tipo_mora = ?, porcentaje_mora = ?, monto_mora = ?,
+           dias_por_vencer = ?, permitir_multiples_becas = ?,
+           backup_automatico = ?, frecuencia_backup = ?,
+           ruta_backup = ?, correo_onedrive = ?,
            fecha_actualizacion = ?
            WHERE id_configuracion = ?""",
         (
@@ -24,7 +25,9 @@ def actualizar(config: Configuracion) -> None:
             config.telefono,
             config.correo,
             config.mora_habilitada,
+            config.tipo_mora,
             config.porcentaje_mora,
+            config.monto_mora,
             config.dias_por_vencer,
             config.permitir_multiples_becas,
             config.backup_automatico,

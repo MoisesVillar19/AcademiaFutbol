@@ -7,7 +7,7 @@ class EstudianteView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         self._crear_widgets()
-        self._cargar_estudiantes()
+        self._cargar_estudiantes(activo=1, estado="ACTIVO")
 
     def _crear_widgets(self):
         self.tabview = ctk.CTkTabview(self)
@@ -39,10 +39,10 @@ class EstudianteView(ctk.CTkFrame):
         filtros.pack(fill="x", padx=5, pady=5)
 
         self.filtro_estado = ctk.CTkSegmentedButton(
-            filtros, values=["Todos", "Activos", "Retirados"],
+            filtros, values=["Todos", "Activos", "Retirados", "Reingresantes"],
             command=self._filtrar,
         )
-        self.filtro_estado.set("Todos")
+        self.filtro_estado.set("Activos")
         self.filtro_estado.pack(side="left", padx=(0, 10))
 
         self.entry_busqueda = ctk.CTkEntry(
@@ -258,7 +258,7 @@ class EstudianteView(ctk.CTkFrame):
             command=lambda e=est: self._editar_estudiante(e),
         ).pack(side="left", padx=2)
 
-        if estado == "ACTIVO":
+        if estado in ("ACTIVO", "REINGRESANTE"):
             ctk.CTkButton(
                 botones, text="Retirar", width=70, height=28,
                 fg_color="red", hover_color="darkred",
@@ -269,6 +269,14 @@ class EstudianteView(ctk.CTkFrame):
                 botones, text="Reingreso", width=80, height=28,
                 fg_color="orange", hover_color="darkorange",
                 command=lambda e=est: self._reingreso(e),
+            ).pack(side="left", padx=2)
+
+        from controllers import login_controller
+        if login_controller.es_admin():
+            ctk.CTkButton(
+                botones, text="Desactivar", width=80, height=28,
+                fg_color="#6c757d", hover_color="#5a6268",
+                command=lambda e=est: self._desactivar(e),
             ).pack(side="left", padx=2)
 
     def _nuevo_estudiante(self):
@@ -425,6 +433,21 @@ class EstudianteView(ctk.CTkFrame):
             self._cargar_estudiantes()
             self._cargar_combo_estudiantes()
 
+    def _desactivar(self, est):
+        from tkinter import messagebox
+        nombre = f"{est.get('nombres', '')} {est.get('apellidos', '')}"
+        respuesta = messagebox.askyesno(
+            "Confirmar desactivación",
+            f"¿Desactivar a {nombre}?\n\n"
+            "El estudiante no aparecerá en las búsquedas ni listas.\n"
+            "Esta acción es reversible contactando al administrador.",
+        )
+        if respuesta:
+            from repositories import estudiante_repository
+            estudiante_repository.soft_delete(est["id_estudiante"])
+            self._cargar_estudiantes()
+            self._cargar_combo_estudiantes()
+
     def _filtrar(self, valor):
         self._on_busqueda_cambiar()
 
@@ -436,8 +459,13 @@ class EstudianteView(ctk.CTkFrame):
         estado = None
         if filtro_estado == "Activos":
             activo = 1
+            estado = "ACTIVO"
         elif filtro_estado == "Retirados":
+            activo = 1
             estado = "RETIRADO"
+        elif filtro_estado == "Reingresantes":
+            activo = 1
+            estado = "REINGRESANTE"
 
         todos = estudiante_controller.listar_estudiantes(activo=activo, estado=estado)
 

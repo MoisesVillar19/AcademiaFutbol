@@ -1,10 +1,25 @@
 import os
+import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+# ── Detección de entorno ────────────────────────────────────────
+_FROZEN = getattr(sys, "frozen", False)
+
+if _FROZEN:
+    # Ejecutable PyInstaller: rutas relativas al .exe
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    # Código fuente: rutas relativas al proyecto
+    APP_DIR = os.path.dirname(os.path.dirname(__file__))
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__)) if not _FROZEN else os.path.join(os.path.dirname(sys.executable), "_internal")
 
 # ── Versión ─────────────────────────────────────────────────────
 def _leer_version() -> str:
-    version_file = os.path.join(BASE_DIR, "VERSION")
+    # En PyInstaller, VERSION está en _internal/
+    if _FROZEN:
+        version_file = os.path.join(BASE_DIR, "VERSION")
+    else:
+        version_file = os.path.join(APP_DIR, "VERSION")
     try:
         with open(version_file, "r", encoding="utf-8") as f:
             return f.read().strip()
@@ -14,8 +29,9 @@ def _leer_version() -> str:
 __version__ = _leer_version()
 
 # ── Base de datos ───────────────────────────────────────────────
+# La BD siempre va al lado del .exe (fuera de _internal) para no borrarla al actualizar
 DB_NAME = os.getenv("DB_NAME", "academia.db")
-DB_PATH = os.path.join(BASE_DIR, "database", DB_NAME)
+DB_PATH = os.path.join(APP_DIR, "database", DB_NAME)
 
 ROLE_ADMIN = "ADMIN"
 ROLE_SECRETARIA = "SECRETARIA"
@@ -77,7 +93,7 @@ def _obtener_ruta_backup() -> str:
     ruta_onedrive = detectar_onedrive()
     if ruta_onedrive:
         return os.path.join(ruta_onedrive, "BackupsAcademia")
-    return os.path.join(BASE_DIR, "backups")
+    return os.path.join(APP_DIR, "backups")
 
 
 BACKUP_DIR = _obtener_ruta_backup()

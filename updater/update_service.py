@@ -155,6 +155,9 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
             for nombre in nombres:
                 if nombre.endswith("/"):
                     continue
+                # NO sobrescribir la carpeta database/ (contiene la BD del usuario)
+                if nombre.startswith("database/") or nombre.startswith("database\\"):
+                    continue
                 destino = os.path.join(ruta_app, nombre)
                 os.makedirs(os.path.dirname(destino), exist_ok=True)
                 with zf.open(nombre) as src, open(destino, "wb") as dst:

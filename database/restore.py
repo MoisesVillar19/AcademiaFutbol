@@ -1,6 +1,7 @@
 import os
 import shutil
-from database.connection import DB_PATH, close_connection
+from utils.constants import DB_PATH
+from database.connection import close_connection
 
 
 def restore_backup(backup_path: str) -> bool:

@@ -1,8 +1,7 @@
 import os
 import shutil
 from datetime import datetime
-from database.connection import DB_PATH
-from utils.constants import BACKUP_DIR
+from utils.constants import DB_PATH, BACKUP_DIR
 
 
 def create_backup(custom_path: str | None = None) -> str:

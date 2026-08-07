@@ -77,7 +77,10 @@ class PagoView(ctk.CTkFrame):
         ).pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(scroll, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.combo_estudiante = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        self.combo_estudiante = ctk.CTkComboBox(
+            scroll, width=400, values=["Cargando..."],
+            command=self._on_estudiante_cambiado,
+        )
         self.combo_estudiante.pack(anchor="w", pady=(0, 5))
 
         ctk.CTkLabel(scroll, text="Cuota pendiente *", font=ctk.CTkFont(size=12)).pack(anchor="w")
@@ -220,6 +223,9 @@ class PagoView(ctk.CTkFrame):
         nombres = [f"{m.get('nombres', '')} {m.get('apellidos', '')} - {m.get('tarifa_nombre', '')}" for m in matriculas]
         self.combo_estudiante.configure(values=nombres if nombres else ["Sin matrículas activas"])
         self._matriculas_map = {n: m["id_matricula"] for n, m in zip(nombres, matriculas)}
+
+    def _on_estudiante_cambiado(self, selection):
+        self._cargar_combo_cuotas(selection)
 
     def _cargar_combo_cuotas(self, selection):
         id_mat = self._matriculas_map.get(selection)

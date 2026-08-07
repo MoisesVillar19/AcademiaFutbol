@@ -202,9 +202,11 @@ class EditarUsuarioDialog(ctk.CTkToplevel):
                 self.label_status.configure(text="Las contraseñas no coinciden", text_color="red")
                 return
 
+        data = {"username": username, "rol": rol}
+        if nueva_pass:
+            data["password"] = nueva_pass
         exito, msg = usuario_controller.editar_usuario(
-            self.usuario["id_usuario"], username, rol,
-            nueva_password=nueva_pass if nueva_pass else None,
+            self.usuario["id_usuario"], data,
         )
 
         if exito:

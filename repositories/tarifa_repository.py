@@ -35,7 +35,7 @@ def obtener_por_categoria(id_categoria: int) -> list[dict]:
            FROM tarifa t
            JOIN categoria c ON t.id_categoria = c.id_categoria
            WHERE t.id_categoria = ? AND t.activo = 1
-           ORDER BY t.fecha_inicio DESC""",
+           ORDER BY t.nombre""",
         (id_categoria,),
     )
 

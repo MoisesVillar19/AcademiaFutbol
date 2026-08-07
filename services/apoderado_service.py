@@ -41,6 +41,8 @@ def crear_apoderado(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
         id_persona=id_persona,
         parentesco=parentesco,
         ocupacion=data.get("ocupacion", ""),
+        telefono=data.get("telefono", ""),
+        direccion=data.get("direccion", ""),
     )
     id_apoderado = apoderado_repository.insertar(apoderado)
 

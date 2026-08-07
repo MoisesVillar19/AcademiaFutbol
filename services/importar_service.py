@@ -187,8 +187,17 @@ def importar_estudiantes(filas: list[dict], id_usuario: int = 1,
                     data_apoderado[nombre_sys] = fila[nombre_archivo]
 
             if data_apoderado.get("dni_apoderado"):
+                apoderado_data = {
+                    "dni": data_apoderado.get("dni_apoderado", ""),
+                    "nombres": data_apoderado.get("nombres_apoderado", ""),
+                    "apellidos": data_apoderado.get("apellidos_apoderado", ""),
+                    "parentesco": data_apoderado.get("parentesco", ""),
+                    "telefono": data_apoderado.get("telefono_apoderado", ""),
+                    "direccion": data_apoderado.get("direccion_apoderado", ""),
+                    "tipo_documento": data_apoderado.get("tipo_documento_apoderado", "DNI"),
+                }
                 exito_ap, msg_ap, id_apoderado = apoderado_service.crear_apoderado(
-                    data_apoderado, id_usuario
+                    apoderado_data, id_usuario
                 )
 
                 if exito_ap:

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS persona (
     nombres TEXT NOT NULL,
     apellidos TEXT NOT NULL,
     fecha_nacimiento TEXT,
-    sexo TEXT CHECK(sexo IN ('M', 'F')),
+    sexo TEXT,
     direccion TEXT,
     telefono TEXT,
     correo TEXT,

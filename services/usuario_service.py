@@ -79,11 +79,15 @@ def editar_usuario(id_usuario: int, data: dict) -> tuple[bool, str]:
     )
     persona_repository.actualizar(persona)
 
+    password_hash = usuario["password_hash"]
+    if data.get("password"):
+        password_hash = hash_password(data["password"])
+
     usuario_obj = Usuario(
         id_usuario=id_usuario,
         id_persona=usuario["id_persona"],
         username=username,
-        password_hash=usuario["password_hash"],
+        password_hash=password_hash,
         rol=rol,
         activo=usuario["activo"],
     )

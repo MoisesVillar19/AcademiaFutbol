@@ -149,9 +149,11 @@ class InventarioView(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w", pady=(0, 10))
 
-        ctk.CTkLabel(scroll, text="Código *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_codigo = ctk.CTkEntry(scroll, placeholder_text="Código único", width=300)
-        self.entry_codigo.pack(anchor="w", pady=(0, 5))
+        self.label_codigo = ctk.CTkLabel(
+            scroll, text="Código: Generando...",
+            font=ctk.CTkFont(size=13, weight="bold"), text_color="#7C3AED",
+        )
+        self.label_codigo.pack(anchor="w", pady=(0, 5))
 
         ctk.CTkLabel(scroll, text="Nombre *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del producto", width=400)
@@ -338,6 +340,8 @@ class InventarioView(ctk.CTkFrame):
     def _nuevo_producto(self):
         self._limpiar_formulario()
         self._cargar_combo_categorias()
+        self.label_codigo.configure(text="Código: Se generará al guardar")
+        self._id_producto_editando = None
         self.tabview.set("Registrar Producto")
 
     def _editar_producto(self, prod):
@@ -347,7 +351,7 @@ class InventarioView(ctk.CTkFrame):
 
         producto = inventario_controller.obtener_producto(prod["id_producto"])
         if producto:
-            self.entry_codigo.insert(0, producto.get("codigo", ""))
+            self.label_codigo.configure(text=f"Código: {producto.get('codigo', '')}")
             self.entry_nombre.insert(0, producto.get("nombre", ""))
             self.combo_tipo_uso.set(producto.get("tipo_uso", ""))
             self.entry_stock_min.insert(0, str(producto.get("stock_minimo", 0)))
@@ -357,7 +361,6 @@ class InventarioView(ctk.CTkFrame):
 
     def _guardar_producto(self):
         data = {
-            "codigo": self.entry_codigo.get().strip(),
             "nombre": self.entry_nombre.get().strip(),
             "tipo_uso": self.combo_tipo_uso.get(),
             "stock_minimo": self.entry_stock_min.get().strip() or "0",

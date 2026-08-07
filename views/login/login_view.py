@@ -88,8 +88,8 @@ class RecuperarPasswordDialog(ctk.CTkToplevel):
             corner_radius=8, command=self._restablecer,
         ).pack(side="left", padx=5)
 
-        self.entry_pin.bind("<Return>", lambda e: self.entry_nueva.focus())
-        self.entry_nueva.bind("<Return>", lambda e: self.entry_confirmar.focus())
+        self.entry_pin.bind("<Return>", lambda e: self._restablecer())
+        self.entry_nueva.bind("<Return>", lambda e: self._restablecer())
         self.entry_confirmar.bind("<Return>", lambda e: self._restablecer())
         self.entry_pin.focus()
 

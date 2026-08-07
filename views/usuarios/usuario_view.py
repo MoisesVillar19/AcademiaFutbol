@@ -1,6 +1,120 @@
 import customtkinter as ctk
+from tkinter import messagebox
 from controllers import usuario_controller
 from controllers import login_controller
+
+
+class EditarUsuarioDialog(ctk.CTkToplevel):
+    def __init__(self, parent, usuario, on_save=None):
+        super().__init__(parent)
+        self.title(f"Editar Usuario - {usuario['username']}")
+        self.geometry("400x420")
+        self.resizable(False, False)
+        self.configure(fg_color="#F8F5FA")
+        self.grab_set()
+        self.usuario = usuario
+        self.on_save = on_save
+        self._centrar()
+        self._crear_widgets()
+
+    def _centrar(self):
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - 200
+        y = (self.winfo_screenheight() // 2) - 210
+        self.geometry(f"400x420+{x}+{y}")
+
+    def _crear_widgets(self):
+        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame.pack(expand=True, fill="both", padx=25, pady=20)
+
+        ctk.CTkLabel(
+            frame, text="Editar Usuario",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#3D1559",
+        ).pack(anchor="w", pady=(0, 15))
+
+        ctk.CTkLabel(frame, text="Username:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_username = ctk.CTkEntry(frame, width=340, height=38)
+        self.entry_username.insert(0, self.usuario.get("username", ""))
+        self.entry_username.pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(frame, text="Rol:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.combo_rol = ctk.CTkComboBox(
+            frame, values=["ADMIN", "SECRETARIA"], width=340, height=38,
+        )
+        self.combo_rol.set(self.usuario.get("rol", "SECRETARIA"))
+        self.combo_rol.pack(anchor="w", pady=(0, 15))
+
+        ctk.CTkLabel(
+            frame, text="Restablecer Contraseña",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#3D1559",
+        ).pack(anchor="w", pady=(5, 5))
+
+        ctk.CTkLabel(
+            frame, text="Deje vacío para mantener la contraseña actual",
+            font=ctk.CTkFont(size=11), text_color="gray",
+        ).pack(anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(frame, text="Nueva contraseña:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_password = ctk.CTkEntry(frame, width=340, height=38, show="•")
+        self.entry_password.pack(anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(frame, text="Confirmar contraseña:", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_confirm = ctk.CTkEntry(frame, width=340, height=38, show="•")
+        self.entry_confirm.pack(anchor="w", pady=(0, 10))
+
+        self.label_status = ctk.CTkLabel(frame, text="", font=ctk.CTkFont(size=11))
+        self.label_status.pack(anchor="w", pady=(0, 5))
+
+        btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_frame.pack(anchor="w", pady=(5, 0))
+
+        ctk.CTkButton(
+            btn_frame, text="Cancelar", width=150, height=40,
+            fg_color="#6c757d", hover_color="#5a6268",
+            corner_radius=8, command=self.destroy,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame, text="Guardar", width=150, height=40,
+            fg_color="#7C3AED", hover_color="#6D28D9",
+            corner_radius=8, command=self._guardar,
+        ).pack(side="left", padx=5)
+
+        self.entry_password.bind("<Return>", lambda e: self._guardar())
+        self.entry_confirm.bind("<Return>", lambda e: self._guardar())
+
+    def _guardar(self):
+        username = self.entry_username.get().strip()
+        rol = self.combo_rol.get()
+        nueva_pass = self.entry_password.get().strip()
+        confirm_pass = self.entry_confirm.get().strip()
+
+        if not username:
+            self.label_status.configure(text="El username es obligatorio", text_color="red")
+            return
+
+        if nueva_pass:
+            if len(nueva_pass) < 6:
+                self.label_status.configure(text="La contraseña debe tener al menos 6 caracteres", text_color="red")
+                return
+            if nueva_pass != confirm_pass:
+                self.label_status.configure(text="Las contraseñas no coinciden", text_color="red")
+                return
+
+        exito, msg = usuario_controller.editar_usuario(
+            self.usuario["id_usuario"], username, rol,
+            nueva_password=nueva_pass if nueva_pass else None,
+        )
+
+        if exito:
+            messagebox.showinfo("Éxito", "Usuario actualizado correctamente")
+            if self.on_save:
+                self.on_save()
+            self.destroy()
+        else:
+            self.label_status.configure(text=msg, text_color="red")
 
 
 class UsuarioView(ctk.CTkFrame):
@@ -80,6 +194,17 @@ class UsuarioView(ctk.CTkFrame):
         botones = ctk.CTkFrame(card, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
 
+        ctk.CTkButton(
+            botones, text="Editar", width=80, height=30,
+            command=lambda u=usuario: self._editar(u),
+        ).pack(side="left", padx=2)
+
+        ctk.CTkButton(
+            botones, text="Restablecer", width=100, height=30,
+            fg_color="orange", hover_color="darkorange",
+            command=lambda u=usuario: self._restablecer(u),
+        ).pack(side="left", padx=2)
+
         if usuario["activo"]:
             ctk.CTkButton(
                 botones, text="Desactivar", width=90, height=30,
@@ -93,12 +218,6 @@ class UsuarioView(ctk.CTkFrame):
                 command=lambda u=usuario: self._activar(u),
             ).pack(side="left", padx=2)
 
-        ctk.CTkButton(
-            botones, text="Restablecer", width=100, height=30,
-            fg_color="orange", hover_color="darkorange",
-            command=lambda u=usuario: self._restablecer(u),
-        ).pack(side="left", padx=2)
-
     def _filtrar(self, valor):
         if valor == "Activos":
             self._cargar_usuarios(activo=1)
@@ -106,6 +225,19 @@ class UsuarioView(ctk.CTkFrame):
             self._cargar_usuarios(activo=0)
         else:
             self._cargar_usuarios()
+
+    def _editar(self, usuario):
+        EditarUsuarioDialog(self, usuario, on_save=self._cargar_usuarios)
+
+    def _restablecer(self, usuario):
+        exito, mensaje, temp_pass = usuario_controller.restablecer_password(usuario["id_usuario"])
+        if exito:
+            messagebox.showinfo(
+                "Contraseña Restablecida",
+                f"Usuario: {usuario['username']}\n\n"
+                f"Nueva contraseña temporal:\n{temp_pass}\n\n"
+                f"El usuario debe cambiarla al iniciar sesión.",
+            )
 
     def _abrir_formulario(self):
         dialog = ctk.CTkInputDialog(
@@ -138,16 +270,15 @@ class UsuarioView(ctk.CTkFrame):
         exito, mensaje, id_usuario = usuario_controller.crear_usuario(persona_data, username, rol)
 
         if exito:
-            ctk.CTkLabel(
-                self.scroll_frame,
-                text=f"Usuario creado. Contraseña temporal: {mensaje}",
-                text_color="green",
-            ).pack(pady=5)
+            messagebox.showinfo(
+                "Usuario Creado",
+                f"Usuario: {username}\n\n"
+                f"Contraseña temporal: {mensaje}\n\n"
+                f"El usuario debe cambiarla al iniciar sesión.",
+            )
             self._cargar_usuarios()
         else:
-            ctk.CTkLabel(
-                self.scroll_frame, text=mensaje, text_color="red",
-            ).pack(pady=5)
+            messagebox.showerror("Error", mensaje)
 
     def _activar(self, usuario):
         exito, mensaje = usuario_controller.activar_usuario(usuario["id_usuario"])
@@ -158,12 +289,3 @@ class UsuarioView(ctk.CTkFrame):
         exito, mensaje = usuario_controller.desactivar_usuario(usuario["id_usuario"])
         if exito:
             self._cargar_usuarios()
-
-    def _restablecer(self, usuario):
-        exito, mensaje, temp_pass = usuario_controller.restablecer_password(usuario["id_usuario"])
-        if exito:
-            ctk.CTkLabel(
-                self.scroll_frame,
-                text=f"Contraseña restablecida. Nueva contraseña temporal: {temp_pass}",
-                text_color="green",
-            ).pack(pady=5)

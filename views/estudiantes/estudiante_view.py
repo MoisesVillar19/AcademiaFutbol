@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from controllers import estudiante_controller
+from widgets.date_picker import DatePicker
 
 
 class EstudianteView(ctk.CTkFrame):
@@ -81,9 +82,8 @@ class EstudianteView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
 
-        ctk.CTkLabel(row1, text="Fecha nacimiento:").pack(side="left", padx=(0, 5))
-        self.entry_fecha_nac = ctk.CTkEntry(row1, placeholder_text="YYYY-MM-DD", width=150)
-        self.entry_fecha_nac.pack(side="left")
+        self.date_picker_nac = DatePicker(row1, label_text="Fecha nacimiento:")
+        self.date_picker_nac.pack(side="left")
 
         ctk.CTkLabel(row1, text="Sexo:").pack(side="left", padx=(20, 5))
         self.combo_sexo = ctk.CTkComboBox(row1, values=["", "M", "F"], width=80)
@@ -224,7 +224,7 @@ class EstudianteView(ctk.CTkFrame):
             self.entry_dni.insert(0, estudiante.get("dni", ""))
             self.entry_nombres.insert(0, estudiante.get("nombres", ""))
             self.entry_apellidos.insert(0, estudiante.get("apellidos", ""))
-            self.entry_fecha_nac.insert(0, estudiante.get("fecha_nacimiento", "") or "")
+            self.date_picker_nac.set(estudiante.get("fecha_nacimiento", "") or "")
             self.combo_sexo.set(estudiante.get("sexo", "") or "")
             self.entry_direccion.insert(0, estudiante.get("direccion", "") or "")
             self.entry_telefono.insert(0, estudiante.get("telefono", "") or "")
@@ -237,7 +237,7 @@ class EstudianteView(ctk.CTkFrame):
             "dni": self.entry_dni.get().strip(),
             "nombres": self.entry_nombres.get().strip(),
             "apellidos": self.entry_apellidos.get().strip(),
-            "fecha_nacimiento": self.entry_fecha_nac.get().strip(),
+            "fecha_nacimiento": self.date_picker_nac.get(),
             "sexo": self.combo_sexo.get(),
             "direccion": self.entry_direccion.get().strip(),
             "telefono": self.entry_telefono.get().strip(),
@@ -269,7 +269,7 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_dni.delete(0, "end")
         self.entry_nombres.delete(0, "end")
         self.entry_apellidos.delete(0, "end")
-        self.entry_fecha_nac.delete(0, "end")
+        self.date_picker_nac.delete()
         self.combo_sexo.set("")
         self.entry_direccion.delete(0, "end")
         self.entry_telefono.delete(0, "end")

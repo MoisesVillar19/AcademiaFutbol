@@ -34,6 +34,16 @@ class MatriculaView(ctk.CTkFrame):
             command=self._nueva_matricula,
         ).pack(side="right")
 
+        filtros = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
+        filtros.pack(fill="x", padx=5, pady=5)
+
+        self.entry_busqueda = ctk.CTkEntry(
+            filtros, placeholder_text="Buscar por DNI o nombre...",
+            width=250,
+        )
+        self.entry_busqueda.pack(side="left", padx=5)
+        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
+
         self.scroll_matriculas = ctk.CTkScrollableFrame(self.tab_lista)
         self.scroll_matriculas.pack(fill="both", expand=True, padx=5, pady=5)
 
@@ -114,11 +124,20 @@ class MatriculaView(ctk.CTkFrame):
 
         self._cargar_combo_matriculas()
 
-    def _cargar_matriculas(self):
+    def _cargar_matriculas(self, busqueda=""):
         for widget in self.scroll_matriculas.winfo_children():
             widget.destroy()
 
         matriculas = matricula_controller.listar_matriculas_activas()
+
+        if busqueda:
+            busqueda_lower = busqueda.lower()
+            matriculas = [
+                m for m in matriculas
+                if busqueda_lower in (m.get("dni", "") or "").lower()
+                or busqueda_lower in (m.get("nombres", "") or "").lower()
+                or busqueda_lower in (m.get("apellidos", "") or "").lower()
+            ]
 
         if not matriculas:
             ctk.CTkLabel(
@@ -132,6 +151,10 @@ class MatriculaView(ctk.CTkFrame):
             self._crear_card(mat)
 
         self.label_status.configure(text=f"Total: {len(matriculas)} matrícula(s)")
+
+    def _on_busqueda_cambiar(self, event):
+        busqueda = self.entry_busqueda.get().strip()
+        self._cargar_matriculas(busqueda)
 
     def _crear_card(self, mat):
         card = ctk.CTkFrame(self.scroll_matriculas)

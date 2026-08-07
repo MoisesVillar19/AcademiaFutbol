@@ -212,6 +212,12 @@ class InventarioView(ctk.CTkFrame):
         self.combo_producto = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
         self.combo_producto.pack(anchor="w", pady=3)
 
+        self.label_stock_actual = ctk.CTkLabel(
+            scroll, text="",
+            font=ctk.CTkFont(size=12, weight="bold"), text_color="#7C3AED",
+        )
+        self.label_stock_actual.pack(anchor="w", pady=(0, 3))
+
         ctk.CTkLabel(scroll, text="Tipo de movimiento:").pack(anchor="w")
         self.combo_tipo_mov = ctk.CTkComboBox(
             scroll, width=200,
@@ -385,22 +391,34 @@ class InventarioView(ctk.CTkFrame):
         self._cargar_combo_productos()
         self.tabview.set("Movimiento")
         for key, val in self._productos_map.items():
-            if val == prod["id_producto"]:
+            if val["id_producto"] == prod["id_producto"]:
                 self.combo_producto.set(key)
+                self._on_producto_seleccionado(key)
                 break
 
     def _cargar_combo_productos(self):
         productos = inventario_controller.listar_productos(activo=1)
-        nombres = [f"{p.get('codigo', '')} - {p.get('nombre', '')} (Stock:{p.get('stock_actual', 0)})" for p in productos]
+        nombres = [f"{p.get('codigo', '')} - {p.get('nombre', '')}" for p in productos]
         self.combo_producto.configure(values=nombres if nombres else ["Sin productos"])
-        self._productos_map = {n: p["id_producto"] for n, p in zip(nombres, productos)}
+        self._productos_map = {n: p for n, p in zip(nombres, productos)}
+        self.combo_producto.configure(command=self._on_producto_seleccionado)
+
+    def _on_producto_seleccionado(self, seleccion):
+        prod = self._productos_map.get(seleccion)
+        if prod:
+            self.label_stock_actual.configure(
+                text=f"Stock actual: {prod.get('stock_actual', 0)}",
+            )
+        else:
+            self.label_stock_actual.configure(text="")
 
     def _registrar_movimiento(self):
         prod_selection = self.combo_producto.get()
-        id_prod = self._productos_map.get(prod_selection)
-        if not id_prod:
+        prod = self._productos_map.get(prod_selection)
+        if not prod:
             self.label_mov_status.configure(text="Seleccione un producto", text_color="red")
             return
+        id_prod = prod["id_producto"]
 
         cantidad_str = self.entry_cantidad.get().strip()
         if not cantidad_str:

@@ -60,17 +60,6 @@ class TarifaView(ctk.CTkFrame):
         self.entry_descripcion = ctk.CTkEntry(scroll, placeholder_text="Opcional", width=380)
         self.entry_descripcion.pack(anchor="w", pady=3)
 
-        row_fechas = ctk.CTkFrame(scroll, fg_color="transparent")
-        row_fechas.pack(fill="x", anchor="w", pady=3)
-
-        ctk.CTkLabel(row_fechas, text="Inicio:").pack(side="left")
-        self.entry_fecha_inicio = ctk.CTkEntry(row_fechas, placeholder_text="YYYY-MM-DD", width=140)
-        self.entry_fecha_inicio.pack(side="left", padx=5)
-
-        ctk.CTkLabel(row_fechas, text="Fin:").pack(side="left", padx=(10, 0))
-        self.entry_fecha_fin = ctk.CTkEntry(row_fechas, placeholder_text="YYYY-MM-DD", width=140)
-        self.entry_fecha_fin.pack(side="left", padx=5)
-
         ctk.CTkLabel(scroll, text="Observaciones:").pack(anchor="w")
         self.entry_observaciones = ctk.CTkEntry(scroll, placeholder_text="Opcional", width=380)
         self.entry_observaciones.pack(anchor="w", pady=3)
@@ -102,8 +91,6 @@ class TarifaView(ctk.CTkFrame):
         self.entry_nombre.delete(0, "end")
         self.entry_monto.delete(0, "end")
         self.entry_descripcion.delete(0, "end")
-        self.entry_fecha_inicio.delete(0, "end")
-        self.entry_fecha_fin.delete(0, "end")
         self.entry_observaciones.delete(0, "end")
         self.label_form_status.configure(text="")
         self.form_window.deiconify()
@@ -134,8 +121,6 @@ class TarifaView(ctk.CTkFrame):
             "nombre": nombre,
             "monto": monto,
             "descripcion": self.entry_descripcion.get().strip(),
-            "fecha_inicio": self.entry_fecha_inicio.get().strip(),
-            "fecha_fin": self.entry_fecha_fin.get().strip(),
             "observaciones": self.entry_observaciones.get().strip(),
         }
 
@@ -186,14 +171,6 @@ class TarifaView(ctk.CTkFrame):
         ctk.CTkLabel(
             info, text=monto_line,
             font=ctk.CTkFont(size=12), text_color="gray",
-        ).pack(anchor="w")
-
-        fechas = f"Desde: {t.get('fecha_inicio', '')}"
-        if t.get("fecha_fin"):
-            fechas += f" | Hasta: {t['fecha_fin']}"
-        ctk.CTkLabel(
-            info, text=fechas,
-            font=ctk.CTkFont(size=11), text_color="gray",
         ).pack(anchor="w")
 
         if t.get("observaciones"):

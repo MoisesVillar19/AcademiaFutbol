@@ -218,7 +218,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text=f"No hay cuotas {tipo}").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -264,7 +264,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay pagos registrados hoy").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -330,7 +330,7 @@ class DashboardView(ctk.CTkFrame):
                 "Ingresos por Día del Mes",
             )
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         ctk.CTkLabel(header, text="Fecha", width=120,
@@ -365,7 +365,7 @@ class DashboardView(ctk.CTkFrame):
             saldos = [c.get("saldo", 0) for c in cuotas[:10]]
             self._crear_grafico_barras_simple(nombres, saldos, f"Saldo {tipo} por Estudiante")
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([
@@ -408,7 +408,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay productos con stock bajo").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5"  # Morado claro)
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
         header.pack(fill="x", padx=5, pady=2)
 
         for col, (texto, ancho) in enumerate([

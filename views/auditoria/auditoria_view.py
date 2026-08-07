@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from controllers import auditoria_controller
+from widgets.date_picker import DatePicker
 
 
 class AuditoriaView(ctk.CTkFrame):
@@ -41,17 +42,11 @@ class AuditoriaView(ctk.CTkFrame):
         self.combo_tabla.set("")
         self.combo_tabla.pack(side="left", padx=5)
 
-        ctk.CTkLabel(filtros, text="Desde:").pack(side="left", padx=(10, 5))
-        self.entry_fecha_inicio = ctk.CTkEntry(
-            filtros, placeholder_text="YYYY-MM-DD", width=120,
-        )
-        self.entry_fecha_inicio.pack(side="left")
+        self.date_picker_inicio = DatePicker(filtros, label_text="Desde:")
+        self.date_picker_inicio.pack(side="left", padx=(10, 5))
 
-        ctk.CTkLabel(filtros, text="Hasta:").pack(side="left", padx=(5, 5))
-        self.entry_fecha_fin = ctk.CTkEntry(
-            filtros, placeholder_text="YYYY-MM-DD", width=120,
-        )
-        self.entry_fecha_fin.pack(side="left", padx=(0, 5))
+        self.date_picker_fin = DatePicker(filtros, label_text="Hasta:")
+        self.date_picker_fin.pack(side="left", padx=(0, 5))
 
         ctk.CTkButton(
             filtros, text="Buscar", width=80,
@@ -116,8 +111,8 @@ class AuditoriaView(ctk.CTkFrame):
         self._mostrar_logs(logs)
 
     def _buscar_por_fecha(self):
-        fecha_inicio = self.entry_fecha_inicio.get().strip()
-        fecha_fin = self.entry_fecha_fin.get().strip()
+        fecha_inicio = self.date_picker_inicio.get()
+        fecha_fin = self.date_picker_fin.get()
 
         if not fecha_inicio or not fecha_fin:
             return

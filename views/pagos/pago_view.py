@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from controllers import pago_controller, login_controller
 from controllers import estudiante_controller, matricula_controller
+from widgets.date_picker import DatePicker
 
 
 class PagoView(ctk.CTkFrame):
@@ -38,13 +39,11 @@ class PagoView(ctk.CTkFrame):
         filtros = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
         filtros.pack(fill="x", padx=5, pady=5)
 
-        ctk.CTkLabel(filtros, text="Desde:").pack(side="left")
-        self.entry_fecha_inicio = ctk.CTkEntry(filtros, placeholder_text="YYYY-MM-DD", width=120)
-        self.entry_fecha_inicio.pack(side="left", padx=5)
+        self.date_picker_inicio = DatePicker(filtros, label_text="Desde:")
+        self.date_picker_inicio.pack(side="left", padx=(0, 10))
 
-        ctk.CTkLabel(filtros, text="Hasta:").pack(side="left")
-        self.entry_fecha_fin = ctk.CTkEntry(filtros, placeholder_text="YYYY-MM-DD", width=120)
-        self.entry_fecha_fin.pack(side="left", padx=5)
+        self.date_picker_fin = DatePicker(filtros, label_text="Hasta:")
+        self.date_picker_fin.pack(side="left", padx=(0, 10))
 
         ctk.CTkButton(
             filtros, text="Buscar fechas", width=100,
@@ -54,8 +53,8 @@ class PagoView(ctk.CTkFrame):
         ctk.CTkLabel(filtros, text="  |  ").pack(side="left")
 
         self.entry_busqueda = ctk.CTkEntry(
-            filtros, placeholder_text="Buscar por recibo o método...",
-            width=200,
+            filtros, placeholder_text="Buscar por DNI, recibo o método...",
+            width=250,
         )
         self.entry_busqueda.pack(side="left", padx=5)
         self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
@@ -198,8 +197,8 @@ class PagoView(ctk.CTkFrame):
         ).pack(anchor="w")
 
     def _buscar_por_fecha(self):
-        fecha_inicio = self.entry_fecha_inicio.get().strip()
-        fecha_fin = self.entry_fecha_fin.get().strip()
+        fecha_inicio = self.date_picker_inicio.get()
+        fecha_fin = self.date_picker_fin.get()
 
         if not fecha_inicio or not fecha_fin:
             return

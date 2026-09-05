@@ -102,10 +102,6 @@ class RecuperarPasswordDialog(ctk.CTkToplevel):
             self.label_error.configure(text="Ingrese el PIN de emergencia")
             return
 
-        if pin != "roncalli2026":
-            self.label_error.configure(text="PIN incorrecto")
-            return
-
         if len(nueva) < 6:
             self.label_error.configure(text="La contraseña debe tener al menos 6 caracteres")
             return
@@ -114,43 +110,17 @@ class RecuperarPasswordDialog(ctk.CTkToplevel):
             self.label_error.configure(text="Las contraseñas no coinciden")
             return
 
-        from services import usuario_service
-        usuario = login_controller.obtener_usuario_actual()
+        exito, msg = login_controller.restablecer_password_emergencia(pin, "", nueva)
 
-        if not usuario:
-            exito, msg, temp = usuario_service.restablecer_password(1)
-            if exito:
-                from utils.security import hash_password
-                from database.connection import get_connection
-                conn = get_connection()
-                conn.execute(
-                    "UPDATE usuario SET password_hash = ? WHERE username = ?",
-                    (hash_password(nueva), "admin"),
-                )
-                conn.commit()
-                messagebox.showinfo(
-                    "Éxito",
-                    "Contraseña restablecida correctamente.\n\n"
-                    "Ahora puede iniciar sesión con su nueva contraseña.",
-                )
-                self.destroy()
-            else:
-                self.label_error.configure(text="Error al restablecer contraseña")
-        else:
-            from utils.security import hash_password
-            from database.connection import get_connection
-            conn = get_connection()
-            conn.execute(
-                "UPDATE usuario SET password_hash = ? WHERE id_usuario = ?",
-                (hash_password(nueva), usuario["id_usuario"]),
-            )
-            conn.commit()
+        if exito:
             messagebox.showinfo(
                 "Éxito",
                 "Contraseña restablecida correctamente.\n\n"
                 "Ahora puede iniciar sesión con su nueva contraseña.",
             )
             self.destroy()
+        else:
+            self.label_error.configure(text=msg)
 
 
 class LoginView(ctk.CTkToplevel):

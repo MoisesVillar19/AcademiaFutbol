@@ -146,6 +146,8 @@ def validar_filas(filas: list[dict], mapeo: dict | None = None) -> tuple[bool, s
 
 def importar_estudiantes(filas: list[dict], id_usuario: int = 1,
                          mapeo: dict | None = None) -> tuple[bool, str, dict]:
+    from database.connection import transaccion
+
     resultados = {
         "estudiantes_creados": 0,
         "apoderados_creados": 0,
@@ -158,59 +160,18 @@ def importar_estudiantes(filas: list[dict], id_usuario: int = 1,
 
     for idx, fila in enumerate(filas, 1):
         try:
-            data_estudiante = {}
-            for nombre_archivo, nombre_sys in mapping.items():
-                if nombre_archivo in fila and nombre_sys in (
-                    "dni", "nombres", "apellidos", "fecha_nacimiento",
-                    "sexo", "telefono", "correo", "tipo_documento", "direccion"
-                ):
-                    data_estudiante[nombre_sys] = fila[nombre_archivo]
+            # Cada fila es atomica: si falla a mitad, se revierte completa.
+            with transaccion():
+                res = _importar_fila(fila, mapping, id_usuario)
 
-            exito_est, msg_est, id_estudiante = estudiante_service.crear_estudiante(
-                data_estudiante, id_usuario
-            )
+            resultados["estudiantes_creados"] += res["estudiantes"]
+            resultados["apoderados_creados"] += res["apoderados"]
+            resultados["asociaciones_creadas"] += res["asociaciones"]
+            if res["detalle"]:
+                resultados["detalles"].append(f"Fila {idx}: {res['detalle']}")
 
-            if not exito_est:
-                resultados["errores"].append(f"Fila {idx}: {msg_est}")
-                continue
-
-            resultados["estudiantes_creados"] += 1
-            resultados["detalles"].append(f"Fila {idx}: Estudiante {data_estudiante.get('dni', '')} creado")
-
-            data_apoderado = {}
-            for nombre_archivo, nombre_sys in mapping.items():
-                if nombre_archivo in fila and nombre_sys in (
-                    "dni_apoderado", "nombres_apoderado", "apellidos_apoderado",
-                    "parentesco", "telefono_apoderado", "direccion_apoderado",
-                    "tipo_documento_apoderado"
-                ):
-                    data_apoderado[nombre_sys] = fila[nombre_archivo]
-
-            if data_apoderado.get("dni_apoderado"):
-                apoderado_data = {
-                    "dni": data_apoderado.get("dni_apoderado", ""),
-                    "nombres": data_apoderado.get("nombres_apoderado", ""),
-                    "apellidos": data_apoderado.get("apellidos_apoderado", ""),
-                    "parentesco": data_apoderado.get("parentesco", ""),
-                    "telefono": data_apoderado.get("telefono_apoderado", ""),
-                    "direccion": data_apoderado.get("direccion_apoderado", ""),
-                    "tipo_documento": data_apoderado.get("tipo_documento_apoderado", "DNI"),
-                }
-                exito_ap, msg_ap, id_apoderado = apoderado_service.crear_apoderado(
-                    apoderado_data, id_usuario
-                )
-
-                if exito_ap:
-                    resultados["apoderados_creados"] += 1
-
-                    exito_asc, msg_asc = estudiante_service.asociar_apoderado(
-                        id_estudiante, id_apoderado, es_principal=True
-                    )
-                    if exito_asc:
-                        resultados["asociaciones_creadas"] += 1
-                else:
-                    resultados["errores"].append(f"Fila {idx}: Apoderado - {msg_ap}")
-
+        except ErrorFilaImportacion as e:
+            resultados["errores"].append(f"Fila {idx}: {e.mensaje}")
         except Exception as e:
             resultados["errores"].append(f"Fila {idx}: Error inesperado - {str(e)}")
             logger.error(f"Error al importar fila {idx}: {e}")
@@ -223,6 +184,72 @@ def importar_estudiantes(filas: list[dict], id_usuario: int = 1,
         )
 
     return True, f"{total} estudiantes importados", resultados
+
+
+class ErrorFilaImportacion(Exception):
+    def __init__(self, mensaje: str):
+        super().__init__(mensaje)
+        self.mensaje = mensaje
+
+
+def _importar_fila(fila: dict, mapping: dict, id_usuario: int) -> dict:
+    """Procesa una fila del archivo. Lanza ErrorFilaImportacion ante un fallo
+    de negocio para provocar el rollback atomico de la fila."""
+    res = {"estudiantes": 0, "apoderados": 0, "asociaciones": 0, "detalle": ""}
+
+    data_estudiante = {}
+    for nombre_archivo, nombre_sys in mapping.items():
+        if nombre_archivo in fila and nombre_sys in (
+            "dni", "nombres", "apellidos", "fecha_nacimiento",
+            "sexo", "telefono", "correo", "tipo_documento", "direccion"
+        ):
+            data_estudiante[nombre_sys] = fila[nombre_archivo]
+
+    exito_est, msg_est, id_estudiante = estudiante_service.crear_estudiante(
+        data_estudiante, id_usuario
+    )
+    if not exito_est:
+        raise ErrorFilaImportacion(msg_est)
+
+    res["estudiantes"] = 1
+    res["detalle"] = f"Estudiante {data_estudiante.get('dni', '')} creado"
+
+    data_apoderado = {}
+    for nombre_archivo, nombre_sys in mapping.items():
+        if nombre_archivo in fila and nombre_sys in (
+            "dni_apoderado", "nombres_apoderado", "apellidos_apoderado",
+            "parentesco", "telefono_apoderado", "direccion_apoderado",
+            "tipo_documento_apoderado"
+        ):
+            data_apoderado[nombre_sys] = fila[nombre_archivo]
+
+    if data_apoderado.get("dni_apoderado"):
+        apoderado_data = {
+            "dni": data_apoderado.get("dni_apoderado", ""),
+            "nombres": data_apoderado.get("nombres_apoderado", ""),
+            "apellidos": data_apoderado.get("apellidos_apoderado", ""),
+            "parentesco": data_apoderado.get("parentesco", ""),
+            "telefono": data_apoderado.get("telefono_apoderado", ""),
+            "direccion": data_apoderado.get("direccion_apoderado", ""),
+            "tipo_documento": data_apoderado.get("tipo_documento_apoderado", "DNI"),
+        }
+        exito_ap, msg_ap, id_apoderado = apoderado_service.crear_apoderado(
+            apoderado_data, id_usuario
+        )
+
+        if not exito_ap:
+            raise ErrorFilaImportacion(f"Apoderado - {msg_ap}")
+
+        res["apoderados"] = 1
+
+        exito_asc, msg_asc = estudiante_service.asociar_apoderado(
+            id_estudiante, id_apoderado, es_principal=True, id_usuario=id_usuario
+        )
+        if not exito_asc:
+            raise ErrorFilaImportacion(f"Asociación - {msg_asc}")
+        res["asociaciones"] = 1
+
+    return res
 
 
 def obtener_campos_disponibles() -> list[str]:

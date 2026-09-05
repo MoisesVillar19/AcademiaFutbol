@@ -29,6 +29,10 @@ logs/
 # Variables de entorno
 .env
 
+# Testing
+.coverage
+.pytest_cache/
+
 # VS Code
 .vscode/
 

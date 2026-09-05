@@ -124,27 +124,31 @@ def activar_tarifa(id_tarifa: int) -> tuple[bool, str]:
     return True, "Tarifa activada correctamente"
 
 
-def eliminar_tarifa(id_tarifa: int) -> tuple[bool, str]:
+def eliminar_tarifa(id_tarifa: int, id_usuario: int = 1) -> tuple[bool, str]:
+    """Soft delete: nunca se borra fisicamente la tarifa (regla RN-028)."""
     tarifa = tarifa_repository.obtener_por_id(id_tarifa)
     if not tarifa:
         return False, "Tarifa no encontrada"
 
+    if tarifa["activo"] == 0:
+        return False, "La tarifa ya está desactivada"
+
     uso = tarifa_repository.contar_matriculas_por_tarifa(id_tarifa)
     if uso > 0:
         return False, (
-            f"No se puede eliminar: la tarifa tiene {uso} matrícula(s) asociada(s). "
+            f"No se puede eliminar: la tarifa tiene {uso} matrícula(s) activa(s). "
             "Desactívela en su lugar."
         )
 
-    tarifa_repository.eliminar(id_tarifa)
+    tarifa_repository.soft_delete(id_tarifa)
 
-    auditoria_service.registrar_log(
-        id_usuario=1,
-        tabla_afectada="tarifa",
+    auditoria_service.registrar_desactivacion(
+        id_usuario=id_usuario,
+        tabla="tarifa",
         id_registro=id_tarifa,
-        accion="DELETE",
-        valor_anterior=f"nombre={tarifa['nombre']}, monto={tarifa['monto']}",
+        valores_anteriores=f"nombre={tarifa['nombre']}, monto={tarifa['monto']}, activo=1",
+        valores_nuevos="activo=0",
     )
 
-    logger.info(f"Tarifa eliminada: {tarifa['nombre']} (id={id_tarifa})")
+    logger.info(f"Tarifa desactivada (soft delete): {tarifa['nombre']} (id={id_tarifa})")
     return True, "Tarifa eliminada correctamente"

@@ -67,7 +67,20 @@ def desactivar_categoria(id_categoria: int) -> tuple[bool, str]:
     cat = categoria_repository.obtener_por_id(id_categoria)
     if not cat:
         return False, "Categoría no encontrada"
+    if cat["activo"] == 0:
+        return False, "La categoría ya está desactivada"
+
     categoria_repository.soft_delete(id_categoria)
+
+    auditoria_service.registrar_desactivacion(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="categoria",
+        id_registro=id_categoria,
+        valores_anteriores=f"nombre={cat['nombre']}, activo=1",
+        valores_nuevos="activo=0",
+    )
+
+    logger.info(f"Categoría desactivada: {cat['nombre']} (id={id_categoria})")
     return True, "Categoría desactivada correctamente"
 
 
@@ -81,3 +94,7 @@ def listar_todas_las_categorias() -> list[dict]:
 
 def obtener_categoria(id_categoria: int) -> dict | None:
     return categoria_repository.obtener_por_id(id_categoria)
+
+
+def obtener_categoria_por_edad(edad: int) -> dict | None:
+    return categoria_repository.obtener_por_edad(edad)

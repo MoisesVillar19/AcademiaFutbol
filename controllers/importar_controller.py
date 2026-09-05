@@ -1,4 +1,5 @@
 from services import importar_service
+from services import auth_service
 from utils.csv_parser import parse_csv, obtener_columnas_csv
 from utils.excel_parser import parse_excel, obtener_hojas_excel, obtener_columnas_excel
 from controllers import login_controller
@@ -51,9 +52,7 @@ def ejecutar_importacion(filas: list[dict], mapeo: dict | None = None) -> tuple[
     if not filas:
         return False, "No hay datos para importar", {}
 
-    usuario = login_controller.obtener_usuario_actual()
-    id_usuario = usuario.get("id_usuario", 1) if usuario else 1
-
+    id_usuario = auth_service.id_usuario_sesion()
     return importar_service.importar_estudiantes(filas, id_usuario, mapeo)
 
 

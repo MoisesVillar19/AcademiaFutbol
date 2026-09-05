@@ -37,6 +37,18 @@ def cambiar_password(password_actual: str, password_nuevo: str,
     return auth_service.cambiar_password(password_actual, password_nuevo)
 
 
+def restablecer_password_emergencia(pin: str, username: str,
+                                    nueva_password: str) -> tuple[bool, str]:
+    if not pin:
+        return False, "Ingrese el PIN de emergencia"
+    if not nueva_password:
+        return False, "La nueva contraseña es obligatoria"
+
+    from utils.constants import DEFAULT_ADMIN_USER
+    usuario_destino = username or DEFAULT_ADMIN_USER
+    return auth_service.restablecer_password_con_pin(pin, usuario_destino, nueva_password)
+
+
 def obtener_usuario_actual() -> dict | None:
     return auth_service.obtener_usuario_actual()
 

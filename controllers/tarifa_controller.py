@@ -1,9 +1,8 @@
-from services import tarifa_service, auth_service
+﻿from services import tarifa_service, auth_service
 
 
 def _get_id_usuario() -> int:
-    usuario = auth_service.obtener_usuario_actual()
-    return usuario["id_usuario"] if usuario else 1
+    return auth_service.id_usuario_sesion()
 
 
 def crear_tarifa(data: dict) -> tuple[bool, str, int | None]:

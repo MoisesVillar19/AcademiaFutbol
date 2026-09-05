@@ -46,6 +46,14 @@ def editar_categoria(id_categoria: int, data: dict) -> tuple[bool, str]:
     )
     categoria_producto_repository.actualizar(categoria_obj)
 
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="categoria_producto",
+        id_registro=id_categoria,
+        valores_anteriores=f"nombre={categoria['nombre']}",
+        valores_nuevos=f"nombre={nombre}",
+    )
+
     return True, "Categoría actualizada correctamente"
 
 
@@ -137,6 +145,14 @@ def editar_producto(id_producto: int, data: dict) -> tuple[bool, str]:
         activo=producto["activo"],
     )
     producto_repository.actualizar(producto_obj)
+
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="producto",
+        id_registro=id_producto,
+        valores_anteriores=f"codigo={producto['codigo']}, nombre={producto['nombre']}, precio={producto['precio']}",
+        valores_nuevos=f"codigo={codigo}, nombre={producto_obj.nombre}, precio={precio}",
+    )
 
     return True, "Producto actualizado correctamente"
 

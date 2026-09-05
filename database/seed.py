@@ -4,6 +4,7 @@ from utils.constants import (
     CATEGORIA_PRODUCTO_INICIAL,
     DEFAULT_ADMIN_USER,
     DEFAULT_ADMIN_PASS,
+    PIN_EMERGENCIA_DEFECTO,
 )
 from utils.security import hash_password
 from utils.dates import get_now
@@ -53,14 +54,19 @@ def seed_database() -> None:
                 (nombre,),
             )
 
-    config = fetch_one("SELECT id_configuracion FROM configuracion WHERE id_configuracion = 1")
+    config = fetch_one("SELECT id_configuracion, pin_emergencia FROM configuracion WHERE id_configuracion = 1")
     if not config:
         conn.execute(
             """INSERT INTO configuracion
                (id_configuracion, nombre_academia, dias_por_vencer, permitir_multiples_becas,
-                backup_automatico, frecuencia_backup, ruta_backup, fecha_actualizacion)
-               VALUES (1, 'Academia Deportiva', 3, 1, 1, 7, 'backups/', ?)""",
-            (now,),
+                backup_automatico, frecuencia_backup, ruta_backup, pin_emergencia, fecha_actualizacion)
+               VALUES (1, 'Academia Deportiva', 3, 1, 1, 7, 'backups/', ?, ?)""",
+            (hash_password(PIN_EMERGENCIA_DEFECTO), now),
+        )
+    elif not config.get("pin_emergencia"):
+        conn.execute(
+            "UPDATE configuracion SET pin_emergencia = ? WHERE id_configuracion = 1",
+            (hash_password(PIN_EMERGENCIA_DEFECTO),),
         )
 
     conn.commit()

@@ -11,6 +11,8 @@ def obtener_configuracion() -> dict | None:
 
 
 def actualizar_configuracion(data: dict) -> tuple[bool, str]:
+    if not puede_acceder():
+        return False, "Acceso denegado: solo un administrador puede modificar la configuración"
     return configuracion_service.actualizar_configuracion(data)
 
 
@@ -32,3 +34,16 @@ def permite_multiples_becas() -> bool:
 
 def listar_categorias() -> list[dict]:
     return categoria_service.listar_categorias()
+
+
+def crear_backup_manual() -> tuple[bool, str, str | None]:
+    if not puede_acceder():
+        return False, "Acceso denegado: solo un administrador puede crear respaldos", None
+
+    from services import backup_service
+    return backup_service.crear_backup()
+
+
+def verificar_backup_automatico() -> tuple[bool, str]:
+    from services import backup_service
+    return backup_service.verificar_backup_automatico()

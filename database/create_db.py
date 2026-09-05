@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS configuracion (
     frecuencia_backup INTEGER DEFAULT 7,
     ruta_backup TEXT DEFAULT 'backups/',
     correo_onedrive TEXT DEFAULT '',
+    pin_emergencia TEXT DEFAULT '',
     fecha_actualizacion TEXT
 );
 
@@ -243,9 +244,13 @@ def create_tables() -> None:
 
 
 def _migrar_columnas_faltantes(cursor) -> None:
-    columnas_existentes = _obtener_columnas(cursor, "cuota")
-    if "monto_mora" not in columnas_existentes:
+    columnas_cuota = _obtener_columnas(cursor, "cuota")
+    if "monto_mora" not in columnas_cuota:
         cursor.execute("ALTER TABLE cuota ADD COLUMN monto_mora REAL DEFAULT 0")
+
+    columnas_config = _obtener_columnas(cursor, "configuracion")
+    if "pin_emergencia" not in columnas_config:
+        cursor.execute("ALTER TABLE configuracion ADD COLUMN pin_emergencia TEXT DEFAULT ''")
 
 
 def _obtener_columnas(cursor, tabla: str) -> list[str]:

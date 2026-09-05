@@ -103,6 +103,15 @@ def soft_delete(id_matricula: int) -> None:
     conn.commit()
 
 
+def cambiar_estado(id_matricula: int, estado: str) -> None:
+    conn = get_connection()
+    conn.execute(
+        "UPDATE matricula SET estado = ? WHERE id_matricula = ?",
+        (estado, id_matricula),
+    )
+    conn.commit()
+
+
 def contar_por_mes(fecha_inicio: str, fecha_fin: str) -> int:
     row = fetch_one(
         """SELECT COUNT(*) as total FROM matricula

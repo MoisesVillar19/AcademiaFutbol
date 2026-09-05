@@ -3,14 +3,30 @@ import os
 import sys
 import getpass
 
-PIN_EMERGENCIA = "roncalli2026"
 DB_NAME = os.getenv("DB_NAME", "academia.db")
 DB_PATH = os.path.join(os.path.dirname(__file__), "database", DB_NAME)
 
 
 def hash_password(password: str) -> str:
-    import bcrypt
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    from utils.security import hash_password as _hash
+    return _hash(password)
+
+
+def _verificar_pin(conn) -> bool:
+    from utils.security import verify_password
+
+    fila = conn.execute(
+        "SELECT pin_emergencia FROM configuracion WHERE id_configuracion = 1"
+    ).fetchone()
+    if not fila or not fila["pin_emergencia"]:
+        print("Error: El PIN de emergencia no está configurado en la base de datos.")
+        return False
+
+    pin = input("PIN de emergencia: ").strip()
+    if not verify_password(pin, fila["pin_emergencia"]):
+        print("Error: PIN incorrecto.")
+        return False
+    return True
 
 
 def main():
@@ -52,9 +68,7 @@ def main():
     print(f"Usuario encontrado: {username} (ID: {usuario['id_usuario']})")
     print()
 
-    pin = input("PIN de emergencia: ").strip()
-    if pin != PIN_EMERGENCIA:
-        print("Error: PIN incorrecto.")
+    if not _verificar_pin(conn):
         conn.close()
         input("\nPresione Enter para salir...")
         sys.exit(1)

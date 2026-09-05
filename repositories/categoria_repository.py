@@ -24,6 +24,13 @@ def obtener_activas() -> list[dict]:
     )
 
 
+def obtener_por_edad(edad: int) -> dict | None:
+    return fetch_one(
+        "SELECT * FROM categoria WHERE ? BETWEEN edad_min AND edad_max AND activo = 1",
+        (edad,),
+    )
+
+
 def obtener_todas() -> list[dict]:
     return fetch_all("SELECT * FROM categoria ORDER BY edad_min")
 

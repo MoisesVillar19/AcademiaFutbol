@@ -100,16 +100,7 @@ def activar(id_tarifa: int) -> None:
 
 def contar_matriculas_por_tarifa(id_tarifa: int) -> int:
     row = fetch_one(
-        "SELECT COUNT(*) as cnt FROM matricula WHERE id_tarifa = ?",
+        "SELECT COUNT(*) as cnt FROM matricula WHERE id_tarifa = ? AND activo = 1",
         (id_tarifa,),
     )
     return row["cnt"] if row else 0
-
-
-def eliminar(id_tarifa: int) -> None:
-    conn = get_connection()
-    conn.execute(
-        "DELETE FROM tarifa WHERE id_tarifa = ?",
-        (id_tarifa,),
-    )
-    conn.commit()

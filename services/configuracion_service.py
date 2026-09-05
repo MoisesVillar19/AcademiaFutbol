@@ -1,5 +1,6 @@
 from repositories import configuracion_repository
 from models.configuracion import Configuracion
+from services import auditoria_service
 from utils.logger import logger
 
 
@@ -32,6 +33,15 @@ def actualizar_configuracion(data: dict) -> tuple[bool, str]:
     )
 
     configuracion_repository.actualizar(config_obj)
+
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="configuracion",
+        id_registro=config["id_configuracion"],
+        valores_anteriores=f"mora_habilitada={config.get('mora_habilitada', 0)}, porcentaje_mora={config.get('porcentaje_mora', 0)}, dias_por_vencer={config.get('dias_por_vencer', 3)}",
+        valores_nuevos=f"mora_habilitada={config_obj.mora_habilitada}, porcentaje_mora={config_obj.porcentaje_mora}, dias_por_vencer={config_obj.dias_por_vencer}",
+    )
+
     logger.info("Configuración actualizada")
     return True, "Configuración actualizada correctamente"
 
@@ -54,3 +64,19 @@ def obtener_porcentaje_mora() -> float:
 def permite_multiples_becas() -> bool:
     config = obtener_configuracion()
     return bool(config.get("permitir_multiples_becas", 1)) if config else True
+
+
+def obtener_valor(clave: str):
+    """Retorna el valor crudo de una columna de CONFIGURACION (o None si no existe)."""
+    config = obtener_configuracion()
+    return config.get(clave) if config else None
+
+
+def obtener_tipo_mora() -> str:
+    config = obtener_configuracion()
+    return (config.get("tipo_mora") or "PORCENTAJE") if config else "PORCENTAJE"
+
+
+def obtener_monto_fijo_mora() -> float:
+    config = obtener_configuracion()
+    return float(config.get("monto_mora", 0) or 0) if config else 0.0

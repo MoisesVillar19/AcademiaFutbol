@@ -1,9 +1,21 @@
+import sqlite3
+
 from repositories import pago_repository, detalle_pago_repository
 from models.pago import Pago
 from services import auditoria_service, cuota_service
+from database.connection import transaccion
+from utils.constants import (
+    METODO_EFECTIVO,
+    METODO_YAPE,
+    METODO_PLIN,
+    METODO_TRANSFERENCIA,
+    CUOTA_PAGADO,
+)
 from utils.helpers import generate_receipt_number
 from utils.dates import get_today
 from utils.logger import logger
+
+METODOS_VALIDOS = (METODO_EFECTIVO, METODO_YAPE, METODO_PLIN, METODO_TRANSFERENCIA)
 
 
 def registrar_pago(data: dict) -> tuple[bool, str, int | None]:
@@ -18,14 +30,14 @@ def registrar_pago(data: dict) -> tuple[bool, str, int | None]:
         return False, "La cuota es obligatoria", None
     if monto_pagado <= 0:
         return False, "El monto debe ser mayor a 0", None
-    if metodo_pago not in ("EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"):
+    if metodo_pago not in METODOS_VALIDOS:
         return False, "Método de pago no válido", None
 
     from repositories import cuota_repository
     cuota = cuota_repository.obtener_por_id(id_cuota)
     if not cuota:
         return False, "Cuota no encontrada", None
-    if cuota["estado"] == "PAGADO":
+    if cuota["estado"] == CUOTA_PAGADO:
         return False, "Esta cuota ya está pagada completamente", None
     if monto_pagado > cuota["saldo"]:
         return False, f"El monto excede el saldo pendiente de S/{cuota['saldo']:.2f}", None
@@ -40,18 +52,29 @@ def registrar_pago(data: dict) -> tuple[bool, str, int | None]:
         metodo_pago=metodo_pago,
         observacion=data.get("observacion", ""),
     )
-    id_pago = pago_repository.insertar(pago)
 
-    detalle_pago_repository.insertar(id_pago, id_cuota, monto_pagado)
+    with transaccion():
+        id_pago = None
+        for _ in range(3):
+            try:
+                id_pago = pago_repository.insertar(pago)
+                break
+            except sqlite3.IntegrityError:
+                # Colision improbable de numero_recibo: regenerar y reintentar
+                pago.numero_recibo = generate_receipt_number()
+        if id_pago is None:
+            return False, "No se pudo generar un numero de recibo unico", None
 
-    cuota_service.actualizar_pago(id_cuota, monto_pagado)
+        detalle_pago_repository.insertar(id_pago, id_cuota, monto_pagado)
 
-    auditoria_service.registrar_insert(
-        id_usuario=id_usuario,
-        tabla="pago",
-        id_registro=id_pago,
-        valores_nuevos=f"recibo={numero_recibo}, monto=S/{monto_pagado:.2f}, metodo={metodo_pago}",
-    )
+        cuota_service.actualizar_pago(id_cuota, monto_pagado)
+
+        auditoria_service.registrar_insert(
+            id_usuario=id_usuario,
+            tabla="pago",
+            id_registro=id_pago,
+            valores_nuevos=f"recibo={pago.numero_recibo}, monto=S/{monto_pagado:.2f}, metodo={metodo_pago}",
+        )
 
     logger.info(f"Pago registrado: recibo={numero_recibo}, monto=S/{monto_pagado:.2f}")
     return True, f"Pago registrado. Recibo: {numero_recibo}", id_pago

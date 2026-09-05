@@ -1,7 +1,9 @@
 from repositories import estudiante_repository, persona_repository, estudiante_apoderado_repository
 from models.estudiante import Estudiante
 from models.persona import Persona
-from services import auditoria_service
+from services import auditoria_service, apoderado_service
+from database.connection import transaccion
+from utils.constants import STATUS_ACTIVO, STATUS_RETIRADO, STATUS_REINGRESANTE
 from utils.dates import get_today
 from utils.logger import logger
 
@@ -24,32 +26,38 @@ def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | 
         if not nombres or not apellidos:
             return False, "Nombres y apellidos son obligatorios para nueva persona", None
 
-        persona_obj = Persona(
-            dni=dni,
-            tipo_documento=data.get("tipo_documento", "DNI"),
-            nombres=nombres,
-            apellidos=apellidos,
-            fecha_nacimiento=data.get("fecha_nacimiento", ""),
-            sexo=data.get("sexo", ""),
-            direccion=data.get("direccion", ""),
-            telefono=data.get("telefono", ""),
-            correo=data.get("correo", ""),
-        )
-        id_persona = persona_repository.insertar(persona_obj)
-
     estudiante = Estudiante(
-        id_persona=id_persona,
-        estado="ACTIVO",
+        id_persona=0,
+        estado=STATUS_ACTIVO,
         fecha_ingreso=get_today(),
     )
-    id_estudiante = estudiante_repository.insertar(estudiante)
 
-    auditoria_service.registrar_insert(
-        id_usuario=id_usuario,
-        tabla="estudiante",
-        id_registro=id_estudiante,
-        valores_nuevos=f"dni={dni}, estado=ACTIVO",
-    )
+    with transaccion():
+        if persona:
+            id_persona = persona["id_persona"]
+        else:
+            persona_obj = Persona(
+                dni=dni,
+                tipo_documento=data.get("tipo_documento", "DNI"),
+                nombres=data.get("nombres", ""),
+                apellidos=data.get("apellidos", ""),
+                fecha_nacimiento=data.get("fecha_nacimiento", ""),
+                sexo=data.get("sexo", ""),
+                direccion=data.get("direccion", ""),
+                telefono=data.get("telefono", ""),
+                correo=data.get("correo", ""),
+            )
+            id_persona = persona_repository.insertar(persona_obj)
+
+        estudiante.id_persona = id_persona
+        id_estudiante = estudiante_repository.insertar(estudiante)
+
+        auditoria_service.registrar_insert(
+            id_usuario=id_usuario,
+            tabla="estudiante",
+            id_registro=id_estudiante,
+            valores_nuevos=f"dni={dni}, estado={STATUS_ACTIVO}",
+        )
 
     logger.info(f"Estudiante creado: DNI={dni}")
     return True, "Estudiante registrado correctamente", id_estudiante
@@ -80,25 +88,47 @@ def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
         )
         persona_repository.actualizar(persona_obj)
 
+        auditoria_service.registrar_update(
+            id_usuario=auditoria_service.id_usuario_sesion(),
+            tabla="persona",
+            id_registro=estudiante["id_persona"],
+            valores_anteriores=f"dni={persona['dni']}, nombres={persona['nombres']}, apellidos={persona['apellidos']}",
+            valores_nuevos=f"dni={dni}, nombres={persona_obj.nombres}, apellidos={persona_obj.apellidos}",
+        )
+
     return True, "Estudiante actualizado correctamente"
 
 
 def registrar_retiro(id_estudiante: int, id_usuario: int = 1) -> tuple[bool, str]:
+    from repositories import matricula_repository
+
     estudiante = estudiante_repository.obtener_por_id(id_estudiante)
     if not estudiante:
         return False, "Estudiante no encontrado"
 
-    if estudiante["estado"] == "RETIRADO":
+    if estudiante["estado"] == STATUS_RETIRADO:
         return False, "El estudiante ya está retirado"
 
-    estudiante_repository.cambiar_estado(id_estudiante, "RETIRADO", get_today())
+    estudiante_repository.cambiar_estado(id_estudiante, STATUS_RETIRADO, get_today())
+
+    # Cerrar las matriculas activas para permitir una nueva matricula al reingresar
+    for m in matricula_repository.obtener_por_estudiante(id_estudiante):
+        if m["estado"] == STATUS_ACTIVO:
+            matricula_repository.cambiar_estado(m["id_matricula"], STATUS_RETIRADO)
+            auditoria_service.registrar_update(
+                id_usuario=id_usuario,
+                tabla="matricula",
+                id_registro=m["id_matricula"],
+                valores_anteriores=f"estado={STATUS_ACTIVO}",
+                valores_nuevos=f"estado={STATUS_RETIRADO}",
+            )
 
     auditoria_service.registrar_update(
         id_usuario=id_usuario,
         tabla="estudiante",
         id_registro=id_estudiante,
         valores_anteriores=f"estado={estudiante['estado']}",
-        valores_nuevos="estado=RETIRADO",
+        valores_nuevos=f"estado={STATUS_RETIRADO}",
     )
 
     logger.info(f"Estudiante retirado: ID={id_estudiante}")
@@ -110,48 +140,56 @@ def registrar_reingreso(id_estudiante: int, id_usuario: int = 1) -> tuple[bool, 
     if not estudiante:
         return False, "Estudiante no encontrado"
 
-    if estudiante["estado"] != "RETIRADO":
+    if estudiante["estado"] != STATUS_RETIRADO:
         return False, "Solo pueden reingresar estudiantes retirados"
 
-    estudiante_repository.cambiar_estado(id_estudiante, "REINGRESANTE")
+    estudiante_repository.cambiar_estado(id_estudiante, STATUS_REINGRESANTE)
 
     auditoria_service.registrar_update(
         id_usuario=id_usuario,
         tabla="estudiante",
         id_registro=id_estudiante,
-        valores_anteriores=f"estado=RETIRADO",
-        valores_nuevos="estado=REINGRESANTE",
+        valores_anteriores=f"estado={STATUS_RETIRADO}",
+        valores_nuevos=f"estado={STATUS_REINGRESANTE}",
     )
 
     logger.info(f"Estudiante reingreso: ID={id_estudiante}")
     return True, "Reingreso registrado correctamente"
 
 
-def asociar_apoderado(id_estudiante: int, id_apoderado: int,
-                      es_principal: bool = False) -> tuple[bool, str]:
-    if estudiante_apoderado_repository.existe_relacion(id_estudiante, id_apoderado):
-        return False, "Este apoderado ya está asociado al estudiante"
+def desactivar_estudiante(id_estudiante: int, id_usuario: int = 1) -> tuple[bool, str]:
+    """Soft delete del estudiante (activo=0) con registro de auditoria."""
+    estudiante = estudiante_repository.obtener_por_id(id_estudiante)
+    if not estudiante:
+        return False, "Estudiante no encontrado"
 
-    if es_principal:
-        estudiante_apoderado_repository.marcar_principal(id_estudiante, id_apoderado)
+    if estudiante["activo"] == 0:
+        return False, "El estudiante ya está desactivado"
 
-    estudiante_apoderado_repository.insertar(
-        id_estudiante=id_estudiante,
-        id_apoderado=id_apoderado,
-        es_principal=1 if es_principal else 0,
+    estudiante_repository.soft_delete(id_estudiante)
+
+    auditoria_service.registrar_desactivacion(
+        id_usuario=id_usuario,
+        tabla="estudiante",
+        id_registro=id_estudiante,
+        valores_anteriores="activo=1",
+        valores_nuevos="activo=0",
     )
 
-    return True, "Apoderado asociado correctamente"
+    logger.info(f"Estudiante desactivado: ID={id_estudiante}")
+    return True, "Estudiante desactivado correctamente"
 
 
-def desasociar_apoderado(id_estudiante: int, id_apoderado: int) -> tuple[bool, str]:
-    apoderados = estudiante_apoderado_repository.obtener_por_estudiante(id_estudiante)
-    for ap in apoderados:
-        if ap["id_apoderado"] == id_apoderado and ap["es_principal"]:
-            return False, "No se puede desasociar el apoderado principal"
+def asociar_apoderado(id_estudiante: int, id_apoderado: int,
+                      es_principal: bool = False, id_usuario: int = 1) -> tuple[bool, str]:
+    return apoderado_service.asociar_a_estudiante(
+        id_estudiante, id_apoderado, es_principal, id_usuario
+    )
 
-    estudiante_apoderado_repository.eliminar(id_estudiante, id_apoderado)
-    return True, "Apoderado desasociado correctamente"
+
+def desasociar_apoderado(id_estudiante: int, id_apoderado: int,
+                         id_usuario: int = 1) -> tuple[bool, str]:
+    return apoderado_service.desasociar_de_estudiante(id_estudiante, id_apoderado)
 
 
 def listar_estudiantes(activo: int | None = None, estado: str | None = None) -> list[dict]:

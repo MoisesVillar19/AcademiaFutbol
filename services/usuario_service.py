@@ -34,7 +34,7 @@ def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, st
             return False, "El DNI ya está registrado", None
         id_persona = persona_repository.insertar(persona)
 
-    temp_password = "usuario"
+    temp_password = generate_temp_password()
     usuario = Usuario(
         id_persona=id_persona,
         username=username,
@@ -168,7 +168,7 @@ def restablecer_password(id_usuario: int) -> tuple[bool, str, str]:
     if not usuario:
         return False, "Usuario no encontrado", ""
 
-    temp_password = "usuario"
+    temp_password = generate_temp_password()
     usuario_repository.cambiar_password(id_usuario, hash_password(temp_password))
 
     auditoria_service.registrar_log(

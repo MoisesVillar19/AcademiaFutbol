@@ -1,12 +1,10 @@
-from services import matricula_service, tarifa_service, beca_service, cuota_service, auth_service
+from services import matricula_service, tarifa_service, beca_service, cuota_service, categoria_service, auth_service
 from utils.validators import validate_not_empty
 from utils.dates import calculate_age
-from database.connection import fetch_one
 
 
 def _get_id_usuario() -> int:
-    usuario = auth_service.obtener_usuario_actual()
-    return usuario["id_usuario"] if usuario else 1
+    return auth_service.id_usuario_sesion()
 
 
 def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
@@ -80,10 +78,7 @@ def obtener_tarifa_sugerida_por_edad(fecha_nacimiento: str) -> int | None:
     edad = calculate_age(fecha_nacimiento)
     if edad <= 0:
         return None
-    cat = fetch_one(
-        "SELECT id_categoria FROM categoria WHERE ? BETWEEN edad_min AND edad_max AND activo = 1",
-        (edad,)
-    )
+    cat = categoria_service.obtener_categoria_por_edad(edad)
     if not cat:
         return None
     tarifas = tarifa_service.listar_tarifas_activas()

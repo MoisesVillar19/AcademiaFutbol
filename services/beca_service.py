@@ -53,6 +53,14 @@ def editar_beca(id_beca: int, data: dict) -> tuple[bool, str]:
     )
     beca_repository.actualizar(beca_obj)
 
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="beca",
+        id_registro=id_beca,
+        valores_anteriores=f"nombre={beca['nombre']}, tipo={beca['tipo']}, valor={beca['valor']}",
+        valores_nuevos=f"nombre={beca_obj.nombre}, tipo={beca_obj.tipo}, valor={beca_obj.valor}",
+    )
+
     return True, "Beca actualizada correctamente"
 
 

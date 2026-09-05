@@ -1,10 +1,9 @@
-from services import persona_service, auth_service
+﻿from services import persona_service, auth_service
 from utils.validators import validate_documento, validate_not_empty, validate_sex, validate_email
 
 
 def _get_id_usuario() -> int:
-    usuario = auth_service.obtener_usuario_actual()
-    return usuario["id_usuario"] if usuario else 1
+    return auth_service.id_usuario_sesion()
 
 
 def crear_persona(data: dict) -> tuple[bool, str, int | None]:

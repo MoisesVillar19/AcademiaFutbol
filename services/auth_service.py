@@ -33,7 +33,6 @@ def login(username: str, password: str) -> dict | None:
         "nombres": persona["nombres"] if persona else "",
         "apellidos": persona["apellidos"] if persona else "",
         "dni": persona["dni"] if persona else "",
-        "password_hash": usuario["password_hash"],
     }
 
     auditoria_service.registrar_log(
@@ -58,6 +57,11 @@ def obtener_usuario_actual() -> dict | None:
     return _usuario_actual
 
 
+def id_usuario_sesion() -> int:
+    """Retorna el id del usuario en sesion, o 1 (admin seed) si no hay sesion."""
+    return _usuario_actual["id_usuario"] if _usuario_actual else 1
+
+
 def esta_logueado() -> bool:
     return _usuario_actual is not None
 
@@ -70,14 +74,57 @@ def requiere_cambio_password() -> bool:
     if not _usuario_actual:
         return False
     from utils.constants import DEFAULT_ADMIN_PASS
-    return verify_password(DEFAULT_ADMIN_PASS, _usuario_actual["password_hash"])
+    usuario = usuario_repository.obtener_por_id(_usuario_actual["id_usuario"])
+    if not usuario:
+        return False
+    return verify_password(DEFAULT_ADMIN_PASS, usuario["password_hash"])
+
+
+def restablecer_password_con_pin(pin_emergencia: str, username: str,
+                                 nueva_password: str) -> tuple[bool, str]:
+    """Restablece la contrasena de un usuario validando el PIN de emergencia.
+
+    El PIN se valida contra su hash almacenado en CONFIGURACION.pin_emergencia;
+    nunca se compara texto plano en el codigo.
+    """
+    from services import configuracion_service
+
+    if not pin_emergencia:
+        return False, "Ingrese el PIN de emergencia"
+    if len(nueva_password) < 6:
+        return False, "La nueva contraseña debe tener al menos 6 caracteres"
+
+    pin_hash = configuracion_service.obtener_valor("pin_emergencia")
+    if not pin_hash or not verify_password(pin_emergencia, pin_hash):
+        logger.warning(f"Intento de restablecimiento con PIN incorrecto (usuario: '{username}')")
+        return False, "PIN de emergencia incorrecto"
+
+    usuario = usuario_repository.obtener_por_username(username)
+    if not usuario:
+        return False, "Usuario no encontrado"
+    if usuario["activo"] == 0:
+        return False, "El usuario está desactivado"
+
+    usuario_repository.cambiar_password(usuario["id_usuario"], hash_password(nueva_password))
+
+    auditoria_service.registrar_log(
+        id_usuario=usuario["id_usuario"],
+        tabla_afectada="usuario",
+        id_registro=usuario["id_usuario"],
+        accion="RESTABLECER_PASSWORD_EMERGENCIA",
+        valor_nuevo=f"username={username}",
+    )
+
+    logger.warning(f"Contraseña restablecida vía PIN de emergencia: '{username}'")
+    return True, "Contraseña restablecida correctamente"
 
 
 def cambiar_password(password_actual: str, password_nuevo: str) -> tuple[bool, str]:
     if not _usuario_actual:
         return False, "No hay sesión activa"
 
-    if not verify_password(password_actual, _usuario_actual["password_hash"]):
+    usuario = usuario_repository.obtener_por_id(_usuario_actual["id_usuario"])
+    if not usuario or not verify_password(password_actual, usuario["password_hash"]):
         return False, "La contraseña actual es incorrecta"
 
     if len(password_nuevo) < 6:
@@ -88,8 +135,6 @@ def cambiar_password(password_actual: str, password_nuevo: str) -> tuple[bool, s
 
     nuevo_hash = hash_password(password_nuevo)
     usuario_repository.cambiar_password(_usuario_actual["id_usuario"], nuevo_hash)
-
-    _usuario_actual["password_hash"] = nuevo_hash
 
     auditoria_service.registrar_log(
         id_usuario=_usuario_actual["id_usuario"],

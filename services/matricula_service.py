@@ -1,6 +1,8 @@
 from repositories import matricula_repository, matricula_beca_repository, estudiante_repository
 from models.matricula import Matricula
 from services import auditoria_service, cuota_service, beca_service
+from database.connection import transaccion
+from utils.constants import STATUS_ACTIVO, STATUS_REINGRESANTE
 from utils.dates import get_today
 from utils.logger import logger
 
@@ -26,22 +28,28 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
     monto_pactado = data.get("monto_pactado")
     dia_vencimiento = data.get("dia_vencimiento", 1)
 
+    becas_asignadas = data.get("becas", [])
+    if len(becas_asignadas) > 1:
+        from services import configuracion_service
+        if not configuracion_service.permite_multiples_becas():
+            return False, "La configuración actual no permite múltiples becas por matrícula", None
+
     matricula = Matricula(
         id_estudiante=id_estudiante,
         id_tarifa=id_tarifa,
         monto_pactado=monto_pactado,
         fecha_inicio=data.get("fecha_inicio", get_today()),
         dia_vencimiento=dia_vencimiento,
-        estado="ACTIVO",
+        estado=STATUS_ACTIVO,
     )
-    id_matricula = matricula_repository.insertar(matricula)
 
     from repositories import tarifa_repository
     tarifa_data = tarifa_repository.obtener_por_id(id_tarifa)
-    monto_base = monto_pactado if monto_pactado else tarifa_data["monto"]
+    monto_base = monto_pactado if monto_pactado is not None else tarifa_data["monto"]
 
-    becas_asignadas = data.get("becas", [])
-    if becas_asignadas:
+    with transaccion():
+        id_matricula = matricula_repository.insertar(matricula)
+
         for beca_info in becas_asignadas:
             id_beca = beca_info.get("id_beca")
             beca_data = beca_service.obtener_beca(id_beca)
@@ -58,22 +66,23 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
                     observacion=beca_info.get("observacion", ""),
                 )
 
-    cuota_service.generar_siguiente_cuota(
-        id_matricula=id_matricula,
-        monto_base=monto_base,
-        dia_vencimiento=dia_vencimiento,
-    )
+        monto_base = round(max(monto_base, 0), 2)
 
-    if estudiante["estado"] == "REINGRESANTE":
-        from repositories import estudiante_repository as er
-        er.cambiar_estado(id_estudiante, "ACTIVO")
+        cuota_service.generar_siguiente_cuota(
+            id_matricula=id_matricula,
+            monto_base=monto_base,
+            dia_vencimiento=dia_vencimiento,
+        )
 
-    auditoria_service.registrar_insert(
-        id_usuario=id_usuario,
-        tabla="matricula",
-        id_registro=id_matricula,
-        valores_nuevos=f"id_estudiante={id_estudiante}, id_tarifa={id_tarifa}, monto={monto_base}",
-    )
+        if estudiante["estado"] == STATUS_REINGRESANTE:
+            estudiante_repository.cambiar_estado(id_estudiante, STATUS_ACTIVO)
+
+        auditoria_service.registrar_insert(
+            id_usuario=id_usuario,
+            tabla="matricula",
+            id_registro=id_matricula,
+            valores_nuevos=f"id_estudiante={id_estudiante}, id_tarifa={id_tarifa}, monto={monto_base}",
+        )
 
     logger.info(f"Matrícula creada: ID={id_matricula}, estudiante={id_estudiante}")
     return True, "Matrícula registrada correctamente", id_matricula
@@ -97,12 +106,38 @@ def asignar_beca(id_matricula: int, id_beca: int,
     if not beca:
         return False, "Beca no encontrada"
 
+    actuales = [
+        b for b in matricula_beca_repository.obtener_por_matricula(id_matricula)
+        if b.get("activo", 1)
+    ]
+    if actuales:
+        from services import configuracion_service
+        if not configuracion_service.permite_multiples_becas():
+            return False, "La configuración actual no permite múltiples becas por matrícula"
+
     matricula_beca_repository.insertar(id_matricula, id_beca, observacion)
+
+    auditoria_service.registrar_insert(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="matricula_beca",
+        id_registro=id_matricula,
+        valores_nuevos=f"id_beca={id_beca}, observacion={observacion}",
+    )
+
     return True, "Beca asignada correctamente"
 
 
 def desasignar_beca(id_matricula: int, id_beca: int) -> tuple[bool, str]:
     matricula_beca_repository.eliminar(id_matricula, id_beca)
+
+    auditoria_service.registrar_desactivacion(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="matricula_beca",
+        id_registro=id_matricula,
+        valores_anteriores=f"id_beca={id_beca}, activo=1",
+        valores_nuevos="activo=0",
+    )
+
     return True, "Beca desasignada correctamente"
 
 

@@ -2,6 +2,12 @@ from repositories import log_repository
 from utils.logger import logger
 
 
+def id_usuario_sesion() -> int:
+    """Retorna el id del usuario en sesion, o 1 (admin seed) si no hay sesion."""
+    from services import auth_service
+    return auth_service.id_usuario_sesion()
+
+
 def registrar_log(id_usuario: int, tabla_afectada: str, id_registro: int,
                   accion: str, valor_anterior: str = "", valor_nuevo: str = "") -> int:
     try:

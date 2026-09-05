@@ -196,6 +196,7 @@ class App(ctk.CTk):
             botones_data.append(("🏷️  Tarifas",      self._mostrar_tarifas))
             botones_data.append(("📝  Auditoría",     self._mostrar_auditoria))
             botones_data.append(("⚙️  Configuración", self._mostrar_configuracion))
+            botones_data.append(("💾  Respaldo",      self._crear_backup_manual))
 
         for text, command in botones_data:
             btn = ctk.CTkButton(
@@ -227,6 +228,32 @@ class App(ctk.CTk):
         self.contenido.pack(side="right", fill="both", expand=True)
 
         self._mostrar_placeholder()
+        self.after(5000, self._verificar_backup_automatico)
+
+    def _crear_backup_manual(self):
+        from tkinter import messagebox
+        from controllers import configuracion_controller
+        exito, msg, ruta = configuracion_controller.crear_backup_manual()
+        if exito:
+            messagebox.showinfo("Respaldo", f"{msg}\n\n{ruta}")
+        else:
+            messagebox.showerror("Respaldo", msg)
+
+    def _verificar_backup_automatico(self):
+        """RN-030: respaldo automatico segun CONFIGURACION; revisa cada 6 horas."""
+        try:
+            from controllers import configuracion_controller
+            exito, msg = configuracion_controller.verificar_backup_automatico()
+            if exito:
+                from tkinter import messagebox
+                messagebox.showinfo("Respaldo automático", msg)
+        except Exception as e:
+            from utils.logger import logger
+            logger.error(f"Error en backup automático: {e}")
+        try:
+            self.after(6 * 3600 * 1000, self._verificar_backup_automatico)
+        except Exception:
+            pass
 
     def _on_menu_click(self, command, label):
         for text, btn in self._sidebar_botones:

@@ -2,6 +2,7 @@ from repositories import apoderado_repository, persona_repository, estudiante_ap
 from models.apoderado import Apoderado
 from models.persona import Persona
 from services import auditoria_service
+from database.connection import transaccion
 from utils.logger import logger
 
 
@@ -25,34 +26,40 @@ def crear_apoderado(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
         if not nombres or not apellidos:
             return False, "Nombres y apellidos son obligatorios para nueva persona", None
 
-        persona_obj = Persona(
-            dni=dni,
-            tipo_documento=data.get("tipo_documento", "DNI"),
-            nombres=nombres,
-            apellidos=apellidos,
-            fecha_nacimiento=data.get("fecha_nacimiento", ""),
-            sexo=data.get("sexo", ""),
-            direccion=data.get("direccion", ""),
-            telefono=data.get("telefono", ""),
-            correo=data.get("correo", ""),
-        )
-        id_persona = persona_repository.insertar(persona_obj)
-
     apoderado = Apoderado(
-        id_persona=id_persona,
+        id_persona=0,
         parentesco=parentesco,
         ocupacion=data.get("ocupacion", ""),
         telefono=data.get("telefono", ""),
         direccion=data.get("direccion", ""),
     )
-    id_apoderado = apoderado_repository.insertar(apoderado)
 
-    auditoria_service.registrar_insert(
-        id_usuario=id_usuario,
-        tabla="apoderado",
-        id_registro=id_apoderado,
-        valores_nuevos=f"dni={dni}, parentesco={parentesco}",
-    )
+    with transaccion():
+        if persona:
+            id_persona = persona["id_persona"]
+        else:
+            persona_obj = Persona(
+                dni=dni,
+                tipo_documento=data.get("tipo_documento", "DNI"),
+                nombres=data.get("nombres", ""),
+                apellidos=data.get("apellidos", ""),
+                fecha_nacimiento=data.get("fecha_nacimiento", ""),
+                sexo=data.get("sexo", ""),
+                direccion=data.get("direccion", ""),
+                telefono=data.get("telefono", ""),
+                correo=data.get("correo", ""),
+            )
+            id_persona = persona_repository.insertar(persona_obj)
+
+        apoderado.id_persona = id_persona
+        id_apoderado = apoderado_repository.insertar(apoderado)
+
+        auditoria_service.registrar_insert(
+            id_usuario=id_usuario,
+            tabla="apoderado",
+            id_registro=id_apoderado,
+            valores_nuevos=f"dni={dni}, parentesco={parentesco}",
+        )
 
     logger.info(f"Apoderado creado: DNI={dni}")
     return True, "Apoderado registrado correctamente", id_apoderado
@@ -62,9 +69,6 @@ def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
     apoderado = apoderado_repository.obtener_por_id(id_apoderado)
     if not apoderado:
         return False, "Apoderado no encontrado"
-
-    from repositories import persona_repository
-    from models.persona import Persona
 
     persona_actual = persona_repository.obtener_por_id(apoderado["id_persona"])
     if persona_actual:
@@ -87,11 +91,22 @@ def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:
     apoderado_obj = Apoderado(
         id_apoderado=id_apoderado,
         id_persona=apoderado["id_persona"],
+        tipo_documento=data.get("tipo_documento", apoderado.get("tipo_documento", "DNI")),
         parentesco=parentesco,
-        ocupacion=data.get("ocupacion", apoderado["occupacion"] if apoderado.get("occupacion") else apoderado.get("ocupacion", "")),
+        ocupacion=data.get("ocupacion", apoderado.get("ocupacion", "")),
+        telefono=data.get("telefono", apoderado.get("telefono", "")),
+        direccion=data.get("direccion", apoderado.get("direccion", "")),
         activo=apoderado["activo"],
     )
     apoderado_repository.actualizar(apoderado_obj)
+
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="apoderado",
+        id_registro=id_apoderado,
+        valores_anteriores=f"parentesco={apoderado['parentesco']}, telefono={apoderado.get('telefono', '')}",
+        valores_nuevos=f"parentesco={parentesco}, telefono={apoderado_obj.telefono}",
+    )
 
     logger.info(f"Apoderado actualizado: id={id_apoderado}")
     return True, "Apoderado actualizado correctamente"
@@ -121,7 +136,8 @@ def asociar_a_estudiante(id_estudiante: int, id_apoderado: int,
     return True, "Apoderado asociado correctamente"
 
 
-def desasociar_de_estudiante(id_estudiante: int, id_apoderado: int) -> tuple[bool, str]:
+def desasociar_de_estudiante(id_estudiante: int, id_apoderado: int,
+                             id_usuario: int = 1) -> tuple[bool, str]:
     if estudiante_apoderado_repository.tiene_principal(id_estudiante):
         apoderados = estudiante_apoderado_repository.obtener_por_estudiante(id_estudiante)
         for ap in apoderados:
@@ -129,6 +145,15 @@ def desasociar_de_estudiante(id_estudiante: int, id_apoderado: int) -> tuple[boo
                 return False, "No se puede desasociar el apoderado principal"
 
     estudiante_apoderado_repository.eliminar(id_estudiante, id_apoderado)
+
+    auditoria_service.registrar_desactivacion(
+        id_usuario=id_usuario or auditoria_service.id_usuario_sesion(),
+        tabla="estudiante_apoderado",
+        id_registro=id_estudiante,
+        valores_anteriores=f"id_apoderado={id_apoderado}, activo=1",
+        valores_nuevos="activo=0",
+    )
+
     return True, "Apoderado desasociado correctamente"
 
 

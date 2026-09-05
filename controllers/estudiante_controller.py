@@ -4,8 +4,7 @@ from utils.validators import (validate_documento, validate_not_empty, validate_s
 
 
 def _get_id_usuario() -> int:
-    usuario = auth_service.obtener_usuario_actual()
-    return usuario["id_usuario"] if usuario else 1
+    return auth_service.id_usuario_sesion()
 
 
 def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
@@ -56,6 +55,10 @@ def registrar_retiro(id_estudiante: int) -> tuple[bool, str]:
 
 def registrar_reingreso(id_estudiante: int) -> tuple[bool, str]:
     return estudiante_service.registrar_reingreso(id_estudiante, id_usuario=_get_id_usuario())
+
+
+def desactivar_estudiante(id_estudiante: int) -> tuple[bool, str]:
+    return estudiante_service.desactivar_estudiante(id_estudiante, id_usuario=_get_id_usuario())
 
 
 def asociar_apoderado(id_estudiante: int, id_apoderado: int,

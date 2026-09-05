@@ -7,7 +7,8 @@ class AuditoriaView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         self._crear_widgets()
-        self._cargar_logs()
+        if hasattr(self, "tabla_frame"):
+            self._cargar_logs()
 
     def _crear_widgets(self):
         if not auditoria_controller.puede_acceder_auditoria():

@@ -76,6 +76,11 @@ CATEGORIA_PRODUCTO_INICIAL = [
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
 
+# Credencial inicial documentada (igual que DEFAULT_ADMIN_PASS).
+# Se guarda hasheada (bcrypt) en CONFIGURACION.pin_emergencia; el codigo
+# nunca la compara en texto plano.
+PIN_EMERGENCIA_DEFECTO = "roncalli2026"
+
 
 # ── Detección de OneDrive ──────────────────────────────────────
 def detectar_onedrive() -> str | None:

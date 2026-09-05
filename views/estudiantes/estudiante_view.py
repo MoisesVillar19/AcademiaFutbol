@@ -504,8 +504,9 @@ class EstudianteView(ctk.CTkFrame):
             "Esta acción es reversible contactando al administrador.",
         )
         if respuesta:
-            from repositories import estudiante_repository
-            estudiante_repository.soft_delete(est["id_estudiante"])
+            exito, msg = estudiante_controller.desactivar_estudiante(est["id_estudiante"])
+            if not exito:
+                messagebox.showwarning("Desactivar estudiante", msg)
             self._cargar_estudiantes()
             self._cargar_combo_estudiantes()
 

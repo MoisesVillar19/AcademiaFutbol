@@ -2,11 +2,15 @@ import re
 
 
 def generate_receipt_number() -> str:
+    """Genera un numero de recibo unico: timestamp con microsegundos + aleatorio.
+
+    Los microsegundos evitan colisiones entre pagos registrados en el mismo segundo.
+    """
     from datetime import datetime
     import random
     now = datetime.now()
-    rand = random.randint(10, 99)
-    return now.strftime("R%Y%m%d%H%M%S") + str(rand)
+    rand = random.randint(100, 999)
+    return now.strftime("R%Y%m%d%H%M%S") + f"{now.microsecond // 1000:03d}" + str(rand)
 
 
 def generate_product_code() -> str:

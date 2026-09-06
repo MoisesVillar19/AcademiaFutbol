@@ -270,6 +270,8 @@ class ConfiguracionView(ctk.CTkFrame):
         label_status.pack(padx=15, pady=5)
 
         def guardar():
+            label_status.configure(text="⏳ Guardando...", text_color="#7C3AED")
+            dialog.update()
             nombre = entry_nombre.get().strip()
             edad_min = entry_min.get().strip()
             edad_max = entry_max.get().strip()
@@ -280,12 +282,16 @@ class ConfiguracionView(ctk.CTkFrame):
                 "edad_max": edad_max,
             })
             if exito:
-                dialog.destroy()
-                self._cargar_configuracion()
+                label_status.configure(text="✅ Se guardó correctamente", text_color="green")
+                dialog.after(400, dialog.destroy)
+                self.after(500, self._cargar_configuracion)
             else:
-                label_status.configure(text=msg, text_color="red")
+                label_status.configure(text=f"❌ {msg}", text_color="red")
 
-        ctk.CTkButton(dialog, text="Guardar", width=120, command=guardar).pack(pady=10)
+        btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_row.pack(pady=10)
+        ctk.CTkButton(btn_row, text="Cancelar", width=100, fg_color="gray", command=dialog.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(btn_row, text="Guardar", width=120, command=guardar).pack(side="left", padx=5)
 
     def _editar_categoria(self, cat):
         dialog = ctk.CTkToplevel(self)
@@ -313,18 +319,24 @@ class ConfiguracionView(ctk.CTkFrame):
         label_status.pack(padx=15, pady=5)
 
         def guardar():
+            label_status.configure(text="⏳ Guardando...", text_color="#7C3AED")
+            dialog.update()
             exito, msg = categoria_controller.editar_categoria(cat["id_categoria"], {
                 "nombre": entry_nombre.get().strip(),
                 "edad_min": entry_min.get().strip(),
                 "edad_max": entry_max.get().strip(),
             })
             if exito:
-                dialog.destroy()
-                self._cargar_configuracion()
+                label_status.configure(text="✅ Se guardó correctamente", text_color="green")
+                dialog.after(400, dialog.destroy)
+                self.after(500, self._cargar_configuracion)
             else:
-                label_status.configure(text=msg, text_color="red")
+                label_status.configure(text=f"❌ {msg}", text_color="red")
 
-        ctk.CTkButton(dialog, text="Guardar", width=120, command=guardar).pack(pady=10)
+        btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_row.pack(pady=10)
+        ctk.CTkButton(btn_row, text="Cancelar", width=100, fg_color="gray", command=dialog.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(btn_row, text="Guardar", width=120, command=guardar).pack(side="left", padx=5)
 
     def _desactivar_categoria(self, cat):
         confirm = messagebox.askyesno(

@@ -106,6 +106,21 @@ def editar_estudiante(id_estudiante: int, data: dict) -> tuple[bool, str]:
             valores_nuevos=f"dni={dni}, nombres={persona_obj.nombres}, apellidos={persona_obj.apellidos}",
         )
 
+    # RN-041: actualizar foto si se envía (flexible, opcional)
+    foto_path = data.get("foto_path")
+    if foto_path:
+        try:
+            estudiante_repository.actualizar_foto(id_estudiante, foto_path)
+            auditoria_service.registrar_update(
+                id_usuario=auditoria_service.id_usuario_sesion(),
+                tabla="estudiante",
+                id_registro=id_estudiante,
+                valores_anteriores=f"foto_path={estudiante.get('foto_path','')}",
+                valores_nuevos=f"foto_path={foto_path}",
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo actualizar foto: {e}")
+
     return True, "Estudiante actualizado correctamente"
 
 

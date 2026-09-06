@@ -177,42 +177,54 @@ class App(ctk.CTk):
         # Separador
         ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(fill="x", padx=15, pady=5)
 
-        # Botones del menú
+        # ── Menú agrupado (5 grupos) ───────────────────────────────
         self._boton_activo = None
         self._sidebar_botones = []
 
-        botones_data = [
-            ("📊  Dashboard",   self._mostrar_placeholder),
-            ("👤  Estudiantes", self._mostrar_estudiantes),
-            ("📋  Matrículas",  self._mostrar_matriculas),
-            ("💰  Pagos",       self._mostrar_pagos),
-            ("🛒  Ventas",      self._mostrar_ventas),
-            ("📦  Inventario",  self._mostrar_inventario),
-            ("📈  Reportes",    self._mostrar_reportes),
-        ]
+        def _header(text):
+            # Header no clicable, separa grupos
+            lbl = ctk.CTkLabel(sidebar, text=text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#8899aa", anchor="w")
+            lbl.pack(fill="x", padx=12, pady=(8, 2))
 
-        # Ventas disponible para ambos roles (flexible); Egresos solo ADMIN
-        if login_controller.es_admin():
-            botones_data.append(("💸  Egresos",     self._mostrar_egresos))
-            botones_data.append(("📤  Importar",    self._mostrar_importar))
-            botones_data.append(("🔑  Usuarios",      self._mostrar_usuarios))
-            botones_data.append(("🏷️  Tarifas",      self._mostrar_tarifas))
-            botones_data.append(("📝  Auditoría",     self._mostrar_auditoria))
-            botones_data.append(("⚙️  Configuración", self._mostrar_configuracion))
-            botones_data.append(("💾  Respaldo",      self._crear_backup_manual))
-
-        for text, command in botones_data:
+        def _btn(text, cmd, indent=False):
+            w = 196 if not indent else 184
+            pad = 12 if not indent else 24
             btn = ctk.CTkButton(
-                sidebar, text=text, width=196, height=38,
+                sidebar, text=text, width=w, height=36,
                 fg_color="transparent", anchor="w",
-                font=ctk.CTkFont(size=13),
-                text_color="#c0c8d4",
+                font=ctk.CTkFont(size=13 if not indent else 12),
+                text_color="#c0c8d4" if not indent else "#a0aec0",
                 hover_color=COLOR_SIDEBAR_HOVER,
                 corner_radius=8,
-                command=lambda c=command, b=text: self._on_menu_click(c, b),
+                command=lambda c=cmd, b=text: self._on_menu_click(c, b),
             )
-            btn.pack(pady=2, padx=12)
+            btn.pack(pady=1, padx=pad)
             self._sidebar_botones.append((text, btn))
+            return btn
+
+        _header("PANEL")
+        _btn("📊  Dashboard", self._mostrar_placeholder)
+        _header("ACADEMIA")
+        _btn("👤  Estudiantes", self._mostrar_estudiantes, indent=True)
+        _btn("📋  Matrículas", self._mostrar_matriculas, indent=True)
+        _header("FINANZAS")
+        _btn("💰  Pagos", self._mostrar_pagos, indent=True)
+        _btn("🛒  Ventas", self._mostrar_ventas, indent=True)
+        if login_controller.es_admin():
+            _btn("💸  Egresos", self._mostrar_egresos, indent=True)
+        _header("ALMACÉN")
+        _btn("📦  Inventario", self._mostrar_inventario, indent=True)
+        _header("ANÁLISIS")
+        _btn("📈  Reportes", self._mostrar_reportes, indent=True)
+
+        if login_controller.es_admin():
+            _header("SISTEMA")
+            _btn("📤  Importar", self._mostrar_importar, indent=True)
+            _btn("🔑  Usuarios", self._mostrar_usuarios, indent=True)
+            _btn("🏷️  Tarifas", self._mostrar_tarifas, indent=True)
+            _btn("📝  Auditoría", self._mostrar_auditoria, indent=True)
+            _btn("⚙️  Configuración", self._mostrar_configuracion, indent=True)
+            _btn("💾  Respaldo", self._crear_backup_manual, indent=True)
 
         # Botón cerrar sesión
         ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(

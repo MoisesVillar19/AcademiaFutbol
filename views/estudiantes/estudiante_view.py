@@ -271,8 +271,30 @@ class EstudianteView(ctk.CTkFrame):
             info, text=f"DNI: {est.get('dni', '')}  |  Estado: {estado}",
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
-        if est.get("foto_path"):
-            ctk.CTkLabel(info, text=f"Foto: {os.path.basename(est['foto_path'])}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+        # Mostrar foto thumbnail si existe (RN-041)
+        foto_path = est.get("foto_path")
+        if foto_path and os.path.isfile(foto_path) and Image:
+            try:
+                img = Image.open(foto_path)
+                img.thumbnail((60, 60))
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(60, 60))
+                # guardar referencia para no ser GC
+                if not hasattr(self, "_fotos_cache"):
+                    self._fotos_cache = {}
+                self._fotos_cache[est["id_estudiante"]] = ctk_img
+                lbl = ctk.CTkLabel(info, image=ctk_img, text="")
+                lbl.pack(anchor="w", pady=2)
+                # click para ampliar
+                def _abrir(path=foto_path):
+                    try:
+                        os.startfile(path)
+                    except Exception:
+                        pass
+                lbl.bind("<Button-1>", lambda e, p=foto_path: _abrir(p))
+            except Exception:
+                ctk.CTkLabel(info, text=f"Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+        elif foto_path:
+            ctk.CTkLabel(info, text=f"Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
 
         botones = ctk.CTkFrame(card, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)

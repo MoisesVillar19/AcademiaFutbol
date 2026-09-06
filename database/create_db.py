@@ -189,6 +189,10 @@ CREATE TABLE IF NOT EXISTS movimiento_inventario (
     stock_nuevo INTEGER NOT NULL,
     fecha_movimiento TEXT NOT NULL,
     motivo TEXT,
+    id_variante INTEGER REFERENCES producto_variante(id_variante),
+    id_almacen INTEGER REFERENCES almacen(id_almacen),
+    id_caja INTEGER REFERENCES caja(id_caja),
+    id_lote INTEGER REFERENCES lote(id_lote),
     FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 );
@@ -198,6 +202,69 @@ CREATE TABLE IF NOT EXISTS tipo_uniforme (
     nombre TEXT UNIQUE NOT NULL,
     descripcion TEXT,
     activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS talla (
+    id_talla INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT UNIQUE NOT NULL,
+    descripcion TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS almacen (
+    id_almacen INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    direccion TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS caja (
+    id_caja INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_almacen INTEGER NOT NULL REFERENCES almacen(id_almacen),
+    nombre TEXT NOT NULL,
+    responsable TEXT,
+    activo INTEGER DEFAULT 1,
+    UNIQUE(id_almacen, nombre)
+);
+
+CREATE TABLE IF NOT EXISTS proveedor (
+    id_proveedor INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    telefono TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS producto_variante (
+    id_variante INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
+    id_talla INTEGER REFERENCES talla(id_talla),
+    sku TEXT UNIQUE NOT NULL,
+    codigo_barras TEXT,
+    stock_minimo INTEGER DEFAULT 0,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS stock_almacen (
+    id_stock INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
+    id_variante INTEGER REFERENCES producto_variante(id_variante),
+    id_almacen INTEGER NOT NULL REFERENCES almacen(id_almacen),
+    id_caja INTEGER REFERENCES caja(id_caja),
+    stock INTEGER DEFAULT 0,
+    UNIQUE(id_producto, id_variante, id_almacen, id_caja)
+);
+
+CREATE TABLE IF NOT EXISTS lote (
+    id_lote INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
+    id_variante INTEGER REFERENCES producto_variante(id_variante),
+    id_almacen INTEGER NOT NULL REFERENCES almacen(id_almacen),
+    codigo_lote TEXT,
+    fecha_ingreso TEXT,
+    fecha_caducidad TEXT,
+    id_proveedor INTEGER REFERENCES proveedor(id_proveedor),
+    cantidad INTEGER NOT NULL,
+    stock_restante INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS venta (
@@ -210,6 +277,8 @@ CREATE TABLE IF NOT EXISTS venta (
     tipo_venta TEXT NOT NULL CHECK(tipo_venta IN ('UNIFORME', 'TIENDA', 'CAMPEONATO', 'INSCRIPCION')),
     numero_recibo TEXT UNIQUE NOT NULL,
     comprobante_path TEXT,
+    id_almacen INTEGER REFERENCES almacen(id_almacen),
+    id_caja INTEGER REFERENCES caja(id_caja),
     activo INTEGER DEFAULT 1
 );
 
@@ -219,7 +288,9 @@ CREATE TABLE IF NOT EXISTS detalle_venta (
     id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
     cantidad INTEGER NOT NULL CHECK(cantidad > 0),
     precio_unitario REAL NOT NULL,
-    subtotal REAL NOT NULL
+    subtotal REAL NOT NULL,
+    id_variante INTEGER REFERENCES producto_variante(id_variante),
+    id_lote INTEGER REFERENCES lote(id_lote)
 );
 
 CREATE TABLE IF NOT EXISTS egreso (
@@ -288,6 +359,10 @@ CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_venta);
 CREATE INDEX IF NOT EXISTS idx_detalle_venta_venta ON detalle_venta(id_venta);
 CREATE INDEX IF NOT EXISTS idx_egreso_fecha ON egreso(fecha);
 CREATE INDEX IF NOT EXISTS idx_tipo_uniforme_nombre ON tipo_uniforme(nombre);
+CREATE INDEX IF NOT EXISTS idx_talla_codigo ON talla(codigo);
+CREATE INDEX IF NOT EXISTS idx_producto_variante_sku ON producto_variante(sku);
+CREATE INDEX IF NOT EXISTS idx_stock_almacen_producto ON stock_almacen(id_producto);
+CREATE INDEX IF NOT EXISTS idx_lote_caducidad ON lote(fecha_caducidad);
 """
 
 
@@ -341,6 +416,52 @@ def _migrar_columnas_faltantes(cursor) -> None:
     columnas_egreso = _obtener_columnas(cursor, "egreso")
     if "activo" not in columnas_egreso:
         cursor.execute("ALTER TABLE egreso ADD COLUMN activo INTEGER DEFAULT 1")
+
+    # v2 escalable: nuevas columnas para multi-almacén/variante/lote (si tabla ya existe)
+    try:
+        cols_mov = _obtener_columnas(cursor, "movimiento_inventario")
+        for col, sql in [
+            ("id_variante", "ALTER TABLE movimiento_inventario ADD COLUMN id_variante INTEGER REFERENCES producto_variante(id_variante)"),
+            ("id_almacen", "ALTER TABLE movimiento_inventario ADD COLUMN id_almacen INTEGER REFERENCES almacen(id_almacen)"),
+            ("id_caja", "ALTER TABLE movimiento_inventario ADD COLUMN id_caja INTEGER REFERENCES caja(id_caja)"),
+            ("id_lote", "ALTER TABLE movimiento_inventario ADD COLUMN id_lote INTEGER REFERENCES lote(id_lote)"),
+        ]:
+            if col not in cols_mov:
+                cursor.execute(sql)
+    except Exception:
+        pass
+
+    try:
+        cols_venta = _obtener_columnas(cursor, "venta")
+        for col, sql in [
+            ("id_almacen", "ALTER TABLE venta ADD COLUMN id_almacen INTEGER REFERENCES almacen(id_almacen)"),
+            ("id_caja", "ALTER TABLE venta ADD COLUMN id_caja INTEGER REFERENCES caja(id_caja)"),
+        ]:
+            if col not in cols_venta:
+                cursor.execute(sql)
+    except Exception:
+        pass
+
+    try:
+        cols_det = _obtener_columnas(cursor, "detalle_venta")
+        for col, sql in [
+            ("id_variante", "ALTER TABLE detalle_venta ADD COLUMN id_variante INTEGER REFERENCES producto_variante(id_variante)"),
+            ("id_lote", "ALTER TABLE detalle_venta ADD COLUMN id_lote INTEGER REFERENCES lote(id_lote)"),
+        ]:
+            if col not in cols_det:
+                cursor.execute(sql)
+    except Exception:
+        pass
+
+    # Índices escalables (si columnas ya existen)
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_movimiento_almacen ON movimiento_inventario(id_almacen, id_producto)")
+    except Exception:
+        pass
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_venta_almacen ON venta(id_almacen)")
+    except Exception:
+        pass
 
 
 def _obtener_columnas(cursor, tabla: str) -> list[str]:

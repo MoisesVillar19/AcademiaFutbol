@@ -12,4 +12,6 @@ class Venta:
     tipo_venta: str = "UNIFORME"
     numero_recibo: str = ""
     comprobante_path: str | None = None
+    id_almacen: int | None = None
+    id_caja: int | None = None
     activo: int = 1

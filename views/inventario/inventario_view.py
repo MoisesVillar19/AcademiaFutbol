@@ -201,6 +201,11 @@ class InventarioView(ctk.CTkFrame):
         self.combo_tipo_uniforme.pack(anchor="w", pady=(0, 5))
         self._tipos_uniforme_map = {}
 
+        ctk.CTkLabel(scroll, text="Talla (opcional, para uniformes)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
+        self.combo_talla = ctk.CTkComboBox(scroll, width=200, values=["UNICA", "S", "M", "L", "XL"])
+        self.combo_talla.set("UNICA")
+        self.combo_talla.pack(anchor="w", pady=(0, 5))
+
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
 
@@ -332,18 +337,20 @@ class InventarioView(ctk.CTkFrame):
         compra = prod.get('precio_compra', 0) or prod.get('precio', 0)
         venta = prod.get('precio_venta', 0) or prod.get('precio', 0)
         ganancia = venta - compra if venta and compra else 0
+        valorizado = (prod.get('stock_actual',0) or 0) * venta
         tipo_u = prod.get('tipo_uniforme_nombre') or prod.get('nombre_tipo_uniforme') or ''
         gan_txt = f" | Ganancia: S/{ganancia:.2f}" if ganancia else ""
+        valorizado_txt = f" | Valorizado: S/{valorizado:.2f}" if valorizado else ""
         ctk.CTkLabel(
             info,
             text=f"Categoría: {prod.get('categoria_nombre', '')} | "
-                 f"Tipo: {prod.get('tipo_uso', '')} | Compra: S/{compra:.2f} Venta: S/{venta:.2f}{gan_txt}" + (f" | Uniforme: {tipo_u}" if tipo_u else ""),
+                 f"Tipo: {prod.get('tipo_uso', '')} | Compra: S/{compra:.2f} Venta: S/{venta:.2f}{gan_txt}{valorizado_txt}" + (f" | Uniforme: {tipo_u}" if tipo_u else ""),
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             info,
-            text=f"Stock: {prod.get('stock_actual', 0)} | Mínimo: {prod.get('stock_minimo', 0)}",
+            text=f"Stock: {prod.get('stock_actual', 0)} | Mínimo: {prod.get('stock_minimo', 0)}" + (f" | Tallas: ver variantes" if prod.get('id_tipo_uniforme') else ""),
             font=ctk.CTkFont(size=12), text_color=stock_color,
         ).pack(anchor="w")
 
@@ -417,6 +424,10 @@ class InventarioView(ctk.CTkFrame):
         tipo_sel = self.combo_tipo_uniforme.get()
         if tipo_sel in self._tipos_uniforme_map:
             data["id_tipo_uniforme"] = self._tipos_uniforme_map[tipo_sel]
+        # talla escalable (S1)
+        talla_sel = self.combo_talla.get().strip() if hasattr(self, 'combo_talla') else "UNICA"
+        if talla_sel and talla_sel != "UNICA":
+            data["talla"] = talla_sel
 
         cat_selection = self.combo_categoria.get()
         if cat_selection in self._categorias_map:

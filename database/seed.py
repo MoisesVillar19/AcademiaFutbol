@@ -81,17 +81,50 @@ def seed_database() -> None:
         if not exists:
             conn.execute("INSERT INTO tipo_uniforme (nombre, descripcion) VALUES (?, ?)", (nombre, desc))
 
-    # Producto inicial: Camiseta Entrenamiento (RN-036)
+    # Tallas escalables (S1)
+    for codigo, desc in [("S","Small"),("M","Medium"),("L","Large"),("XL","Extra Large"),("UNICA","Talla única")]:
+        exists = fetch_one("SELECT id_talla FROM talla WHERE codigo = ?", (codigo,))
+        if not exists:
+            conn.execute("INSERT INTO talla (codigo, descripcion) VALUES (?, ?)", (codigo, desc))
+
+    # Almacén y Caja principal (S2, si solo 1 no se muestra)
+    exists_alm = fetch_one("SELECT id_almacen FROM almacen WHERE nombre = 'Principal'")
+    if not exists_alm:
+        conn.execute("INSERT INTO almacen (nombre, direccion) VALUES ('Principal', 'Sede principal')")
+        id_alm = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute("INSERT INTO caja (id_almacen, nombre, responsable) VALUES (?, 'Caja 1', 'Admin')", (id_alm,))
+
+    # Producto inicial: Camiseta Entrenamiento (RN-036) + stock escalable (incluso si producto ya existe)
     cat_dep = fetch_one("SELECT id_categoria_producto FROM categoria_producto WHERE nombre = 'INSUMO_DEPORTIVO'")
     if cat_dep:
         tipo_ent = fetch_one("SELECT id_tipo_uniforme FROM tipo_uniforme WHERE nombre = 'Uniforme Entrenamiento'")
         exists_prod = fetch_one("SELECT id_producto FROM producto WHERE codigo = 'CAMISETA-ENT'")
+        id_prod = None
         if not exists_prod and tipo_ent:
             conn.execute(
                 """INSERT INTO producto (id_categoria_producto, tipo_uso, codigo, nombre, stock_actual, stock_minimo, precio, precio_compra, precio_venta, id_tipo_uniforme)
                    VALUES (?, 'VENTA', 'CAMISETA-ENT', 'Camiseta Entrenamiento', 50, 5, 20, 8, 20, ?)""",
                 (cat_dep["id_categoria_producto"], tipo_ent["id_tipo_uniforme"]),
             )
+            id_prod = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        elif exists_prod:
+            id_prod = exists_prod["id_producto"]
+        # asegurar variantes y stock_almacen para producto existente (migración)
+        if id_prod:
+            alm = fetch_one("SELECT id_almacen FROM almacen WHERE nombre='Principal'")
+            if alm and not fetch_one("SELECT id_stock FROM stock_almacen WHERE id_producto=? AND id_almacen=? AND id_variante IS NULL", (id_prod, alm["id_almacen"])):
+                prod = fetch_one("SELECT stock_actual FROM producto WHERE id_producto=?", (id_prod,))
+                stock = prod["stock_actual"] if prod else 50
+                conn.execute("INSERT INTO stock_almacen (id_producto, id_almacen, stock) VALUES (?, ?, ?)", (id_prod, alm["id_almacen"], stock))
+            for talla_code in ["S","M","L"]:
+                t = fetch_one("SELECT id_talla FROM talla WHERE codigo=?", (talla_code,))
+                if t:
+                    sku = f"CAMISETA-ENT-{talla_code}"
+                    if not fetch_one("SELECT id_variante FROM producto_variante WHERE sku=?", (sku,)):
+                        conn.execute("INSERT INTO producto_variante (id_producto, id_talla, sku, stock_minimo) VALUES (?, ?, ?, 5)", (id_prod, t["id_talla"], sku))
+                        id_var = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                        if alm and not fetch_one("SELECT id_stock FROM stock_almacen WHERE id_variante=?", (id_var,)):
+                            conn.execute("INSERT INTO stock_almacen (id_producto, id_variante, id_almacen, stock) VALUES (?, ?, ?, 10)", (id_prod, id_var, alm["id_almacen"]))
 
     conn.commit()
 

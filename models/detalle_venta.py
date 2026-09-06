@@ -9,3 +9,5 @@ class DetalleVenta:
     cantidad: int = 0
     precio_unitario: float = 0.0
     subtotal: float = 0.0
+    id_variante: int | None = None
+    id_lote: int | None = None

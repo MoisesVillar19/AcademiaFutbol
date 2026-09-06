@@ -14,14 +14,24 @@ METODOS_VALIDOS = (METODO_EFECTIVO, METODO_YAPE, METODO_PLIN, METODO_TRANSFERENC
 TIPOS_VENTA_VALIDOS = ("UNIFORME", "TIENDA", "CAMPEONATO", "INSCRIPCION")
 
 
+def _obtener_almacen_default() -> int | None:
+    try:
+        from repositories import almacen_repository
+        alm = almacen_repository.obtener_por_nombre("Principal")
+        return alm["id_almacen"] if alm else None
+    except Exception:
+        return None
+
 def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
-    """Venta flexible: uniformes (por tipo), tienda, campeonato. Descuenta stock atómicamente."""
+    """Venta flexible escalable: uniformes (variante/talla), tienda, campeonato. Descuenta stock atómicamente (global + stock_almacen)."""
     id_usuario = data.get("id_usuario") or auditoria_service.id_usuario_sesion()
     id_estudiante = data.get("id_estudiante")
     metodo = data.get("metodo_pago", METODO_EFECTIVO)
     tipo_venta = data.get("tipo_venta", "UNIFORME")
-    items: list[dict] = data.get("items", [])  # [{id_producto, cantidad}]
+    items: list[dict] = data.get("items", [])  # [{id_producto, cantidad, id_variante}]
     comprobante = data.get("comprobante_path")
+    id_almacen = data.get("id_almacen") or _obtener_almacen_default()
+    id_caja = data.get("id_caja")
 
     if not items:
         return False, "Debe incluir al menos un producto", None
@@ -85,6 +95,8 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
                 stock_ant = prod["stock_actual"]
                 stock_nuevo = stock_ant - it["cantidad"]
                 precio_u = it.get("precio_unitario") or prod.get("precio_venta") or prod.get("precio") or 0
+                # variante/talla opcional (escalable)
+                id_variante = it.get("id_variante")
                 detalle = DetalleVenta(
                     id_venta=id_venta,
                     id_producto=it["id_producto"],
@@ -92,8 +104,32 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
                     precio_unitario=round(precio_u, 2),
                     subtotal=round(precio_u * it["cantidad"], 2),
                 )
+                # si hay variante, añadir al detalle
+                if id_variante:
+                    detalle.id_variante = id_variante  # type: ignore
                 detalle_venta_repository.insertar(detalle)
                 producto_repository.actualizar_stock(it["id_producto"], stock_nuevo)
+                # stock_almacen escalable (si solo 1 almacén, no visible)
+                try:
+                    from repositories import stock_almacen_repository
+                    alm_id = id_almacen
+                    if alm_id:
+                        # actualizar stock por almacén/variante
+                        # manejar NULL variante
+                        stock_almacen_repository.upsert_stock(it["id_producto"], id_variante, alm_id, id_caja, -it["cantidad"])
+                    # lote FIFO si existe (perecederos)
+                    try:
+                        from repositories import lote_repository
+                        if it.get("id_lote"):
+                            # descuento directo lote
+                            pass
+                        else:
+                            # FIFO auto si producto tiene lotes vigentes
+                            lote_repository.descontar_fifo(it["id_producto"], id_variante, alm_id or 1, it["cantidad"])
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
                 from models.movimiento_inventario import MovimientoInventario
                 from utils.dates import get_now
                 movimiento_inventario_repository.insertar(

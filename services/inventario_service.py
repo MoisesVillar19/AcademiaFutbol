@@ -90,6 +90,18 @@ def crear_producto(data: dict) -> tuple[bool, str, int | None]:
     except (ValueError, TypeError):
         precio = 0
 
+    # v2 flexible: precio_compra/venta y tipo_uniforme
+    precio_compra = data.get("precio_compra", precio)
+    try:
+        precio_compra = float(precio_compra)
+    except (ValueError, TypeError):
+        precio_compra = precio
+    precio_venta = data.get("precio_venta", precio)
+    try:
+        precio_venta = float(precio_venta)
+    except (ValueError, TypeError):
+        precio_venta = precio
+
     producto = Producto(
         id_categoria_producto=id_categoria,
         tipo_uso=data.get("tipo_uso", "CONSUMO_INTERNO"),
@@ -98,8 +110,31 @@ def crear_producto(data: dict) -> tuple[bool, str, int | None]:
         stock_actual=0,
         stock_minimo=stock_minimo,
         precio=precio,
+        precio_compra=precio_compra,
+        precio_venta=precio_venta,
+        id_tipo_uniforme=data.get("id_tipo_uniforme"),
     )
     id_producto = producto_repository.insertar(producto)
+
+    # S1 escalable: crear variantes si se especifica talla
+    try:
+        from repositories import producto_variante_repository, stock_almacen_repository, almacen_repository
+        talla_codigo = data.get("talla") or data.get("talla_codigo")
+        if talla_codigo and talla_codigo != "UNICA":
+            from repositories import talla_repository
+            t = talla_repository.obtener_por_codigo(talla_codigo)
+            if t:
+                sku = f"{codigo}-{talla_codigo}"
+                if not producto_variante_repository.existe_sku(sku):
+                    from models.producto_variante import ProductoVariante
+                    var = ProductoVariante(id_producto=id_producto, id_talla=t["id_talla"], sku=sku, stock_minimo=stock_minimo)
+                    producto_variante_repository.insertar(var)
+        # stock_almacen para Principal (si solo 1 almacén, no se ve)
+        alm = almacen_repository.obtener_por_nombre("Principal")
+        if alm:
+            stock_almacen_repository.upsert_stock(id_producto, None, alm["id_almacen"], None, 0)
+    except Exception as e:
+        logger.warning(f"Variante/stock escalable no creado: {e}")
 
     auditoria_service.registrar_insert(
         id_usuario=1,
@@ -133,6 +168,17 @@ def editar_producto(id_producto: int, data: dict) -> tuple[bool, str]:
     except (ValueError, TypeError):
         precio = producto["precio"]
 
+    precio_compra = data.get("precio_compra", producto.get("precio_compra", precio))
+    try:
+        precio_compra = float(precio_compra)
+    except (ValueError, TypeError):
+        precio_compra = producto.get("precio_compra", precio)
+    precio_venta = data.get("precio_venta", producto.get("precio_venta", precio))
+    try:
+        precio_venta = float(precio_venta)
+    except (ValueError, TypeError):
+        precio_venta = producto.get("precio_venta", precio)
+
     producto_obj = Producto(
         id_producto=id_producto,
         id_categoria_producto=data.get("id_categoria_producto", producto["id_categoria_producto"]),
@@ -142,6 +188,9 @@ def editar_producto(id_producto: int, data: dict) -> tuple[bool, str]:
         stock_actual=producto["stock_actual"],
         stock_minimo=stock_minimo,
         precio=precio,
+        precio_compra=precio_compra,
+        precio_venta=precio_venta,
+        id_tipo_uniforme=data.get("id_tipo_uniforme", producto.get("id_tipo_uniforme")),
         activo=producto["activo"],
     )
     producto_repository.actualizar(producto_obj)

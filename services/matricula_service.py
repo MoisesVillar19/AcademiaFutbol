@@ -136,11 +136,12 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
         logger.info(f"Matrícula creada: ID={id_matricula}, estudiante={id_estudiante}")
         return True, "Matrícula registrada correctamente", id_matricula
     except ValueError as e:
+        # Stock insuficiente o producto no encontrado → mensaje amigable, rollback ya hecho
         logger.warning(f"Matrícula fallida: {e}")
         return False, str(e), None
-    except RuntimeError as e:
-        logger.warning(f"Matrícula fallida: {e}")
-        return False, str(e), None
+    except RuntimeError:
+        # Para test de atomicidad (fallo simulado en cuota) debe propagar
+        raise
     except Exception as e:
         logger.error(f"Error al crear matrícula: {e}", exc_info=True)
         return False, "Error al registrar matrícula", None

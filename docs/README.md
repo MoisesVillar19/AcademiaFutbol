@@ -1,0 +1,47 @@
+# Documentación — Academia Deportiva
+
+> **Índice** organizado por dominio. Prioridad: `AGENTS.md > sistema/reglas_negocio.md > sistema/arquitectura_bd.md > sistema/diccionario_datos.md > sistema/arquitectura_software.md > sistema/convenciones_codigo.md` (ver `AGENTS.md`).
+
+### Estructura
+
+```
+docs/
+├── sistema/              # Reglas y diseño del sistema (fuente de verdad)
+│   ├── reglas_negocio.md              # RN-001..050 (inscripción, mensualidad, ventas, OneDrive)
+│   ├── arquitectura_software.md       # Capas View→Controller→Service→Repository→SQLite
+│   ├── arquitectura_bd.md             # Tablas, relaciones, índices (antes AcademiaFutbol_Arquitectura_BD.md)
+│   ├── diccionario_datos.md           # Campos, tipos, checks, índices
+│   ├── casos_uso.md                   # Actores y flujos (estudiante, apoderado, pago, venta)
+│   └── convenciones_codigo.md         # snake_case, PascalCase, dataclass, logging
+│
+├── desarrollo/           # Planes y evolución
+│   ├── roadmap.md                     # Hitos por versión (antes road_map.md)
+│   ├── plan_sprints.md
+│   ├── plan_implementacion.md
+│   ├── cambios_RN_v2.md               # Delta v2 flexible (precios, uniformes, OneDrive)
+│   ├── plan_deuda_tecnica.md          # Deuda crítica/media/baja y sprints
+│   ├── changelog.md
+│   ├── sprint7_estado.md / sprint10_plan.md
+│   └── diagnostico_usabilidad.md
+│
+├── testing/              # Calidad
+│   └── tests_registro.md              # Cobertura, fixtures, markers
+│
+├── despliegue/           # Instalación y operación
+│   ├── instalacion.md                 # Wizard Inno Setup
+│   ├── despliegue_produccion.md       # OneDrive central BD no se mueve
+│   ├── actualizacion.md
+│   └── publicacion_release.md         # VERSION → tag → Release ZIP
+│
+└── manuales/             # Uso
+    └── manual_sistema.md              # Config, flujos, uso diario ADMIN/SECRETARIA
+```
+
+### Cómo navegar
+
+- **¿Nueva regla?** → `sistema/reglas_negocio.md` (RN) → `sistema/arquitectura_bd.md` (DDL) → `sistema/diccionario_datos.md`.
+- **¿Nuevo feature?** → `desarrollo/roadmap.md` → `desarrollo/plan_sprints.md`.
+- **¿Deploy?** → `despliegue/despliegue_produccion.md` + `setup_onedrive.bat` (raíz).
+- **¿Uso?** → `manuales/manual_sistema.md`.
+
+> **Nota migración:** `docs/` antes plano; ahora agrupado. Rutas antiguas redirigen aquí. Artefactos en raíz: `setup_onedrive.bat`, `config.ini` (generado), `VERSION`.

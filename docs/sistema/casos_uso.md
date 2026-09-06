@@ -1,5 +1,7 @@
 # Casos de Uso
 
+> **v2 (2026-09):** + foto estudiante `RN-041`, comprobante `RN-042`, diferir 2-3 meses `RN-043`, tipos uniforme `RN-039`, ventas `RN-038/040`, egresos `RN-046`, precios flexibles `RN-047` (ver `sistema/reglas_negocio.md`).
+
 ## Actores
 
 ### ADMIN
@@ -102,7 +104,7 @@ Responsabilidades:
 
 ---
 
-# CU-004 Registrar Estudiante
+# CU-004 Registrar Estudiante (v2: + foto)
 
 ## Actor
 
@@ -111,20 +113,21 @@ Responsabilidades:
 
 ## Flujo Principal
 
-1. Buscar persona existente o registrar nueva.
-2. Registrar estudiante.
-3. Asociar apoderado principal.
-4. Asociar apoderados secundarios (opcional).
+1. Buscar persona existente o registrar nueva (DNI/CARNET).
+2. Registrar estudiante + foto opcional `jpg/png ≤2MB` → `OneDrive\Academia\fotos\{DNI}.jpg` (`RN-041`).
+3. Asociar apoderado principal (DNI/CARNET, parentesco).
+4. Asociar apoderados secundarios (opcional, máx 2).
 5. Guardar registro.
 
 ## Reglas Relacionadas
 
 * RN-003
 * RN-005
+* RN-041
 
 ---
 
-# CU-005 Registrar Matrícula
+# CU-005 Registrar Matrícula (v2: diferir + inscripción -1 camiseta)
 
 ## Actor
 
@@ -133,21 +136,19 @@ Responsabilidades:
 
 ## Flujo Principal
 
-1. Seleccionar estudiante.
-2. Seleccionar tarifa.
-3. Definir monto pactado (opcional).
-4. Definir día de vencimiento.
-5. Asignar becas (si corresponde).
-6. Crear matrícula.
-7. Generar primera cuota.
+1. Seleccionar estudiante (nuevo o reingresante).
+2. Seleccionar tarifa (sugerida por edad).
+3. Definir monto pactado (opcional, `0` gratuito).
+4. Definir día vencimiento `1-31`.
+5. Elegir diferir `0/2/3 meses` (`RN-043`) → genera N cuotas `PENDIENTE`.
+6. Asignar becas (PORCENTAJE/MONTO_FIJO, múltiple si `permitir_multiples_becas=1`).
+7. Crear matrícula → si es **primera** descuenta `1 Camiseta Entrenamiento` `stock-1` `venta INSCRIPCION` (`RN-036`), si es **reingreso** va por `CU-006` + venta separada.
+8. Generar cuota(s).
 
 ## Reglas Relacionadas
 
-* RN-008
-* RN-010
-* RN-011
-* RN-012
-* RN-014
+* RN-008, RN-010, RN-011, RN-012, RN-014
+* RN-036, RN-037, RN-043, RN-047
 
 ---
 
@@ -192,7 +193,7 @@ Responsabilidades:
 
 ---
 
-# CU-008 Registrar Pago
+# CU-008 Registrar Pago (v2: + comprobante OneDrive)
 
 ## Actor
 
@@ -201,21 +202,17 @@ Responsabilidades:
 
 ## Flujo Principal
 
-1. Buscar estudiante.
+1. Buscar estudiante → cuotas pendientes.
 2. Seleccionar cuota.
-3. Ingresar monto recibido.
-4. Seleccionar método de pago.
-5. Registrar pago.
-6. Actualizar saldo.
-7. Generar comprobante interno.
+3. Ingresar monto (completo/parcial).
+4. Seleccionar método `EFECTIVO/YAPE/PLIN/TRANSFERENCIA` + **subir comprobante** `jpg/png` si `≠EFECTIVO` → `OneDrive\Academia\comprobantes\{recibo}.jpg` (`RN-042`).
+5. Registrar pago → `transaccion` + recálculo `saldo` + `LOG`.
+6. Actualizar saldo `PENDIENTE→PARCIAL→PAGADO` + siguiente cuota auto `RN-014`.
+7. Generar comprobante interno `RYYYYMMDD...`.
 
 ## Reglas Relacionadas
 
-* RN-016
-* RN-017
-* RN-018
-* RN-022
-* RN-023
+* RN-016, RN-017, RN-018, RN-022, RN-023, RN-042
 
 ---
 
@@ -408,23 +405,54 @@ Responsabilidades:
 
 ---
 
-# CU-018 Dashboard
+# CU-018 Dashboard (v2: + ventas/egresos/nuevos)
 
 ## Actor
 
 * ADMIN
 * SECRETARIA
 
-## Información Mostrada
+## Información Mostrada (14 cards)
 
-* Alumnos activos
-* Cuotas vencidas
-* Cuotas por vencer
-* Pagos del día
-* Ingresos del mes
-* Stock bajo
+* Alumnos activos, Cuotas vencidas/por vencer, Pagos/Ingresos hoy/mes, Monto vencido/por vencer, Stock bajo
+* **v2:** Ventas mes, Egresos mes, Neto mes, Nuevos/Antiguos mes, Total matrículas
 
 ## Reglas Relacionadas
 
-* RN-021
-* RN-031
+* RN-021, RN-031, RN-045/046/049
+
+---
+
+# CU-019 Registrar Venta (v2)
+
+## Actor
+
+* SECRETARIA, ADMIN
+
+## Flujo Principal
+
+1. Seleccionar producto por `tipo_uniforme` (Entrenamiento/Competencia/Completo/Media) o tienda.
+2. Cantidad + `tipo_venta` `UNIFORME/TIENDA/CAMPEONATO/INSCRIPCION` + método + comprobante OneDrive.
+3. Validar `stock>=cantidad`, calcular `precio_venta` o `monto_total` pactado (descuento flexible).
+4. `transaccion` `stock- cant` + `detalle_venta` + `movimiento SALIDA` + `LOG venta`.
+
+## Reglas Relacionadas
+
+* RN-038, RN-039, RN-040, RN-042
+
+---
+
+# CU-020 Registrar Egreso (v2)
+
+## Actor
+
+* ADMIN
+
+## Flujo Principal
+
+1. Concepto `PROFESOR/PERSONAL/CAMPEONATO_FIJO/ARBITRAJE/VIATICOS` + monto>0 + fecha + responsable.
+2. Guardar → `LOG egreso`, `reporte ingresos vs egresos` = `pagos+ventas - egresos`.
+
+## Reglas Relacionadas
+
+* RN-046, RN-047/049

@@ -1,5 +1,7 @@
 # Arquitectura de Software
 
+> **Actualización v2 (2026-09):** BD central OneDrive `OneDrive\Academia\academia.db` via `utils/constants.py:72` `config.ini` + `tipo_uniforme/venta/detalle_venta/egreso` + `FOTOS_DIR/COMPROBANTES_DIR` + 9 reportes. Estructura base sin cambios, solo extensión flexible (precios/becas/OneDrive).
+
 ## Objetivo
 
 Definir la estructura técnica del sistema de gestión de academia, estableciendo la organización del código, responsabilidades de cada capa y flujo de comunicación entre componentes.
@@ -212,20 +214,23 @@ src/
 │   ├── persona.py
 │   ├── usuario.py
 │   ├── apoderado.py
-│   ├── estudiante.py
+│   ├── estudiante.py  # + foto_path, fecha_matricula (RN-041)
 │   ├── estudiante_apoderado.py
 │   ├── categoria.py
 │   ├── tarifa.py
 │   ├── beca.py
 │   ├── matricula.py
 │   ├── matricula_beca.py
-│   ├── cuota.py
-│   ├── pago.py
+│   ├── cuota.py  # monto_mora (RN-020)
+│   ├── pago.py  # numero_recibo UNIQUE (RN-022)
 │   ├── detalle_pago.py
 │   ├── categoria_producto.py
-│   ├── producto.py
+│   ├── producto.py  # precio_compra/venta, id_tipo_uniforme (RN-038/039)
 │   ├── movimiento_inventario.py
-│   ├── configuracion.py
+│   ├── tipo_uniforme.py  # v2: Entrenamiento/Competencia/Completo/Media
+│   ├── venta.py + detalle_venta.py  # v2: UNIFORME/TIENDA/CAMPEONATO/INSCRIPCION
+│   ├── egreso.py  # v2: PROFESOR/PERSONAL/CAMPEONATO_FIJO/ARBITRAJE/VIATICOS
+│   ├── configuracion.py  # + precio_inscripcion/mensualidad/uniforme/reingreso, tasa, arbitraje, pago_profesor, pin_emergencia
 │   └── log.py
 
 ├── repositories/
@@ -241,47 +246,56 @@ src/
 │   └── log_repository.py
 
 ├── services/
-│   ├── auth_service.py
-│   ├── estudiante_service.py
-│   ├── matricula_service.py
-│   ├── cuota_service.py
-│   ├── pago_service.py
-│   ├── inventario_service.py
-│   ├── configuracion_service.py
-│   ├── reporte_service.py
-│   └── backup_service.py
+│   ├── auth_service.py  # login + PIN emergencia hasheado
+│   ├── estudiante_service.py  # foto_path + reingreso
+│   ├── matricula_service.py  # diferir 2-3 cuotas + primera matrícula -1 camiseta
+│   ├── cuota_service.py  # mora PORCENTAJE/MONTO_FIJO
+│   ├── pago_service.py  # comprobante_path
+│   ├── venta_service.py  # v2: registra venta + descuenta stock atómico
+│   ├── egreso_service.py  # v2: reporte ingresos vs egresos
+│   ├── tipo_uniforme_service.py
+│   ├── inventario_service.py  # precio_compra/venta + tipo_uniforme
+│   ├── configuracion_service.py  # 7 precios flexibles
+│   ├── reporte_service.py  # 9 reportes
+│   └── backup_service.py  # OneDrive central
 
 ├── controllers/
 │   ├── login_controller.py
 │   ├── dashboard_controller.py
-│   ├── estudiante_controller.py
-│   ├── matricula_controller.py
-│   ├── pago_controller.py
-│   ├── inventario_controller.py
-│   ├── configuracion_controller.py
+│   ├── estudiante_controller.py  # foto + reingreso venta
+│   ├── matricula_controller.py  # diferir
+│   ├── pago_controller.py  # comprobante + cuotas pendientes wrapper
+│   ├── venta_controller.py  # v2
+│   ├── egreso_controller.py  # ADMIN
+│   ├── tipo_uniforme_controller.py  # ADMIN
+│   ├── inventario_controller.py  # tipo_uniforme
+│   ├── configuracion_controller.py  # 7 precios + OneDrive
 │   └── usuario_controller.py
 
 ├── views/
-│   ├── login/
-│   ├── dashboard/
-│   ├── estudiantes/
-│   ├── matriculas/
-│   ├── pagos/
-│   ├── inventario/
-│   ├── configuracion/
+│   ├── login/  # cambiar_password topmost
+│   ├── dashboard/  # + Ventas/Egresos/Neto/Nuevos vs Antiguos (26)
+│   ├── estudiantes/  # + foto thumbnail 60
+│   ├── matriculas/  # + diferir 2/3 meses
+│   ├── pagos/  # + comprobante OneDrive
+│   ├── ventas/  # v2: UNIFORME/TIENDA/CAMPEONATO
+│   ├── egresos/  # v2: ADMIN
+│   ├── inventario/  # + compra/venta/ganancia + tipo_uniforme
+│   ├── configuracion/  # + 7 precios + tipos uniforme + visual (font_scale)
 │   ├── usuarios/
-│   └── reportes/
+│   └── reportes/  # + ingresos vs egresos, stock bajo uniformes, nuevos vs antiguos
 
 ├── reports/
 │   ├── excel_generator.py
 │   └── templates/
 
 ├── utils/
-│   ├── constants.py
+│   ├── constants.py  # OneDrive detect + DB_PATH config.ini + FOTOS_DIR/COMPROBANTES_DIR
 │   ├── validators.py
-│   ├── date_utils.py
-│   ├── money_utils.py
-│   ├── security_utils.py
+│   ├── ui_helpers.py  # hover + cards
+│   ├── date_utils.py / dates.py
+│   ├── money_utils.py / helpers.py
+│   ├── security_utils.py / security.py
 │   └── logger.py
 
 └── assets/
@@ -345,24 +359,20 @@ Puede:
 
 ## SECRETARIA
 
-Operación diaria del sistema.
+Operación diaria.
 
 Puede:
 
-* Registrar estudiantes.
-* Registrar apoderados.
-* Registrar matrículas.
-* Registrar pagos.
-* Gestionar inventario.
-* Consultar dashboard.
-* Generar reportes permitidos.
+* Registrar estudiantes (con foto) + apoderados (máx 2, 1 principal).
+* Registrar matrículas (diferir 2-3, primera descuenta camiseta).
+* Registrar pagos (YAPE con comprobante) + ventas (uniforme/tienda).
+* Gestionar inventario (ver) + tipos uniforme (ver).
+* Consultar dashboard (14 cards) + reportes (6 base).
+* Importar no (solo ADMIN).
 
 No puede:
 
-* Gestionar usuarios.
-* Acceder a auditoría.
-* Modificar configuraciones globales.
-* Restaurar backups.
+* Egresos / Usuarios / Auditoría / Configuración global / Restore / Tarifas / Importar.
 
 ---
 
@@ -410,16 +420,10 @@ Parámetros:
 
 ---
 
-# Reportes Iniciales
+# Reportes (9) — Excel
 
-Reportes Excel disponibles:
-
-* Morosos.
-* Pagos por fecha.
-* Ingresos mensuales.
-* Alumnos por categoría.
-* Inventario.
-* Becas activas.
+* Morosos, Pagos por fecha, Ingresos mensuales, Alumnos por categoría, Inventario, Becas activas
+* **v2:** Ingresos vs Egresos (pagos+ventas - egresos), Stock bajo uniformes (por tipo), Nuevos vs Antiguos
 
 ---
 

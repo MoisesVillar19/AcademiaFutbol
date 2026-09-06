@@ -1,5 +1,7 @@
 # Roadmap del Proyecto
 
+> **v2 entregada 2026-09 (flexible + OneDrive):** `tipo_uniforme/venta/egreso`, `estudiante.foto`, `comprobante OneDrive`, `precio_*` configurables, `diferir 2-3` cuotas, dashboard 14 cards, 9 reportes. Ver `desarrollo/cambios_RN_v2.md`.
+
 ## Objetivo
 
 Desarrollar un sistema de gestión para academia deportiva que permita administrar estudiantes, matrículas, pagos, inventario, reportes y configuración del sistema.
@@ -97,13 +99,32 @@ Desarrollar un sistema de gestión para academia deportiva que permita administr
 
 ---
 
-# Versión 2.0 - Comercial
+# Versión 1.3 - v2 Entregada (2026-09) — Flexible + OneDrive
+
+## Comercial flexible
+
+* Venta `UNIFORME/TIENDA/CAMPEONATO/INSCRIPCION` (`tipo_uniforme` 4, `producto.precio_compra/venta`)
+* Egresos `PROFESOR/PERSONAL/CAMPEONATO` + reporte `Ingresos vs Egresos neto`
+* Inscripción primera matrícula `-1 Camiseta` (reingreso via venta)
+
+## Operación central
+
+* BD `OneDrive\Academia\academia.db` via `config.ini` (`setup_onedrive.bat`), `FOTOS_DIR/COMPROBANTES_DIR` OneDrive, backup `BackupsAcademia`
+* Dashboard 14 cards (`Ventas/Egresos/Neto/Nuevos vs Antiguos`), fotos thumbnail 60, comprobantes
+
+## UX
+
+* Menú 5 grupos, `DatePicker` escribir/clickear, mensajes `✅/⏳/❌`, sidebar scrolleable, visual `font_scale` en `Configuración`
+
+---
+
+# Versión 2.0 - Comercial (plan futuro)
 
 ## Ventas
 
-* Venta de productos
-* Control de ingresos por ventas
-* Historial de ventas
+* Venta de productos (ya entregado v1.3)
+* Control de ingresos por ventas (ya)
+* Historial de ventas (ya)
 
 ## Producción
 

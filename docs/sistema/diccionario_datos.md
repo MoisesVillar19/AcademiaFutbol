@@ -1,5 +1,7 @@
 # Diccionario de Datos
 
+> **v2 (2026-09):** `estudiante.foto_path/comprobante_pago_path/fecha_matricula`, `producto.precio_compra/venta/id_tipo_uniforme`, `tipo_uniforme`, `venta/detalle_venta`, `egreso`, `configuracion` +7 precios (`precio_inscripcion` etc.) + `pin_emergencia`. Fuente DDL: `database/create_db.py`.
+
 ## Convenciones Generales
 
 ### Claves Primarias
@@ -183,7 +185,7 @@ CHECK(
 
 ---
 
-# ESTUDIANTE
+# ESTUDIANTE (v2: + foto)
 
 | Campo | Tipo |
 |---------|---------|
@@ -192,6 +194,9 @@ CHECK(
 | estado | TEXT |
 | fecha_ingreso | TEXT |
 | fecha_retiro | TEXT |
+| foto_path | TEXT |
+| comprobante_pago_path | TEXT |
+| fecha_matricula | TEXT |
 | activo | INTEGER |
 
 ### Restricción
@@ -340,7 +345,7 @@ CHECK(
 
 ---
 
-# PRODUCTO
+# PRODUCTO (v2)
 
 | Campo | Tipo |
 |---------|---------|
@@ -352,6 +357,9 @@ CHECK(
 | stock_actual | INTEGER |
 | stock_minimo | INTEGER |
 | precio | REAL |
+| precio_compra | REAL |
+| precio_venta | REAL |
+| id_tipo_uniforme | INTEGER FK → tipo_uniforme |
 | activo | INTEGER |
 
 
@@ -406,12 +414,57 @@ CHECK(
 
 ---
 
-# CONFIGURACION
+# TIPO_UNIFORME (v2)
 
+| Campo | Tipo |
+|---------|---------|
+| id_tipo_uniforme | INTEGER PK |
+| nombre | TEXT UNIQUE |
+| descripcion | TEXT |
+| activo | INTEGER |
 
-# CONFIGURACION
+# VENTA (v2)
 
-Solo existirá una fila en esta tabla.
+| Campo | Tipo |
+|---------|---------|
+| id_venta | INTEGER PK |
+| id_estudiante | INTEGER FK |
+| id_usuario | INTEGER FK |
+| fecha_venta | TEXT |
+| monto_total | REAL |
+| metodo_pago | TEXT CHECK(EFECTIVO,YAPE,PLIN,TRANSFERENCIA) |
+| tipo_venta | TEXT CHECK(UNIFORME,TIENDA,CAMPEONATO,INSCRIPCION) |
+| numero_recibo | TEXT UNIQUE |
+| comprobante_path | TEXT |
+| activo | INTEGER |
+
+# DETALLE_VENTA (v2)
+
+| Campo | Tipo |
+|---------|---------|
+| id_detalle_venta | INTEGER PK |
+| id_venta | INTEGER FK |
+| id_producto | INTEGER FK |
+| cantidad | INTEGER |
+| precio_unitario | REAL |
+| subtotal | REAL |
+
+# EGRESO (v2)
+
+| Campo | Tipo |
+|---------|---------|
+| id_egreso | INTEGER PK |
+| concepto | TEXT CHECK(PROFESOR,PERSONAL,CAMPEONATO_FIJO,ARBITRAJE,VIATICOS) |
+| monto | REAL |
+| fecha | TEXT |
+| responsable | TEXT |
+| id_usuario | INTEGER FK |
+| observacion | TEXT |
+| activo | INTEGER |
+
+# CONFIGURACION (v2: +7 precios)
+
+Solo existirá una fila.
 
 | Campo | Tipo |
 |---------|---------|
@@ -422,12 +475,22 @@ Solo existirá una fila en esta tabla.
 | correo | TEXT |
 | mora_habilitada | INTEGER |
 | porcentaje_mora | REAL |
+| tipo_mora | TEXT |
+| monto_mora | REAL |
 | dias_por_vencer | INTEGER |
 | permitir_multiples_becas | INTEGER |
 | backup_automatico | INTEGER |
 | frecuencia_backup | INTEGER |
 | ruta_backup | TEXT |
 | correo_onedrive | TEXT |
+| pin_emergencia | TEXT |
+| precio_inscripcion | REAL |
+| precio_mensualidad | REAL |
+| precio_uniforme | REAL |
+| precio_reingreso | REAL |
+| tasa_campeonato | REAL |
+| arbitraje_por_equipo | REAL |
+| pago_profesor | REAL |
 | fecha_actualizacion | TEXT |
 
 

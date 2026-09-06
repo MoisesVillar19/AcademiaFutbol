@@ -1,5 +1,7 @@
 # Diseño de Base de Datos y Arquitectura - Academia de Fútbol
 
+> **v2 (2026-09):** BD central OneDrive `OneDrive\Academia\academia.db` + `tipo_uniforme`, `venta/detalle_venta`, `egreso`, `estudiante.foto_path`, `producto.precio_compra/venta`, `configuracion` 7 precios flexibles. Ver `sistema/diccionario_datos.md` y `sistema/reglas_negocio.md`.
+
 ## Objetivo
 
 Sistema local para gestión de:
@@ -33,32 +35,36 @@ Database (SQLite)
 
 ---
 
-# Estructura de Tablas
+# Estructura de Tablas (v2: + tipo_uniforme, venta, egreso, fotos)
 
 ```text
 persona
 usuario
 
 apoderado
-estudiante
+estudiante  # foto_path, fecha_matricula (RN-041)
 estudiante_apoderado
 
 categoria
 tarifa
 
 beca
-matricula
+matricula  # pago_matricula/monto_matricula + diferir
 matricula_beca
 
-cuota
+cuota  # monto_mora
 pago
 detalle_pago
 
+tipo_uniforme  # v2: Entrenamiento/Competencia/Completo/Media
 categoria_producto
-producto
+producto  # precio_compra/venta, id_tipo_uniforme
 movimiento_inventario
 
-configuracion
+venta + detalle_venta  # v2: UNIFORME/TIENDA/CAMPEONATO/INSCRIPCION
+egreso  # v2: PROFESOR/PERSONAL/CAMPEONATO_FIJO/ARBITRAJE/VIATICOS
+
+configuracion  # + precio_inscripcion/mensualidad/uniforme/reingreso, pin_emergencia
 log
 ```
 

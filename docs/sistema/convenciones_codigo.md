@@ -1,5 +1,7 @@
 # Convenciones de Código
 
+> **v2 (2026-09):** Se mantiene `snake_case` archivos, `PascalCase` clases, `UPPER_CASE` constantes. Nuevos: `utils/ui_helpers.py` helpers hover, `venta/egreso/tipo_uniforme` sigue `snake_case`, `OneDrive` paths en `utils/constants.py` via `config.ini`.
+
 ## Objetivo
 
 Definir estándares de desarrollo para mantener consistencia, legibilidad y facilidad de mantenimiento en todo el proyecto.

@@ -32,24 +32,35 @@ El sistema está orientado a una academia deportiva.
 
 ---
 
-# Documentación del Proyecto
+# Documentación del Proyecto (reorganizada `docs/`)
 
-Antes de modificar cualquier componente, revisar:
+> Ver `docs/README.md` para índice completo.
 
 ```text
 docs/
-
-arquitectura_bd.md
-diccionario_datos.md
-reglas_negocio.md
-casos_de_uso.md
-arquitectura_software.md
-convenciones_codigo.md
-roadmap.md
-plan_sprints.md
+├── sistema/               # fuente de verdad
+│   ├── reglas_negocio.md            # RN-001..050
+│   ├── arquitectura_software.md     # capas
+│   ├── arquitectura_bd.md           # tablas + OneDrive
+│   ├── diccionario_datos.md
+│   ├── casos_uso.md
+│   └── convenciones_codigo.md
+├── desarrollo/            # planes
+│   ├── roadmap.md
+│   ├── plan_sprints.md
+│   ├── cambios_RN_v2.md
+│   └── plan_deuda_tecnica.md
+├── despliegue/            # OneDrive central
+│   ├── despliegue_produccion.md
+│   ├── instalacion.md
+│   └── publicacion_release.md
+├── testing/
+│   └── tests_registro.md
+└── manuales/
+    └── manual_sistema.md  # uso ADMIN/SECRETARIA
 ```
 
-Las decisiones definidas en esos documentos tienen prioridad sobre cualquier sugerencia automática.
+Las decisiones en `sistema/` tienen prioridad sobre sugerencias automáticas.
 
 ---
 
@@ -113,7 +124,7 @@ Ejemplos:
 Toda regla definida en:
 
 ```text
-docs/reglas_negocio.md
+docs/sistema/reglas_negocio.md  (y v2 en desarrollo/cambios_RN_v2.md)
 ```
 
 debe implementarse aquí.
@@ -161,8 +172,8 @@ SQLite
 Toda la estructura está definida en:
 
 ```text
-docs/arquitectura_bd.md
-docs/diccionario_datos.md
+docs/sistema/arquitectura_bd.md
+docs/sistema/diccionario_datos.md
 ```
 
 No crear tablas fuera de:
@@ -411,16 +422,12 @@ Incluso para ADMIN.
 
 # Configuración
 
-Los siguientes parámetros deben obtenerse desde la tabla CONFIGURACION:
+Los siguientes parámetros deben obtenerse desde la tabla CONFIGURACION (v2 flexibles):
 
-* mora_habilitada
-* porcentaje_mora
-* dias_por_vencer
-* permitir_multiples_becas
-* backup_automatico
-* frecuencia_backup
-* ruta_backup
-* correo_onedrive
+* mora_habilitada, porcentaje_mora, tipo_mora, monto_mora
+* dias_por_vencer, permitir_multiples_becas
+* backup_automatico, frecuencia_backup, ruta_backup, correo_onedrive, pin_emergencia
+* precio_inscripcion, precio_mensualidad, precio_reingreso, precio_uniforme, tasa_campeonato, arbitraje_por_equipo, pago_profesor
 
 No hardcodear estos valores.
 

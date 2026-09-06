@@ -28,6 +28,8 @@ logs/
 
 # Variables de entorno
 .env
+config.ini
+config_visual.json
 
 # Testing
 .coverage

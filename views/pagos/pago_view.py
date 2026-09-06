@@ -25,53 +25,36 @@ class PagoView(ctk.CTkFrame):
         self._crear_tab_morosos()
 
     def _crear_tab_lista(self):
-        header = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
+        header = ctk.CTkFrame(self.tab_lista, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        header.pack(fill="x", padx=8, pady=8)
 
-        ctk.CTkLabel(
-            header, text="Historial de Pagos",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
+        ctk.CTkLabel(header, text="💰 Historial de Pagos", font=ctk.CTkFont(size=22, weight="bold"), text_color="#1F0A33").pack(side="left", padx=12, pady=10)
+        ctk.CTkLabel(header, text="Pagos registrados y filtros por fecha", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(side="left", padx=10)
+        from utils.ui_helpers import crear_boton_interactivo
+        crear_boton_interactivo(header, text="+ Nuevo Pago", width=130, height=36, command=self._nuevo_pago, fg_color="#7C3AED").pack(side="right", padx=8, pady=8)
 
-        ctk.CTkButton(
-            header, text="+ Nuevo Pago", width=120,
-            command=self._nuevo_pago,
-        ).pack(side="right")
-
-        filtros = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
-        filtros.pack(fill="x", padx=5, pady=5)
+        filtros = ctk.CTkFrame(self.tab_lista, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        filtros.pack(fill="x", padx=8, pady=6)
 
         self.date_picker_inicio = DatePicker(filtros, label_text="Fecha Inicio:", default="start_of_month")
-        self.date_picker_inicio.pack(side="left", padx=(0, 10))
+        self.date_picker_inicio.pack(side="left", padx=(12, 10))
 
         self.date_picker_fin = DatePicker(filtros, label_text="Fecha Fin:", default="today")
         self.date_picker_fin.pack(side="left", padx=(0, 10))
 
-        ctk.CTkButton(
-            filtros, text="Buscar", width=80,
-            command=self._buscar_por_fecha,
-        ).pack(side="left", padx=5)
-
-        ctk.CTkButton(
-            filtros, text="Limpiar", width=80,
-            fg_color="#DDD6E5", hover_color="#c0c8d4", text_color="#1F0A33",
-            command=self._limpiar_fechas,
-        ).pack(side="left", padx=5)
-
-        ctk.CTkLabel(filtros, text="  |  ").pack(side="left")
-
-        self.entry_busqueda = ctk.CTkEntry(
-            filtros, placeholder_text="Buscar por DNI, Carnet, recibo o método...",
-            width=250,
-        )
+        from utils.ui_helpers import crear_boton_interactivo
+        crear_boton_interactivo(filtros, text="🔍 Buscar", width=90, command=self._buscar_por_fecha, fg_color="#7C3AED").pack(side="left", padx=5)
+        crear_boton_interactivo(filtros, text="🧹 Limpiar", width=90, fg_color="#E5E7EB", hover_color="#DDD6E5", text_color="#1F0A33", command=self._limpiar_fechas).pack(side="left", padx=5)
+        ctk.CTkLabel(filtros, text="|", text_color="#E5E7EB").pack(side="left", padx=8)
+        self.entry_busqueda = ctk.CTkEntry(filtros, placeholder_text="🔍 Buscar por DNI, recibo o método...", width=260, border_color="#DDD6E5")
         self.entry_busqueda.pack(side="left", padx=5)
         self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
 
-        self.scroll_pagos = ctk.CTkScrollableFrame(self.tab_lista)
-        self.scroll_pagos.pack(fill="both", expand=True, padx=5, pady=5)
+        self.scroll_pagos = ctk.CTkScrollableFrame(self.tab_lista, fg_color="#F8F5FA")
+        self.scroll_pagos.pack(fill="both", expand=True, padx=8, pady=6)
 
-        self.label_status = ctk.CTkLabel(self.tab_lista, text="", font=ctk.CTkFont(size=11))
-        self.label_status.pack(pady=3)
+        self.label_status = ctk.CTkLabel(self.tab_lista, text="⏳ Cargando pagos...", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
+        self.label_status.pack(pady=4)
 
     def _crear_tab_formulario(self):
         scroll = ctk.CTkScrollableFrame(self.tab_form)
@@ -115,6 +98,8 @@ class PagoView(ctk.CTkFrame):
         self.label_comprobante = ctk.CTkLabel(scroll, text="Sin comprobante", text_color="gray")
         self.label_comprobante.pack(anchor="w")
         self._comprobante_path = None
+
+        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
 
         btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
@@ -174,43 +159,29 @@ class PagoView(ctk.CTkFrame):
             widget.destroy()
 
         if not pagos:
-            ctk.CTkLabel(
-                self.scroll_pagos, text="No se encontraron pagos",
-                text_color="gray",
-            ).pack(pady=20)
-            self.label_status.configure(text="Total: 0")
+            ctk.CTkLabel(self.scroll_pagos, text="📭 No se encontraron pagos", font=ctk.CTkFont(size=14), text_color="gray").pack(pady=30)
+            ctk.CTkLabel(self.scroll_pagos, text="Registra tu primer pago con + Nuevo Pago", font=ctk.CTkFont(size=12), text_color="#9CA3AF").pack()
+            self.label_status.configure(text="Total: 0 pagos • Prueba filtros de fecha")
             return
-
         for pago in pagos:
             self._crear_card_pago(pago)
-
-        self.label_status.configure(text=f"Total: {len(pagos)} pago(s)")
+        self.label_status.configure(text=f"✅ Total: {len(pagos)} pago(s) • {sum(p.get('monto_total',0) for p in pagos):.2f} S/ en total")
 
     def _crear_card_pago(self, pago):
-        card = ctk.CTkFrame(self.scroll_pagos)
-        card.pack(fill="x", padx=5, pady=3)
+        from utils.ui_helpers import crear_card_interactiva
+        card = crear_card_interactiva(self.scroll_pagos)
+        card.pack(fill="x", padx=6, pady=4)
 
         info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+        info.pack(side="left", fill="x", expand=True, padx=12, pady=10)
 
-        ctk.CTkLabel(
-            info,
-            text=f"Recibo: {pago.get('numero_recibo', '')}",
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w")
-
-        ctk.CTkLabel(
-            info,
-            text=f"S/{pago.get('monto_total', 0):.2f} | {pago.get('metodo_pago', '')} | "
-                 f"{pago.get('fecha_pago', '')}",
-            font=ctk.CTkFont(size=12), text_color="gray",
-        ).pack(anchor="w")
-
-        ctk.CTkLabel(
-            info,
-            text=f"Registrado por: {pago.get('username', '')}",
-            font=ctk.CTkFont(size=11), text_color="gray",
-        ).pack(anchor="w")
+        ctk.CTkLabel(info, text=f"🧾 Recibo: {pago.get('numero_recibo', '')}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#1F0A33").pack(anchor="w")
+        ctk.CTkLabel(info, text=f"💵 S/{pago.get('monto_total', 0):.2f}  •  {pago.get('metodo_pago', '')}  •  📅 {pago.get('fecha_pago', '')}", font=ctk.CTkFont(size=13), text_color="#374151").pack(anchor="w", pady=2)
+        ctk.CTkLabel(info, text=f"👤 Registrado por: {pago.get('username', '')}", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(anchor="w")
+        # badge monto
+        badge = ctk.CTkFrame(card, fg_color="#F3E8FF", corner_radius=8)
+        badge.pack(side="right", padx=10)
+        ctk.CTkLabel(badge, text=f"S/{pago.get('monto_total',0):.2f}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#7C3AED").pack(padx=10, pady=6)
 
     def _buscar_por_fecha(self):
         fecha_inicio = self.date_picker_inicio.get()

@@ -124,7 +124,7 @@ class App(ctk.CTk):
             widget.destroy()
 
         # ── Sidebar ────────────────────────────────────────────────
-        sidebar = ctk.CTkFrame(self, width=220, fg_color=COLOR_SIDEBAR)
+        sidebar = ctk.CTkFrame(self, width=240, fg_color=COLOR_SIDEBAR)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
@@ -132,7 +132,7 @@ class App(ctk.CTk):
         nombre = usuario.get("nombres", "") if usuario else ""
         rol = usuario.get("rol", "") if usuario else ""
 
-        # Header del sidebar
+        # Header del sidebar (fijo)
         header_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR)
         header_frame.pack(fill="x", padx=15, pady=(20, 5))
 
@@ -141,68 +141,50 @@ class App(ctk.CTk):
             logo_image = ctk.CTkImage(
                 light_image=Image.open(logo_path),
                 dark_image=Image.open(logo_path),
-                size=(180, 60),
+                size=(190, 64),
             )
-            ctk.CTkLabel(
-                header_frame, image=logo_image, text="",
-            ).pack(anchor="w")
+            ctk.CTkLabel(header_frame, image=logo_image, text="").pack(anchor="w")
         else:
-            ctk.CTkLabel(
-                header_frame, text="⚽",
-                font=ctk.CTkFont(size=28),
-            ).pack(anchor="w")
+            ctk.CTkLabel(header_frame, text="⚽ Academia", font=ctk.CTkFont(size=26, weight="bold"), text_color="#ffffff").pack(anchor="w")
 
-        ctk.CTkLabel(
-            header_frame, text="Academia",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#ffffff",
-        ).pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(header_frame, text="Academia Deportiva", font=ctk.CTkFont(size=19, weight="bold"), text_color="#ffffff").pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(header_frame, text="Gestión integral", font=ctk.CTkFont(size=11), text_color="#c0c8d4").pack(anchor="w")
 
-        # Info del usuario
-        user_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, corner_radius=8)
-        user_frame.pack(fill="x", padx=12, pady=(10, 15))
+        # Info del usuario (más grande)
+        user_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, corner_radius=10)
+        user_frame.pack(fill="x", padx=12, pady=(10, 12))
+        ctk.CTkLabel(user_frame, text=f"👤  {nombre}", font=ctk.CTkFont(size=13, weight="bold"), text_color="#ffffff", anchor="w").pack(fill="x", padx=10, pady=(8, 0))
+        ctk.CTkLabel(user_frame, text=f"   {rol} • En línea", font=ctk.CTkFont(size=11), text_color="#8899aa", anchor="w").pack(fill="x", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(
-            user_frame, text=f"👤  {nombre}",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#ffffff", anchor="w",
-        ).pack(fill="x", padx=10, pady=(8, 0))
+        ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(fill="x", padx=15, pady=6)
 
-        ctk.CTkLabel(
-            user_frame, text=f"   {rol}",
-            font=ctk.CTkFont(size=11),
-            text_color="#8899aa", anchor="w",
-        ).pack(fill="x", padx=10, pady=(0, 8))
+        # ── Menú agrupado SCROLLEABLE (5 grupos) ─────────────────
+        menu_scroll = ctk.CTkScrollableFrame(sidebar, fg_color="transparent", scrollbar_button_color=COLOR_SIDEBAR_HOVER, scrollbar_button_hover_color=COLOR_SIDEBAR_ACT)
+        menu_scroll.pack(fill="both", expand=True, padx=2, pady=2)
 
-        # Separador
-        ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(fill="x", padx=15, pady=5)
-
-        # ── Menú agrupado (5 grupos) ───────────────────────────────
         self._boton_activo = None
         self._sidebar_botones = []
 
         def _header(text):
-            lbl = ctk.CTkLabel(sidebar, text=text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#8899aa", anchor="w")
-            lbl.pack(fill="x", padx=12, pady=(8, 2))
+            lbl = ctk.CTkLabel(menu_scroll, text=text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#9CA3AF", anchor="w")
+            lbl.pack(fill="x", padx=12, pady=(10, 3))
 
         def _btn(text, cmd, indent=False):
-            w = 196 if not indent else 184
-            pad = 12 if not indent else 24
-            # hover visible + cursor mano (distingue interactivo vs estático)
+            w = 200 if not indent else 186
+            pad = 8 if not indent else 20
             btn = ctk.CTkButton(
-                sidebar, text=text, width=w, height=36,
+                menu_scroll, text=text, width=w, height=38,
                 fg_color="transparent", anchor="w",
-                font=ctk.CTkFont(size=13 if not indent else 12),
-                text_color="#c0c8d4" if not indent else "#a0aec0",
+                font=ctk.CTkFont(size=14 if not indent else 13, weight="bold" if not indent else "normal"),
+                text_color="#E5E7EB" if not indent else "#cbd5e1",
                 hover_color="#4E1D70" if not indent else "#3A1A5E",
                 corner_radius=8,
                 command=lambda c=cmd, b=text: self._on_menu_click(c, b),
             )
-            btn.pack(pady=1, padx=pad)
+            btn.pack(pady=2, padx=pad)
             self._sidebar_botones.append((text, btn))
             try:
-                # cursor mano y sutil elevación al hover
-                btn.bind("<Enter>", lambda e, b=btn: (b.configure(cursor="hand2"), b.configure(border_width=1, border_color="#6B21A8") if indent else None))
+                btn.bind("<Enter>", lambda e, b=btn: (b.configure(cursor="hand2"), b.configure(border_width=1, border_color="#7C3AED") if indent else None))
                 btn.bind("<Leave>", lambda e, b=btn: (b.configure(cursor=""), b.configure(border_width=0) if indent else None))
             except Exception:
                 pass
@@ -231,6 +213,9 @@ class App(ctk.CTk):
             _btn("📝  Auditoría", self._mostrar_auditoria, indent=True)
             _btn("⚙️  Configuración", self._mostrar_configuracion, indent=True)
             _btn("💾  Respaldo", self._crear_backup_manual, indent=True)
+
+        # Espaciador para scroll completo
+        ctk.CTkLabel(menu_scroll, text="", height=10).pack()
 
         # Botón cerrar sesión
         ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(

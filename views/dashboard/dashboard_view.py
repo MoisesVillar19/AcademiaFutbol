@@ -22,11 +22,12 @@ class DashboardView(ctk.CTkFrame):
         self.header.pack(fill="x", padx=15, pady=(15, 5))
 
         self.titulo_label = ctk.CTkLabel(
-            self.header, text="📊  Dashboard",
-            font=ctk.CTkFont(size=24, weight="bold"),
-            text_color="#3D1559",  # Morado oscuro
+            self.header, text="📊  Dashboard  •  Resumen operativo",
+            font=ctk.CTkFont(size=26, weight="bold"),
+            text_color="#3D1559",
         )
         self.titulo_label.pack(side="left")
+        ctk.CTkLabel(self.header, text="  Clic en una tarjeta para detalle  •  Datos en tiempo real", font=ctk.CTkFont(size=12), text_color="#9CA3AF").pack(side="left", padx=12)
 
         self.btn_volver = ctk.CTkButton(
             self.header, text="Volver", width=100,
@@ -117,26 +118,30 @@ class DashboardView(ctk.CTkFrame):
         ).pack(expand=True)
 
     def _crear_card(self, parent, titulo, valor, color, comando):
+        # Card más llena, tipografía grande, borde y hover marcado
         card = ctk.CTkButton(
-            parent, width=200, height=80,
-            fg_color="white", hover_color="#f0f0f0",
+            parent, width=220, height=110,
+            fg_color="white", hover_color="#F3E8FF",
+            border_width=1, border_color="#E5E7EB",
+            corner_radius=12,
             command=comando,
         )
-        card.pack(side="left", padx=5, pady=5, fill="x", expand=True)
+        card.pack(side="left", padx=6, pady=6, fill="x", expand=True)
         card.pack_propagate(False)
+        # hover mano
+        try:
+            card.bind("<Enter>", lambda e: card.configure(cursor="hand2", border_color="#7C3AED"))
+            card.bind("<Leave>", lambda e: card.configure(cursor="", border_color="#E5E7EB"))
+        except Exception:
+            pass
 
         frame_interno = ctk.CTkFrame(card, fg_color="transparent")
-        frame_interno.pack(expand=True)
+        frame_interno.pack(expand=True, fill="both", padx=8, pady=8)
 
-        ctk.CTkLabel(
-            frame_interno, text=titulo,
-            font=ctk.CTkFont(size=12), text_color="gray",
-        ).pack(pady=(10, 0))
-
-        ctk.CTkLabel(
-            frame_interno, text=valor,
-            font=ctk.CTkFont(size=22, weight="bold"), text_color=color,
-        ).pack(pady=(0, 10))
+        ctk.CTkLabel(frame_interno, text=titulo, font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B").pack(pady=(6, 2))
+        ctk.CTkLabel(frame_interno, text=valor, font=ctk.CTkFont(size=26, weight="bold"), text_color=color).pack(pady=(2, 6))
+        # sutil línea color
+        ctk.CTkFrame(frame_interno, fg_color=color, height=3, corner_radius=2).pack(fill="x", padx=20, pady=(0,4))
 
     def _mostrar_detalle(self, tipo):
         for widget in self.cards_frame.winfo_children():

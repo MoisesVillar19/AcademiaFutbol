@@ -38,12 +38,31 @@ def exportar_a_excel(datos: list[dict], columnas: list[tuple[str, str]],
         cell.border = thin_border
 
     for row_idx, fila in enumerate(datos, 5):
+        is_total = str(fila.get(columnas[0][0], "")).strip().upper() == "TOTAL"
         for col_idx, (key, _) in enumerate(columnas, 1):
             valor = fila.get(key, "")
             cell = ws.cell(row=row_idx, column=col_idx, value=valor)
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center" if col_idx == 1 else "left")
+            # TOTAL negrita + fondo claro
+            if is_total:
+                cell.font = Font(bold=True, color="1F4E78")
+                cell.fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+            # formato moneda para columnas que contienen S/ o Valorizado/Ganancia
+            header = columnas[col_idx-1][1].lower()
+            if any(k in header for k in ["precio", "valorizado", "ganancia", "total", "monto", "deuda"]):
+                try:
+                    if isinstance(valor, (int, float)):
+                        cell.number_format = '"S/" #,##0.00'
+                except Exception:
+                    pass
 
+    # AutoFilter + freeze panes + ancho
+    try:
+        ws.auto_filter.ref = f"A4:{get_column_letter(len(columnas))}4"
+        ws.freeze_panes = "A5"
+    except Exception:
+        pass
     for col_idx, _ in enumerate(columnas, 1):
         max_length = max(
             len(str(ws.cell(row=row, column=col_idx).value or ""))

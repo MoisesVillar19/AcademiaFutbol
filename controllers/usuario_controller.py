@@ -22,7 +22,7 @@ def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, st
         return False, error, None
 
     if not validate_rol(rol):
-        return False, "Rol no válido. Use ADMIN o SECRETARIA", None
+        return False, "Rol no válido. Use ADMIN, SECRETARIA, CAJA o INVENTARIO", None
 
     dni = persona_data.get("dni", "")
     tipo_doc = persona_data.get("tipo_documento", "DNI")
@@ -46,7 +46,7 @@ def editar_usuario(id_usuario: int, data: dict) -> tuple[bool, str]:
 
     if "rol" in data:
         if not validate_rol(data["rol"]):
-            return False, "Rol no válido. Use ADMIN o SECRETARIA"
+            return False, "Rol no válido. Use ADMIN, SECRETARIA, CAJA o INVENTARIO"
 
     if "dni" in data and data["dni"]:
         tipo_doc = data.get("tipo_documento", "DNI")

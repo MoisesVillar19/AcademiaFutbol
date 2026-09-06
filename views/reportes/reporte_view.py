@@ -79,26 +79,32 @@ class ReporteView(ctk.CTkFrame):
         entry_fin.insert(0, fecha_actual)
         entry_fin.pack()
 
+        ctk.CTkLabel(dialog, text="Formato:").pack(pady=(10, 2))
+        combo_formato = ctk.CTkComboBox(dialog, values=["Excel (.xlsx)", "PDF (.pdf) - demo"], width=200)
+        combo_formato.set("Excel (.xlsx)")
+        combo_formato.pack()
+
         resultado = {"valor": None}
 
         def confirmar():
             fecha_inicio = entry_inicio.get().strip()
             fecha_fin = entry_fin.get().strip()
-
             if not fecha_inicio or not fecha_fin:
                 messagebox.showwarning("Advertencia", "Ingrese ambas fechas")
                 return
-
+            fmt = combo_formato.get()
+            ext = ".pdf" if "PDF" in fmt else ".xlsx"
+            ftype = [("PDF", "*.pdf")] if ext == ".pdf" else [("Archivos Excel", "*.xlsx")]
             ruta = filedialog.asksaveasfilename(
                 title="Guardar reporte",
-                defaultextension=".xlsx",
-                filetypes=[("Archivos Excel", "*.xlsx")],
-                initialfile=f"reporte_{reporte_id}_{fecha_inicio}_a_{fecha_fin}.xlsx",
+                defaultextension=ext,
+                filetypes=ftype,
+                initialfile=f"reporte_{reporte_id}_{fecha_inicio}_a_{fecha_fin}{ext}",
             )
-
             if not ruta:
                 return
-
+            if not ruta.lower().endswith(ext):
+                ruta += ext
             resultado["valor"] = (fecha_inicio, fecha_fin, ruta)
             dialog.destroy()
 
@@ -114,7 +120,17 @@ class ReporteView(ctk.CTkFrame):
             self._ejecutar_exportacion(reporte_id, fecha_inicio, fecha_fin, ruta)
 
     def _ejecutar_exportacion(self, reporte_id, fecha_inicio, fecha_fin, ruta):
+        # Soporte demo PDF: si ruta .pdf, usa pdf_exporter con mismos datos
+        es_pdf = ruta.lower().endswith(".pdf")
         try:
+            if es_pdf:
+                # generar datos primero y luego exportar a PDF demo
+                ok, msg = self._exportar_pdf_demo(reporte_id, fecha_inicio, fecha_fin, ruta)
+                if ok:
+                    messagebox.showinfo("Éxito", msg)
+                else:
+                    messagebox.showerror("Error", msg)
+                return
             if reporte_id == "morosos":
                 exito, msg = reporte_controller.reporte_morosos(ruta)
             elif reporte_id == "pagos_fecha":
@@ -196,3 +212,43 @@ class ReporteView(ctk.CTkFrame):
                 messagebox.showerror("Error", msg)
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar: {str(e)}")
+
+    def _exportar_pdf_demo(self, reporte_id, fecha_inicio, fecha_fin, ruta):
+        """Demo PDF sin estilo final — usa mismos datos que Excel pero con pdf_exporter."""
+        try:
+            from utils.pdf_exporter import exportar_a_pdf
+            # reutilizar datos de reporte_service
+            if reporte_id == "morosos":
+                from services import reporte_service as rs
+                # generar datos morosos
+                from repositories import cuota_repository
+                cuotas = cuota_repository.obtener_vencidas()
+                morosos = {}
+                for c in cuotas:
+                    dni = c.get("dni", "")
+                    if dni not in morosos:
+                        morosos[dni] = {"dni": dni, "estudiante": f"{c.get('nombres','')} {c.get('apellidos','')}", "cuotas_vencidas": 0, "total_deuda": 0, "periodos": []}
+                    morosos[dni]["total_deuda"] += c.get("saldo",0)
+                    morosos[dni]["cuotas_vencidas"] += 1
+                    morosos[dni]["periodos"].append(c.get("periodo",""))
+                datos = [{"dni": m["dni"], "estudiante": m["estudiante"], "cuotas_vencidas": m["cuotas_vencidas"], "total_deuda": round(m["total_deuda"],2), "periodos": ", ".join(m["periodos"])} for m in morosos.values()]
+                cols = [("dni","DNI"),("estudiante","Estudiante"),("cuotas_vencidas","Cuotas Vencidas"),("total_deuda","Total Deuda (S/)"),("periodos","Periodos")]
+                return exportar_a_pdf(datos, cols, "Reporte de Morosos", ruta)
+            elif reporte_id == "inventario":
+                from services import reporte_service as rs
+                # usar datos de inventario valorizado
+                from repositories import producto_repository
+                prods = producto_repository.obtener_todos(activo=1)
+                datos = []
+                for p in prods:
+                    stock = p.get("stock_actual",0)
+                    datos.append({"codigo": p.get("codigo",""), "nombre": p.get("nombre",""), "stock": stock, "minimo": p.get("stock_minimo",0), "precio": p.get("precio",0)})
+                cols = [("codigo","Código"),("nombre","Nombre"),("stock","Stock"),("minimo","Mínimo"),("precio","Precio")]
+                return exportar_a_pdf(datos, cols, "Inventario", ruta)
+            else:
+                # fallback: crear PDF simple con datos genéricos
+                datos = [{"info": f"Reporte {reporte_id} del {fecha_inicio} al {fecha_fin}", "valor": "Demo PDF"}]
+                cols = [("info","Info"),("valor","Valor")]
+                return exportar_a_pdf(datos, cols, f"Reporte {reporte_id}", ruta)
+        except Exception as e:
+            return False, f"Error PDF demo: {e}"

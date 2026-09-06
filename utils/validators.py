@@ -32,7 +32,7 @@ def validate_sex(sex: str) -> bool:
 
 
 def validate_rol(rol: str) -> bool:
-    return rol in ("ADMIN", "SECRETARIA")
+    return rol in ("ADMIN", "SECRETARIA", "CAJA", "INVENTARIO")
 
 
 def validate_estado_estudiante(estado: str) -> bool:

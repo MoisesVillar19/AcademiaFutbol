@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     id_persona INTEGER UNIQUE NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA')),
+    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA', 'CAJA', 'INVENTARIO')),
     activo INTEGER DEFAULT 1,
     fecha_creacion TEXT NOT NULL,
     fecha_actualizacion TEXT,
@@ -463,6 +463,30 @@ def _migrar_columnas_faltantes(cursor) -> None:
         pass
     try:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_venta_almacen ON venta(id_almacen)")
+    except Exception:
+        pass
+
+    # v2: ampliar CHECK rol para CAJA/INVENTARIO si tabla vieja
+    try:
+        row = cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='usuario'").fetchone()
+        if row and row[0] and "CAJA" not in row[0]:
+            # recrear tabla con nuevo CHECK (SQLite no permite ALTER CHECK)
+            cursor.execute("ALTER TABLE usuario RENAME TO usuario_old")
+            cursor.execute("""
+                CREATE TABLE usuario (
+                    id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id_persona INTEGER UNIQUE NOT NULL,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA', 'CAJA', 'INVENTARIO')),
+                    activo INTEGER DEFAULT 1,
+                    fecha_creacion TEXT NOT NULL,
+                    fecha_actualizacion TEXT,
+                    FOREIGN KEY (id_persona) REFERENCES persona(id_persona)
+                )
+            """)
+            cursor.execute("INSERT INTO usuario (id_usuario, id_persona, username, password_hash, rol, activo, fecha_creacion, fecha_actualizacion) SELECT id_usuario, id_persona, username, password_hash, rol, activo, fecha_creacion, fecha_actualizacion FROM usuario_old")
+            cursor.execute("DROP TABLE usuario_old")
     except Exception:
         pass
 

@@ -97,6 +97,16 @@ COMPROBANTES_DIR = _resolver_dir("comprobantes", "comprobantes")
 
 ROLE_ADMIN = "ADMIN"
 ROLE_SECRETARIA = "SECRETARIA"
+ROLE_CAJA = "CAJA"
+ROLE_INVENTARIO = "INVENTARIO"
+ROLES_VALIDOS = (ROLE_ADMIN, ROLE_SECRETARIA, ROLE_CAJA, ROLE_INVENTARIO)
+# Matriz permisos por rol (para sidebar y gates)
+PERMISOS_ROL = {
+    ROLE_ADMIN: {"dashboard", "estudiantes", "matriculas", "pagos", "ventas", "inventario", "reportes", "egresos", "importar", "usuarios", "tarifas", "auditoria", "configuracion", "respaldo"},
+    ROLE_SECRETARIA: {"dashboard", "estudiantes", "matriculas", "pagos", "ventas", "inventario", "reportes"},
+    ROLE_CAJA: {"dashboard", "pagos", "ventas"},
+    ROLE_INVENTARIO: {"dashboard", "inventario", "reportes"},
+}
 
 STATUS_ACTIVO = "ACTIVO"
 STATUS_RETIRADO = "RETIRADO"

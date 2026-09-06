@@ -229,29 +229,50 @@ class App(ctk.CTk):
                 pass
             return btn
 
+        # Permisos granulares (si no hay sesión, solo Dashboard)
+        try:
+            from services import auth_service
+            def _can(m): return auth_service.tiene_permiso(m)
+        except Exception:
+            def _can(m): return login_controller.es_admin()
+
         _header("PANEL")
-        _btn("📊  Dashboard", self._mostrar_placeholder)
+        if _can("dashboard"):
+            _btn("📊  Dashboard", self._mostrar_placeholder)
         _header("ACADEMIA")
-        _btn("👤  Estudiantes", self._mostrar_estudiantes, indent=True)
-        _btn("📋  Matrículas", self._mostrar_matriculas, indent=True)
+        if _can("estudiantes"):
+            _btn("👤  Estudiantes", self._mostrar_estudiantes, indent=True)
+        if _can("matriculas"):
+            _btn("📋  Matrículas", self._mostrar_matriculas, indent=True)
         _header("FINANZAS")
-        _btn("💰  Pagos", self._mostrar_pagos, indent=True)
-        _btn("🛒  Ventas", self._mostrar_ventas, indent=True)
-        if login_controller.es_admin():
+        if _can("pagos"):
+            _btn("💰  Pagos", self._mostrar_pagos, indent=True)
+        if _can("ventas"):
+            _btn("🛒  Ventas", self._mostrar_ventas, indent=True)
+        if _can("egresos"):
             _btn("💸  Egresos", self._mostrar_egresos, indent=True)
         _header("ALMACÉN")
-        _btn("📦  Inventario", self._mostrar_inventario, indent=True)
+        if _can("inventario"):
+            _btn("📦  Inventario", self._mostrar_inventario, indent=True)
         _header("ANÁLISIS")
-        _btn("📈  Reportes", self._mostrar_reportes, indent=True)
+        if _can("reportes"):
+            _btn("📈  Reportes", self._mostrar_reportes, indent=True)
 
-        if login_controller.es_admin():
+        # SISTEMA solo ADMIN o con permiso
+        if _can("importar") or _can("usuarios") or _can("configuracion"):
             _header("SISTEMA")
-            _btn("📤  Importar", self._mostrar_importar, indent=True)
-            _btn("🔑  Usuarios", self._mostrar_usuarios, indent=True)
-            _btn("🏷  Tarifas", self._mostrar_tarifas, indent=True)
-            _btn("📝  Auditoría", self._mostrar_auditoria, indent=True)
-            _btn("⚙️  Configuración", self._mostrar_configuracion, indent=True)
-            _btn("💾  Respaldo", self._crear_backup_manual, indent=True)
+            if _can("importar"):
+                _btn("📤  Importar", self._mostrar_importar, indent=True)
+            if _can("usuarios"):
+                _btn("🔑  Usuarios", self._mostrar_usuarios, indent=True)
+            if _can("tarifas"):
+                _btn("🏷  Tarifas", self._mostrar_tarifas, indent=True)
+            if _can("auditoria"):
+                _btn("📝  Auditoría", self._mostrar_auditoria, indent=True)
+            if _can("configuracion"):
+                _btn("⚙️  Configuración", self._mostrar_configuracion, indent=True)
+            if _can("respaldo"):
+                _btn("💾  Respaldo", self._crear_backup_manual, indent=True)
 
         # Espaciador para scroll completo
         ctk.CTkLabel(menu_scroll, text="", height=10).pack()

@@ -49,7 +49,7 @@ def login(username: str, password: str) -> dict | None:
 def logout() -> None:
     global _usuario_actual
     if _usuario_actual:
-        logger.info(f"Logout: '{_usuario_actual['username']}'")
+        logger.info(f"Logout: '{_usuario_actual.get('username','')}'")
     _usuario_actual = None
 
 
@@ -78,6 +78,24 @@ def esta_logueado() -> bool:
 
 def es_admin() -> bool:
     return _usuario_actual is not None and _usuario_actual["rol"] == "ADMIN"
+
+
+def tiene_permiso(modulo: str) -> bool:
+    """Matriz granular: ADMIN todo, otros según PERMISOS_ROL. modulo ej: 'pagos', 'ventas', 'inventario'."""
+    if not _usuario_actual:
+        return False
+    if _usuario_actual["rol"] == "ADMIN":
+        return True
+    try:
+        from utils.constants import PERMISOS_ROL
+        perms = PERMISOS_ROL.get(_usuario_actual["rol"], set())
+        return modulo.lower() in perms
+    except Exception:
+        return False
+
+
+def es_rol(rol: str) -> bool:
+    return _usuario_actual is not None and _usuario_actual["rol"] == rol
 
 
 def requiere_cambio_password() -> bool:

@@ -54,6 +54,74 @@ def dias_desde_ultimo_backup() -> float | None:
     return delta.total_seconds() / 86400
 
 
+def listar_backups() -> list[dict]:
+    """Lista backups con fecha, tamaño y hash corto."""
+    import hashlib
+    destino = _resolver_ruta_backup()
+    archivos = glob.glob(os.path.join(destino, "academia_*.db"))
+    lista = []
+    for f in sorted(archivos, key=lambda x: os.path.getmtime(x), reverse=True):
+        try:
+            st = os.stat(f)
+            # hash corto primeros 4 hex
+            h = hashlib.sha256()
+            with open(f, "rb") as fh:
+                for chunk in iter(lambda: fh.read(8192), b""):
+                    h.update(chunk)
+            lista.append({"ruta": f, "fecha": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M"), "tamano_mb": round(st.st_size/1024/1024,2), "hash": h.hexdigest()[:8]})
+        except Exception:
+            lista.append({"ruta": f, "fecha": "", "tamano_mb": 0, "hash": ""})
+    return lista
+
+def verificar_backup(ruta: str) -> tuple[bool, str]:
+    """Verifica que el backup sea legible y no corrupto (cabecera SQLite)."""
+    try:
+        import sqlite3
+        conn = sqlite3.connect(f"file:{ruta}?mode=ro", uri=True)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master LIMIT 1")
+        cur.fetchone()
+        conn.close()
+        return True, "Backup verificado correctamente"
+    except Exception as e:
+        return False, f"Backup corrupto: {e}"
+
+def restaurar_backup(ruta: str, pin: str) -> tuple[bool, str]:
+    """Restaura con PIN de emergencia, cierra conexión y copia."""
+    from services import configuracion_service
+    from utils.security import verify_password
+    pin_hash = configuracion_service.obtener_valor("pin_emergencia")
+    if not pin_hash or not verify_password(pin, pin_hash):
+        return False, "PIN incorrecto"
+    try:
+        from database.connection import close_connection
+        from database.restore import restore_backup
+        close_connection()
+        restore_backup(ruta)
+        auditoria_service.registrar_log(auditoria_service.id_usuario_sesion(), "sistema", 0, "RESTORE", valor_nuevo=ruta)
+        return True, "Restauración completada. Reinicie la app."
+    except Exception as e:
+        logger.error(f"Restore fallo: {e}")
+        return False, str(e)
+
+def rotar_backups(dias: int = 30) -> int:
+    """Borra backups con más de N días, retorna cantidad borradas."""
+    import time
+    destino = _resolver_ruta_backup()
+    archivos = glob.glob(os.path.join(destino, "academia_*.db"))
+    borrados = 0
+    limite = time.time() - dias*86400
+    for f in archivos:
+        try:
+            if os.path.getmtime(f) < limite:
+                os.remove(f)
+                borrados += 1
+        except Exception:
+            pass
+    if borrados:
+        logger.info(f"Rotación backups: {borrados} borrados >{dias}d")
+    return borrados
+
 def verificar_backup_automatico() -> tuple[bool, str]:
     """Respeta CONFIGURACION.backup_automatico y frecuencia_backup (RN-030).
 

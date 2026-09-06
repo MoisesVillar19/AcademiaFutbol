@@ -47,3 +47,27 @@ def crear_backup_manual() -> tuple[bool, str, str | None]:
 def verificar_backup_automatico() -> tuple[bool, str]:
     from services import backup_service
     return backup_service.verificar_backup_automatico()
+
+def listar_backups() -> list[dict]:
+    if not puede_acceder():
+        return []
+    from services import backup_service
+    return backup_service.listar_backups()
+
+def verificar_backup(ruta: str) -> tuple[bool, str]:
+    if not puede_acceder():
+        return False, "Solo ADMIN"
+    from services import backup_service
+    return backup_service.verificar_backup(ruta)
+
+def restaurar_backup(ruta: str, pin: str) -> tuple[bool, str]:
+    if not puede_acceder():
+        return False, "Solo ADMIN"
+    from services import backup_service
+    return backup_service.restaurar_backup(ruta, pin)
+
+def rotar_backups(dias: int = 30) -> int:
+    if not puede_acceder():
+        return 0
+    from services import backup_service
+    return backup_service.rotar_backups(dias)

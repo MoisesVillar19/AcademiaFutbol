@@ -94,8 +94,8 @@ class ConfiguracionView(ctk.CTkFrame):
             self.becas_switch.select()
         self._nota(sec4, "Beca = PORCENTAJE o MONTO_FIJO; si deshabilitas, solo 1 beca por matrícula.")
 
-        # 5 — Backup / OneDrive
-        sec5 = self._seccion("Respaldo y OneDrive", "💾", "Dónde y cada cuánto se guarda la BD central.", 5)
+        # 5 — Backup / OneDrive + Restore
+        sec5 = self._seccion("Respaldo y OneDrive", "💾", "Dónde y cada cuánto se guarda la BD central. Restaurar requiere PIN.", 5)
         self.backup_switch = ctk.CTkSwitch(sec5, text="Backup automático (cada 6h verifica)")
         self.backup_switch.pack(anchor="w", padx=10, pady=5)
         if config.get("backup_automatico", 1):
@@ -104,6 +104,25 @@ class ConfiguracionView(ctk.CTkFrame):
         self._crear_campo(sec5, "ruta_backup", "Ruta de backup", config.get("ruta_backup", "backups/"), help="OneDrive\\BackupsAcademia recomendado")
         self._crear_campo(sec5, "correo_onedrive", "Correo OneDrive", config.get("correo_onedrive", ""), help="Cuenta que sincroniza academia.db")
         self._nota(sec5, "Botón Respaldo en sidebar crea backup manual en OneDrive inmediatamente.")
+        # Lista backups + restaurar/verificar/rotar
+        try:
+            from controllers import configuracion_controller as cc
+            backups = cc.listar_backups()
+            if backups:
+                ctk.CTkLabel(sec5, text=f"Backups recientes ({len(backups)}):", font=ctk.CTkFont(size=11, weight="bold")).pack(anchor="w", padx=10, pady=(8,2))
+                for b in backups[:5]:
+                    row = ctk.CTkFrame(sec5, fg_color="#F8F5FA", corner_radius=6)
+                    row.pack(fill="x", padx=10, pady=1)
+                    ctk.CTkLabel(row, text=f"{b['fecha']}  {b['tamano_mb']}MB  {b['hash']}", font=ctk.CTkFont(size=11)).pack(side="left", padx=8)
+                    ctk.CTkButton(row, text="Verificar", width=70, height=24, fg_color="#E5E7EB", text_color="#1F0A33", hover_color="#DDD6E5", command=lambda p=b['ruta']: self._verificar_backup(p)).pack(side="right", padx=2)
+                    ctk.CTkButton(row, text="Restaurar", width=70, height=24, fg_color="#DC2626", hover_color="#B91C1C", command=lambda p=b['ruta']: self._restaurar_backup(p)).pack(side="right", padx=2)
+                if len(backups) > 5:
+                    ctk.CTkLabel(sec5, text=f"+ {len(backups)-5} más", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w", padx=10)
+                ctk.CTkButton(sec5, text="Rotar >30 días", width=120, height=28, fg_color="gray", command=self._rotar_backups).pack(anchor="w", padx=10, pady=4)
+            else:
+                ctk.CTkLabel(sec5, text="No hay backups aún", text_color="gray", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10)
+        except Exception:
+            pass
 
         # 6 — Categorías edad
         sec6 = self._seccion("Categorías de Edad", "👥", "Rangos que asignan tarifa sugerida por edad.", 6)
@@ -383,6 +402,36 @@ class ConfiguracionView(ctk.CTkFrame):
             self._cargar_configuracion()
         else:
             messagebox.showerror("Error", msg)
+
+    def _verificar_backup(self, ruta):
+        from controllers import configuracion_controller as cc
+        ok, msg = cc.verificar_backup(ruta)
+        messagebox.showinfo("Verificar", msg) if ok else messagebox.showerror("Verificar", msg)
+
+    def _restaurar_backup(self, ruta):
+        # pide PIN
+        dialog = ctk.CTkInputDialog(text="PIN de emergencia para restaurar:", title="Restaurar Backup")
+        pin = dialog.get_input()
+        if pin is None:
+            return
+        pin = pin.strip()
+        if not pin:
+            messagebox.showwarning("Restaurar", "PIN requerido")
+            return
+        if not messagebox.askyesno("Confirmar", f"¿Restaurar desde\n{ruta}\n\nSe reiniciará la app."):
+            return
+        from controllers import configuracion_controller as cc
+        ok, msg = cc.restaurar_backup(ruta, pin)
+        if ok:
+            messagebox.showinfo("Restaurar", msg + "\nReinicie la app.")
+        else:
+            messagebox.showerror("Restaurar", msg)
+
+    def _rotar_backups(self):
+        from controllers import configuracion_controller as cc
+        n = cc.rotar_backups(30)
+        messagebox.showinfo("Rotar", f"{n} backups antiguos borrados (>30d)")
+        self._cargar_configuracion()
 
     def _desactivar_tipo_uniforme(self, t):
         if messagebox.askyesno("Confirmar", f"¿Desactivar '{t['nombre']}'?"):

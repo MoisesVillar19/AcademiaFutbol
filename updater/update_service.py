@@ -155,9 +155,19 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
             for nombre in nombres:
                 if nombre.endswith("/"):
                     continue
-                # NO sobrescribir la carpeta database/ (contiene la BD del usuario)
-                if nombre.startswith("database/") or nombre.startswith("database\\"):
+                # NO sobrescribir datos del usuario ni config local
+                lower = nombre.lower()
+                if lower in ("config.ini", "config_visual.json"):
                     continue
+                if lower.startswith("database/academia.db") or lower.startswith("database\\academia.db"):
+                    continue
+                if lower.startswith("database/") and lower.endswith(".db"):
+                    continue
+                if lower.startswith("logs/") or lower.startswith("logs\\"):
+                    continue
+                if lower.startswith("backups/") or lower.startswith("backups\\"):
+                    continue
+                # Actualizar código de la BD sí (create_db.py etc.)
                 destino = os.path.join(ruta_app, nombre)
                 os.makedirs(os.path.dirname(destino), exist_ok=True)
                 with zf.open(nombre) as src, open(destino, "wb") as dst:

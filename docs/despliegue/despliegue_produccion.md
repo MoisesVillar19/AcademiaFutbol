@@ -172,14 +172,46 @@ Si update falla: desinstalar `Panel Control → AcademiaFutbol`, reinstalar `Set
 
 - Windows 10+, LAN o VPN a `\\SERVIDOR`, Inno Setup solo dev, Python 3.13 dev, `customtkinter/bcrypt/openpyxl`.
 
-### 11. Checklist entrega
+### 11. Plan de Build que no rompe (checklist obligatorio antes de cada exe)
 
-- [ ] `docs/cambios_RN_v2.md` y este doc commiteados
-- [ ] `config.ini` generado por wizard, no hardcode `DB_PATH`
-- [ ] `VERSION` y `changelog.md` actualizados
-- [ ] `AcademiaFutbol.spec` `datas` incluye `config.ini` si existe
-- [ ] Test multi-PC OK
+> **Objetivo:** el `AcademiaFutbol.exe` nuevo nunca borre `OneDrive\Academia\academia.db`, `fotos/`, `comprobantes/` ni `config.ini`.
+
+| Paso | Comando | Verifica | Si falla |
+|---|---|---|---|
+| 1. `VERSION` | `echo 1.1.0 > VERSION` | `type VERSION` | No tag |
+| 2. `changelog` | `docs/desarrollo/changelog.md` nueva entrada | `git diff` | Release sin notas |
+| 3. `DB` no hardcode | `grep -r "C:\\"` `utils/constants.py` → solo `config.ini` | `config.ini` existe | BD local hardcodeada |
+| 4. `spec` completo | `AcademiaFutbol.spec:12` `datas` + `hiddenimports` incluye `venta/egreso/tipo_uniforme, ui_helpers, controllers/*` | `py -m PyInstaller --log-level WARN` sin `missing` | Build rompe ventas |
+| 5. `build.bat` | `build.bat` → `dist\AcademiaFutbol\AcademiaFutbol.exe` + `assets` | `dist` no contiene `database\academia.db` (solo `_internal`) | Si lo contiene, `AcademiaFutbol.spec:104 COLLECT` mal |
+| 6. `installer` | `installer\build_installer.bat` → `Output\Setup-1.1.0.exe` | `setup.iss:46` `Source: ..\dist\AcademiaFutbol\*` `createallsubdirs` pero **no** `database\academia.db` | Si lo empaqueta, sobreescribe BD central |
+| 7. `setup_onedrive.bat` | `setup_onedrive.bat` crea `OneDrive\Academia\`, `fotos/`, `comprobantes/`, `config.ini` y migra `database\academia.db` si no existe `OneDrive\...` | `type config.ini` muestra `[database] path=OneDrive\...` | Wizard installer debe replicarlo |
+| 8. `updater` | `updater\update_service.py` extrae ZIP a `App\` **excluyendo** `database/`, `config.ini`, `logs/`, `OneDrive` | `updater/config.py:1` `GITHUB_REPO` público | Si no excluye, update borra BD |
+| 9. **Prueba local** | `py main.py` → login `admin/admin123` → `Setup OneDrive` → `Dashboard` sin `database is locked` | `OneDrive` icono verde, `academia.db` WAL | Si `locked`, revisar `PRAGMA journal_mode=WAL` |
+| 10. **Prueba multi-PC** | 2 PCs `OneDrive` mismo `academia.db` → PC1 crea alumno, PC2 `Actualizar` lo ve | `SELECT COUNT(*) FROM estudiante` igual | Si no, `config.ini` apunta a local |
+
+**Regla de oro:** `dist` y `installer\Output` **nunca** llevan `academia.db` ni `config.ini` con path fijo. `config.ini` se genera **en la PC destino** por `setup_onedrive.bat` o `setup.iss:60` `CurStepChanged`.
+
+### 12. Versionado y migraciones futuras (no romper)
+
+| Versión | DDL | Migración | Compatibilidad |
+|---|---|---|---|
+| `1.0.0` | `estudiante.foto_path`, `producto.precio_*`, `tipo_uniforme/venta/egreso`, `configuracion 7 precios` | `create_db.py:302` `_migrar_columnas_faltantes` `ALTER ADD COLUMN IF NOT EXISTS` + `seed 4 tipos` | `v1.0.0` abre `v0.9` DB vieja → `ALTER` auto, no borra datos |
+| `1.1.0` | `egreso.activo` | `ALTER ADD activo DEFAULT 1` | `1.0.0 DB` → `1.1.0 exe` migra |
+| `1.2.0` futuro | `producto.ganancia` | `ALTER` + `seed` | Nunca `DROP` |
+
+**Versionado `VERSION` + `changelog.md` + `git tag v1.1.0` + `GitHub Release ZIP`** `publicacion_release.md:3`.
+
+### 13. Checklist entrega (antes de enviar a secretaria)
+
+- [ ] `docs/desarrollo/cambios_RN_v2.md` + este doc + `manual_sistema.md` commiteados
+- [ ] `VERSION` y `docs/desarrollo/changelog.md` actualizados
+- [ ] `AcademiaFutbol.spec` `datas` incluye `config.ini` (opcional) + `assets` + `hiddenimports` `venta/egreso/tipo_uniforme/ui_helpers`
+- [ ] `build.bat` `dist` sin `academia.db`
+- [ ] `setup_onedrive.bat` probado `OneDrive\Academia\academia.db` `fotos/`
+- [ ] `installer\setup.iss` `[Dirs] {app}\database` `users-modify` pero `config.ini` generado, no empaquetado fijo
+- [ ] `updater` excluye `database/` + `config.ini`
+- [ ] Test `py main.py` `cambiar contraseña` al frente `2` PCs + `Dashboard Neto` no `0` si hay ventas
 
 ---
 
-**Próximo paso:** Elegir opción A o B y ejecutar `Fase 1` build installer con pantalla BD central.
+**Próximo paso:** Ejecutar `setup_onedrive.bat` en cada PC antes del primer `AcademiaFutbol.exe`, luego `build.bat → build_installer.bat` para esta última parte más importante.

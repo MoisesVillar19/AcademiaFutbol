@@ -15,7 +15,8 @@ a = Analysis(
         ('database/seed.py', 'database'),
         ('database/connection.py', 'database'),
         ('VERSION', '.'),
-        ('config.ini', '.'),
+        # config.ini NO se empaqueta fijo: se genera por setup_onedrive.bat / installer según OneDrive de cada PC
+        # ('config.ini', '.'),  # se deja como ejemplo si existe
     ],
     hiddenimports=[
         'customtkinter',

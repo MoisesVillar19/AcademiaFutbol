@@ -29,167 +29,118 @@ class ConfiguracionView(ctk.CTkFrame):
         self.contenido = ctk.CTkScrollableFrame(self)
         self.contenido.pack(fill="both", expand=True, padx=15, pady=5)
 
+    # ── Helpers UI ordenada y explicada ──────────────────────────
+    def _seccion(self, titulo, icono, descripcion, nro):
+        """Crea un frame sección ordenada con número, icono y descripción."""
+        sec = ctk.CTkFrame(self.contenido, fg_color="white", border_width=1, border_color="#E5E7EB", corner_radius=10)
+        sec.pack(fill="x", padx=5, pady=6)
+        head = ctk.CTkFrame(sec, fg_color="transparent")
+        head.pack(fill="x", padx=12, pady=(10, 4))
+        ctk.CTkLabel(head, text=f"{nro}. {icono}  {titulo}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#3D1559").pack(side="left")
+        ctk.CTkLabel(head, text="ADMIN", font=ctk.CTkFont(size=11), text_color="white", fg_color="#7C3AED", corner_radius=6, width=55).pack(side="right")
+        ctk.CTkLabel(sec, text=descripcion, font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=700, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+        return sec
+
+    def _nota(self, parent, texto):
+        ctk.CTkLabel(parent, text=f"ℹ {texto}", font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=680, justify="left").pack(anchor="w", padx=10, pady=2)
+
     def _cargar_configuracion(self):
         for widget in self.contenido.winfo_children():
             widget.destroy()
 
         config = configuracion_controller.obtener_configuracion()
         if not config:
-            ctk.CTkLabel(
-                self.contenido, text="Error: No se pudo cargar la configuración",
-                text_color="red",
-            ).pack(pady=20)
+            ctk.CTkLabel(self.contenido, text="Error: No se pudo cargar la configuración", text_color="red").pack(pady=20)
             return
 
         self.entries = {}
 
-        general_frame = ctk.CTkFrame(self.contenido)
-        general_frame.pack(fill="x", padx=5, pady=5)
+        # 1 — General
+        sec1 = self._seccion("Información General", "🏫", "Datos que aparecen en reportes y encabezados. No afecta cálculos.", 1)
+        self._crear_campo(sec1, "nombre_academia", "Nombre de la Academia", config.get("nombre_academia", ""), help="Ej: Roncalli — se imprime en Excel")
+        self._crear_campo(sec1, "direccion", "Dirección", config.get("direccion", ""), help="Opcional, para reportes")
+        self._crear_campo(sec1, "telefono", "Teléfono", config.get("telefono", ""), help="Contacto en reportes")
+        self._crear_campo(sec1, "correo", "Correo", config.get("correo", ""), help="Contacto")
+        self._nota(sec1, "Tip: cambia el nombre aquí y se refleja en Dashboard y reportes sin tocar código.")
 
-        ctk.CTkLabel(
-            general_frame, text="General",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
+        # 2 — Precios (lo más usado, arriba y destacado)
+        sec2 = self._seccion("Precios Flexibles", "💰", "Todos los montos que cobra la academia. Edita y guarda — la próxima matrícula/venta usa el nuevo precio. Sin deploy.", 2)
+        self._nota(sec2, "Inscripción = solo nuevos (incluye 1 camiseta y descuenta stock). Mensualidad = solo antiguos. Reingreso = con uniforme anterior (más barato).")
+        self._crear_campo(sec2, "precio_inscripcion", "Inscripción — alumno nuevo (S/)", str(config.get("precio_inscripcion", 100)), help="Incluye 1 camiseta Entrenamiento (-1 stock)")
+        self._crear_campo(sec2, "precio_mensualidad", "Mensualidad — alumno antiguo (S/ mes)", str(config.get("precio_mensualidad", 100)), help="Se genera 1 cuota/mes; diferir crea 2-3")
+        self._crear_campo(sec2, "precio_reingreso", "Reingreso — con uniforme anterior (S/)", str(config.get("precio_reingreso", 100)), help="Más barato que inscripción+uniforme")
+        self._crear_campo(sec2, "precio_uniforme", "Uniforme base (S/)", str(config.get("precio_uniforme", 20)), help="Precio por defecto si el producto no tiene precio_venta propio")
+        self._crear_campo(sec2, "tasa_campeonato", "Tasa campeonato (S/)", str(config.get("tasa_campeonato", 15)), help="Venta tipo CAMPEONATO")
+        self._crear_campo(sec2, "arbitraje_por_equipo", "Arbitraje por equipo (S/)", str(config.get("arbitraje_por_equipo", 15)), help="Se multiplica por nº equipos")
+        self._crear_campo(sec2, "pago_profesor", "Pago profesor (S/ mes)", str(config.get("pago_profesor", 200)), help="Egreso fijo mensual")
 
-        self._crear_campo(general_frame, "nombre_academia", "Nombre de la Academia",
-                          config.get("nombre_academia", ""))
-        self._crear_campo(general_frame, "direccion", "Dirección",
-                          config.get("direccion", ""))
-        self._crear_campo(general_frame, "telefono", "Teléfono",
-                          config.get("telefono", ""))
-        self._crear_campo(general_frame, "correo", "Correo",
-                          config.get("correo", ""))
-
-        mora_frame = ctk.CTkFrame(self.contenido)
-        mora_frame.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            mora_frame, text="Mora",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self.mora_switch = ctk.CTkSwitch(
-            mora_frame, text="Habilitar Mora",
-        )
+        # 3 — Mora
+        sec3 = self._seccion("Mora y Vencimientos", "⏰", "Cómo se penaliza la cuota vencida y cuándo avisa 'por vencer'.", 3)
+        self.mora_switch = ctk.CTkSwitch(sec3, text="Habilitar mora (aplica al vencer la cuota)")
         self.mora_switch.pack(anchor="w", padx=10, pady=5)
         if config.get("mora_habilitada", 0):
             self.mora_switch.select()
+        self._crear_campo(sec3, "porcentaje_mora", "Porcentaje de mora (%)", str(config.get("porcentaje_mora", 0)), help="Ej 5 = +5% sobre saldo al vencer")
+        self._nota(sec3, "Si está deshabilitada, la cuota solo cambia a VENCIDO sin recargo.")
 
-        self._crear_campo(mora_frame, "porcentaje_mora", "Porcentaje de Mora (%)",
-                          str(config.get("porcentaje_mora", 0)))
-
-        vencimiento_frame = ctk.CTkFrame(self.contenido)
-        vencimiento_frame.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            vencimiento_frame, text="Vencimiento y Cuotas",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self._crear_campo(vencimiento_frame, "dias_por_vencer", "Días por Vencer",
-                          str(config.get("dias_por_vencer", 3)))
-
-        self.becas_switch = ctk.CTkSwitch(
-            vencimiento_frame, text="Permitir Múltiples Becas",
-        )
+        # 4 — Cuotas y becas
+        sec4 = self._seccion("Cuotas y Becas", "📅", "Reglas de generación de cuotas y descuentos.", 4)
+        self._crear_campo(sec4, "dias_por_vencer", "Días por vencer (alerta)", str(config.get("dias_por_vencer", 3)), help="Dashboard avisa cuotas que vencen en ≤ N días")
+        self.becas_switch = ctk.CTkSwitch(sec4, text="Permitir múltiples becas por matrícula")
         self.becas_switch.pack(anchor="w", padx=10, pady=5)
         if config.get("permitir_multiples_becas", 1):
             self.becas_switch.select()
+        self._nota(sec4, "Beca = PORCENTAJE o MONTO_FIJO; si deshabilitas, solo 1 beca por matrícula.")
 
-        precios_frame = ctk.CTkFrame(self.contenido)
-        precios_frame.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            precios_frame, text="Precios Flexibles (S/) — editable sin código",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self._crear_campo(precios_frame, "precio_inscripcion", "Inscripción (nuevo, incluye camiseta)",
-                          str(config.get("precio_inscripcion", 100)))
-        self._crear_campo(precios_frame, "precio_mensualidad", "Mensualidad (antiguo, mensual)",
-                          str(config.get("precio_mensualidad", 100)))
-        self._crear_campo(precios_frame, "precio_reingreso", "Reingreso (con uniforme anterior)",
-                          str(config.get("precio_reingreso", 100)))
-        self._crear_campo(precios_frame, "precio_uniforme", "Uniforme base",
-                          str(config.get("precio_uniforme", 20)))
-        self._crear_campo(precios_frame, "tasa_campeonato", "Tasa campeonato",
-                          str(config.get("tasa_campeonato", 15)))
-        self._crear_campo(precios_frame, "arbitraje_por_equipo", "Arbitraje por equipo",
-                          str(config.get("arbitraje_por_equipo", 15)))
-        self._crear_campo(precios_frame, "pago_profesor", "Pago profesor",
-                          str(config.get("pago_profesor", 200)))
-
-        backup_frame = ctk.CTkFrame(self.contenido)
-        backup_frame.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            backup_frame, text="Backup",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self.backup_switch = ctk.CTkSwitch(
-            backup_frame, text="Backup Automático",
-        )
+        # 5 — Backup / OneDrive
+        sec5 = self._seccion("Respaldo y OneDrive", "💾", "Dónde y cada cuánto se guarda la BD central.", 5)
+        self.backup_switch = ctk.CTkSwitch(sec5, text="Backup automático (cada 6h verifica)")
         self.backup_switch.pack(anchor="w", padx=10, pady=5)
         if config.get("backup_automatico", 1):
             self.backup_switch.select()
+        self._crear_campo(sec5, "frecuencia_backup", "Frecuencia (días)", str(config.get("frecuencia_backup", 7)), help="Si 7, crea backup si pasaron ≥7 días sin uno")
+        self._crear_campo(sec5, "ruta_backup", "Ruta de backup", config.get("ruta_backup", "backups/"), help="OneDrive\\BackupsAcademia recomendado")
+        self._crear_campo(sec5, "correo_onedrive", "Correo OneDrive", config.get("correo_onedrive", ""), help="Cuenta que sincroniza academia.db")
+        self._nota(sec5, "Botón Respaldo en sidebar crea backup manual en OneDrive inmediatamente.")
 
-        self._crear_campo(backup_frame, "frecuencia_backup", "Frecuencia (días)",
-                          str(config.get("frecuencia_backup", 7)))
-        self._crear_campo(backup_frame, "ruta_backup", "Ruta de Backup",
-                          config.get("ruta_backup", "backups/"))
-        self._crear_campo(backup_frame, "correo_onedrive", "Correo OneDrive",
-                          config.get("correo_onedrive", ""))
+        # 6 — Categorías edad
+        sec6 = self._seccion("Categorías de Edad", "👥", "Rangos que asignan tarifa sugerida por edad.", 6)
+        self._cargar_categorias(sec6)
+        from utils.ui_helpers import crear_boton_interactivo
+        crear_boton_interactivo(sec6, text="+ Nueva Categoría", width=150, command=self._nueva_categoria, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
-        categorias_frame = ctk.CTkFrame(self.contenido)
-        categorias_frame.pack(fill="x", padx=5, pady=5)
+        # 7 — Tipos uniforme
+        sec7 = self._seccion("Tipos de Uniforme", "👕", "Amplía tipos sin código. Cada tipo → producto con stock y precio_venta.", 7)
+        self._cargar_tipos_uniforme(sec7)
+        crear_boton_interactivo(sec7, text="+ Nuevo Tipo Uniforme", width=180, command=self._nuevo_tipo_uniforme, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
-        ctk.CTkLabel(
-            categorias_frame, text="Categorías de Edad",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self._cargar_categorias(categorias_frame)
-
-        ctk.CTkButton(
-            categorias_frame, text="+ Nueva Categoría", width=150,
-            command=self._nueva_categoria,
-        ).pack(anchor="w", padx=10, pady=5)
-
-        uniformes_frame = ctk.CTkFrame(self.contenido)
-        uniformes_frame.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            uniformes_frame, text="Tipos de Uniforme (flexible)",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-
-        self._cargar_tipos_uniforme(uniformes_frame)
-
-        ctk.CTkButton(
-            uniformes_frame, text="+ Nuevo Tipo Uniforme", width=180,
-            command=self._nuevo_tipo_uniforme,
-        ).pack(anchor="w", padx=10, pady=5)
-
+        # Guardar fijo abajo
         btn_frame = ctk.CTkFrame(self.contenido, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=5, pady=10)
+        btn_frame.pack(fill="x", padx=5, pady=12)
+        st = ctk.CTkLabel(btn_frame, text="💡 Cambios se aplican al guardar, sin reiniciar. Precios afectan solo nuevas operaciones.", text_color="#6B5B7B", font=ctk.CTkFont(size=11))
+        st.pack(side="left", padx=5)
+        from utils.ui_helpers import crear_boton_interactivo as btn2
+        btn2(btn_frame, text="💾 Guardar Cambios", width=160, height=36, command=self._guardar, fg_color="#22C55E").pack(side="right")
 
-        ctk.CTkButton(
-            btn_frame, text="Guardar Cambios", width=150,
-            command=self._guardar,
-        ).pack(side="right")
-
-    def _crear_campo(self, parent, key, label, valor):
+    def _crear_campo(self, parent, key, label, valor, help=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.pack(fill="x", padx=10, pady=2)
-
-        ctk.CTkLabel(frame, text=label, width=180, anchor="w").pack(side="left")
-
-        entry = ctk.CTkEntry(frame, width=300)
+        # label con tooltip help
+        ctk.CTkLabel(frame, text=label, width=220, anchor="w", font=ctk.CTkFont(size=12)).pack(side="left")
+        entry = ctk.CTkEntry(frame, width=280, border_width=1, border_color="#E5E7EB")
         entry.insert(0, str(valor))
         entry.pack(side="left", padx=5)
-
+        # hover en entry para distinguir interactivo vs estático
+        try:
+            entry.bind("<Enter>", lambda e, en=entry: en.configure(border_color="#7C3AED"))
+            entry.bind("<Leave>", lambda e, en=entry: en.configure(border_color="#E5E7EB"))
+            entry.bind("<FocusIn>", lambda e, en=entry: en.configure(border_color="#7C3AED", border_width=2))
+            entry.bind("<FocusOut>", lambda e, en=entry: en.configure(border_color="#E5E7EB", border_width=1))
+        except Exception:
+            pass
         self.entries[key] = entry
+        if help:
+            ctk.CTkLabel(parent, text=f"↳ {help}", font=ctk.CTkFont(size=10), text_color="#9CA3AF", wraplength=650, justify="left").pack(anchor="w", padx=10)
 
     def _guardar(self):
         data = {}
@@ -223,29 +174,18 @@ class ConfiguracionView(ctk.CTkFrame):
     def _cargar_categorias(self, parent):
         cats = categoria_controller.listar_categorias()
         if not cats:
-            ctk.CTkLabel(parent, text="No hay categorías", text_color="gray").pack(
-                anchor="w", padx=10, pady=3
-            )
+            ctk.CTkLabel(parent, text="No hay categorías — crea la primera con + Nueva", text_color="gray").pack(anchor="w", padx=10, pady=3)
             return
         for cat in cats:
-            row = ctk.CTkFrame(parent, fg_color="transparent")
-            row.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(
-                row,
-                text=f"{cat['nombre']}  |  Edad: {cat['edad_min']}-{cat['edad_max']} años",
-                font=ctk.CTkFont(size=12),
-            ).pack(side="left")
-
-            ctk.CTkButton(
-                row, text="Editar", width=70, height=28,
-                command=lambda c=cat: self._editar_categoria(c),
-            ).pack(side="right", padx=2)
-
-            ctk.CTkButton(
-                row, text="Desactivar", width=90, height=28,
-                fg_color="#d9534f",
-                command=lambda c=cat: self._desactivar_categoria(c),
-            ).pack(side="right", padx=2)
+            # card interactiva: hover resalta
+            from utils.ui_helpers import crear_card_interactiva
+            row = crear_card_interactiva(parent)
+            row.pack(fill="x", padx=10, pady=3)
+            ctk.CTkLabel(row, text=f"🏷 {cat['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10)
+            ctk.CTkLabel(row, text=f"Edad {cat['edad_min']}-{cat['edad_max']} años", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(side="left", padx=10)
+            from utils.ui_helpers import crear_boton_interactivo
+            crear_boton_interactivo(row, text="✏ Editar", width=75, height=28, command=lambda c=cat: self._editar_categoria(c), fg_color="#7C3AED").pack(side="right", padx=2)
+            crear_boton_interactivo(row, text="⛔ Desactivar", width=95, height=28, fg_color="#d9534f", command=lambda c=cat: self._desactivar_categoria(c)).pack(side="right", padx=2)
 
     def _nueva_categoria(self):
         dialog = ctk.CTkToplevel(self)
@@ -357,12 +297,16 @@ class ConfiguracionView(ctk.CTkFrame):
         except Exception:
             from services import tipo_uniforme_service
             tipos = tipo_uniforme_service.listar_tipos()
+        if not tipos:
+            ctk.CTkLabel(parent, text="No hay tipos — crea Entrenamiento/Competencia", text_color="gray").pack(anchor="w", padx=10)
+            return
         for t in tipos:
-            row = ctk.CTkFrame(parent, fg_color="transparent")
+            from utils.ui_helpers import crear_card_interactiva, crear_boton_interactivo
+            row = crear_card_interactiva(parent)
             row.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(row, text=f"{t['nombre']} - {t.get('descripcion','')}", font=ctk.CTkFont(size=12)).pack(side="left")
-            ctk.CTkButton(row, text="Desactivar", width=90, height=28, fg_color="#d9534f",
-                          command=lambda x=t: self._desactivar_tipo_uniforme(x)).pack(side="right", padx=2)
+            ctk.CTkLabel(row, text=f"👕 {t['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10)
+            ctk.CTkLabel(row, text=t.get('descripcion',''), font=ctk.CTkFont(size=11), text_color="#6B5B7B").pack(side="left")
+            crear_boton_interactivo(row, text="⛔ Desactivar", width=95, height=28, fg_color="#d9534f", command=lambda x=t: self._desactivar_tipo_uniforme(x)).pack(side="right", padx=2)
 
     def _nuevo_tipo_uniforme(self):
         dialog = ctk.CTkInputDialog(text="Nombre del tipo de uniforme:", title="Nuevo Tipo Uniforme")

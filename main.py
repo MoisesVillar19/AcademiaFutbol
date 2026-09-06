@@ -182,24 +182,30 @@ class App(ctk.CTk):
         self._sidebar_botones = []
 
         def _header(text):
-            # Header no clicable, separa grupos
             lbl = ctk.CTkLabel(sidebar, text=text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#8899aa", anchor="w")
             lbl.pack(fill="x", padx=12, pady=(8, 2))
 
         def _btn(text, cmd, indent=False):
             w = 196 if not indent else 184
             pad = 12 if not indent else 24
+            # hover visible + cursor mano (distingue interactivo vs estático)
             btn = ctk.CTkButton(
                 sidebar, text=text, width=w, height=36,
                 fg_color="transparent", anchor="w",
                 font=ctk.CTkFont(size=13 if not indent else 12),
                 text_color="#c0c8d4" if not indent else "#a0aec0",
-                hover_color=COLOR_SIDEBAR_HOVER,
+                hover_color="#4E1D70" if not indent else "#3A1A5E",
                 corner_radius=8,
                 command=lambda c=cmd, b=text: self._on_menu_click(c, b),
             )
             btn.pack(pady=1, padx=pad)
             self._sidebar_botones.append((text, btn))
+            try:
+                # cursor mano y sutil elevación al hover
+                btn.bind("<Enter>", lambda e, b=btn: (b.configure(cursor="hand2"), b.configure(border_width=1, border_color="#6B21A8") if indent else None))
+                btn.bind("<Leave>", lambda e, b=btn: (b.configure(cursor=""), b.configure(border_width=0) if indent else None))
+            except Exception:
+                pass
             return btn
 
         _header("PANEL")

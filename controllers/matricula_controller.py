@@ -4,7 +4,7 @@ from utils.dates import calculate_age
 
 
 def _get_id_usuario() -> int:
-    return auth_service.id_usuario_sesion()
+    return auth_service.id_usuario_sesion_or_system()
 
 
 def crear_matricula(data: dict) -> tuple[bool, str, int | None]:

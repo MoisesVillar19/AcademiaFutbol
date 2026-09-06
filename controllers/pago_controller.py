@@ -57,5 +57,9 @@ def obtener_cuotas_vencidas() -> list[dict]:
     return cuota_service.obtener_vencidas()
 
 
+def obtener_cuotas_pendientes(id_matricula: int) -> list[dict]:
+    return cuota_service.obtener_cuotas_pendientes(id_matricula)
+
+
 def obtener_cuotas_por_vencer(dias: int = 3) -> list[dict]:
     return cuota_service.obtener_por_vencer(dias)

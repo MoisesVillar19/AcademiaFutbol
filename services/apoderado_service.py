@@ -167,3 +167,7 @@ def obtener_apoderado(id_apoderado: int) -> dict | None:
 
 def obtener_apoderados_por_estudiante(id_estudiante: int) -> list[dict]:
     return estudiante_apoderado_repository.obtener_por_estudiante(id_estudiante)
+
+
+def obtener_apoderado_por_persona(id_persona: int) -> dict | None:
+    return apoderado_repository.obtener_por_persona(id_persona)

@@ -90,6 +90,11 @@ class MatriculaView(ctk.CTkFrame):
         self.combo_beca = ctk.CTkComboBox(scroll, width=400, values=["Ninguna"])
         self.combo_beca.pack(anchor="w", pady=3)
 
+        ctk.CTkLabel(scroll, text="Pago diferido (mensualidad):").pack(anchor="w", pady=(5,0))
+        self.combo_diferir = ctk.CTkComboBox(scroll, width=200, values=["Ahora (0)", "2 meses", "3 meses"])
+        self.combo_diferir.set("Ahora (0)")
+        self.combo_diferir.pack(anchor="w", pady=3)
+
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
 
@@ -247,11 +252,13 @@ class MatriculaView(ctk.CTkFrame):
             self.label_form_status.configure(text="Seleccione una tarifa", text_color="red")
             return
 
+        diferir_map = {"Ahora (0)": 0, "2 meses": 2, "3 meses": 3}
         data = {
             "id_estudiante": id_est,
             "id_tarifa": id_tarifa,
             "monto_pactado": self.entry_monto_pactado.get().strip() or None,
             "dia_vencimiento": self.entry_dia_venc.get().strip() or "1",
+            "diferir_meses": diferir_map.get(self.combo_diferir.get(), 0),
         }
 
         beca_selection = self.combo_beca.get()

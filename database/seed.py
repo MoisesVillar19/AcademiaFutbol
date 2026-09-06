@@ -59,8 +59,9 @@ def seed_database() -> None:
         conn.execute(
             """INSERT INTO configuracion
                (id_configuracion, nombre_academia, dias_por_vencer, permitir_multiples_becas,
-                backup_automatico, frecuencia_backup, ruta_backup, pin_emergencia, fecha_actualizacion)
-               VALUES (1, 'Academia Deportiva', 3, 1, 1, 7, 'backups/', ?, ?)""",
+                backup_automatico, frecuencia_backup, ruta_backup, pin_emergencia,
+                precio_inscripcion, precio_mensualidad, precio_uniforme, precio_reingreso, fecha_actualizacion)
+               VALUES (1, 'Academia Deportiva', 3, 1, 1, 7, 'backups/', ?, 100, 100, 20, 100, ?)""",
             (hash_password(PIN_EMERGENCIA_DEFECTO), now),
         )
     elif not config.get("pin_emergencia"):
@@ -68,6 +69,29 @@ def seed_database() -> None:
             "UPDATE configuracion SET pin_emergencia = ? WHERE id_configuracion = 1",
             (hash_password(PIN_EMERGENCIA_DEFECTO),),
         )
+
+    # Tipos de uniforme (flexibles, RN-039)
+    for nombre, desc in [
+        ("Uniforme Entrenamiento", "Camiseta de entrenamiento incluida en inscripción"),
+        ("Uniforme Competencia", "Uniforme para competencias"),
+        ("Uniforme Completo", "Paquete completo - S/30"),
+        ("Uniforme Media", "Media uniforme - S/20"),
+    ]:
+        exists = fetch_one("SELECT id_tipo_uniforme FROM tipo_uniforme WHERE nombre = ?", (nombre,))
+        if not exists:
+            conn.execute("INSERT INTO tipo_uniforme (nombre, descripcion) VALUES (?, ?)", (nombre, desc))
+
+    # Producto inicial: Camiseta Entrenamiento (RN-036)
+    cat_dep = fetch_one("SELECT id_categoria_producto FROM categoria_producto WHERE nombre = 'INSUMO_DEPORTIVO'")
+    if cat_dep:
+        tipo_ent = fetch_one("SELECT id_tipo_uniforme FROM tipo_uniforme WHERE nombre = 'Uniforme Entrenamiento'")
+        exists_prod = fetch_one("SELECT id_producto FROM producto WHERE codigo = 'CAMISETA-ENT'")
+        if not exists_prod and tipo_ent:
+            conn.execute(
+                """INSERT INTO producto (id_categoria_producto, tipo_uso, codigo, nombre, stock_actual, stock_minimo, precio, precio_compra, precio_venta, id_tipo_uniforme)
+                   VALUES (?, 'VENTA', 'CAMISETA-ENT', 'Camiseta Entrenamiento', 50, 5, 20, 8, 20, ?)""",
+                (cat_dep["id_categoria_producto"], tipo_ent["id_tipo_uniforme"]),
+            )
 
     conn.commit()
 

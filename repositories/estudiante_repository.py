@@ -8,18 +8,27 @@ def insertar(estudiante: Estudiante) -> int:
     now = get_now()
     cursor = conn.execute(
         """INSERT INTO estudiante
-           (id_persona, estado, fecha_ingreso, fecha_retiro, activo)
-           VALUES (?, ?, ?, ?, ?)""",
+           (id_persona, estado, fecha_ingreso, fecha_retiro, foto_path, comprobante_pago_path, fecha_matricula, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             estudiante.id_persona,
             estudiante.estado,
             estudiante.fecha_ingreso,
             estudiante.fecha_retiro,
+            estudiante.foto_path,
+            estudiante.comprobante_pago_path,
+            estudiante.fecha_matricula,
             estudiante.activo,
         ),
     )
     conn.commit()
     return cursor.lastrowid
+
+
+def actualizar_foto(id_estudiante: int, foto_path: str) -> None:
+    conn = get_connection()
+    conn.execute("UPDATE estudiante SET foto_path = ? WHERE id_estudiante = ?", (foto_path, id_estudiante))
+    conn.commit()
 
 
 def obtener_por_id(id_estudiante: int) -> dict | None:
@@ -70,6 +79,11 @@ def obtener_por_id_con_persona(id_estudiante: int) -> dict | None:
            WHERE e.id_estudiante = ?""",
         (id_estudiante,),
     )
+
+
+def contar_nuevos_por_periodo(fecha_inicio: str, fecha_fin: str) -> int:
+    row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
+    return row["total"] if row else 0
 
 
 def actualizar(estudiante: Estudiante) -> None:

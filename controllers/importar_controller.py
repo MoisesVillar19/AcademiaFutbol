@@ -52,7 +52,7 @@ def ejecutar_importacion(filas: list[dict], mapeo: dict | None = None) -> tuple[
     if not filas:
         return False, "No hay datos para importar", {}
 
-    id_usuario = auth_service.id_usuario_sesion()
+    id_usuario = auth_service.id_usuario_sesion_or_system()
     return importar_service.importar_estudiantes(filas, id_usuario, mapeo)
 
 

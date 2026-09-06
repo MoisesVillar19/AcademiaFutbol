@@ -18,4 +18,12 @@ class Configuracion:
     frecuencia_backup: int = 7
     ruta_backup: str = "backups/"
     correo_onedrive: str = ""
+    pin_emergencia: str = ""
+    precio_inscripcion: float = 100.0
+    precio_mensualidad: float = 100.0
+    precio_uniforme: float = 20.0
+    precio_reingreso: float = 100.0
+    tasa_campeonato: float = 15.0
+    arbitraje_por_equipo: float = 15.0
+    pago_profesor: float = 200.0
     fecha_actualizacion: str = ""

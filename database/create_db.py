@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS estudiante (
     estado TEXT NOT NULL DEFAULT 'ACTIVO' CHECK(estado IN ('ACTIVO', 'RETIRADO', 'REINGRESANTE')),
     fecha_ingreso TEXT NOT NULL,
     fecha_retiro TEXT,
+    foto_path TEXT,
+    comprobante_pago_path TEXT,
+    fecha_matricula TEXT,
     activo INTEGER DEFAULT 1,
     FOREIGN KEY (id_persona) REFERENCES persona(id_persona)
 );
@@ -169,6 +172,9 @@ CREATE TABLE IF NOT EXISTS producto (
     stock_actual INTEGER DEFAULT 0,
     stock_minimo INTEGER DEFAULT 0,
     precio REAL DEFAULT 0,
+    precio_compra REAL DEFAULT 0,
+    precio_venta REAL DEFAULT 0,
+    id_tipo_uniforme INTEGER REFERENCES tipo_uniforme(id_tipo_uniforme),
     activo INTEGER DEFAULT 1,
     FOREIGN KEY (id_categoria_producto) REFERENCES categoria_producto(id_categoria_producto)
 );
@@ -185,6 +191,46 @@ CREATE TABLE IF NOT EXISTS movimiento_inventario (
     motivo TEXT,
     FOREIGN KEY (id_producto) REFERENCES producto(id_producto),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+);
+
+CREATE TABLE IF NOT EXISTS tipo_uniforme (
+    id_tipo_uniforme INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    descripcion TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS venta (
+    id_venta INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_estudiante INTEGER REFERENCES estudiante(id_estudiante),
+    id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+    fecha_venta TEXT NOT NULL,
+    monto_total REAL NOT NULL,
+    metodo_pago TEXT NOT NULL CHECK(metodo_pago IN ('EFECTIVO', 'YAPE', 'PLIN', 'TRANSFERENCIA')),
+    tipo_venta TEXT NOT NULL CHECK(tipo_venta IN ('UNIFORME', 'TIENDA', 'CAMPEONATO', 'INSCRIPCION')),
+    numero_recibo TEXT UNIQUE NOT NULL,
+    comprobante_path TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS detalle_venta (
+    id_detalle_venta INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_venta INTEGER NOT NULL REFERENCES venta(id_venta),
+    id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
+    cantidad INTEGER NOT NULL CHECK(cantidad > 0),
+    precio_unitario REAL NOT NULL,
+    subtotal REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS egreso (
+    id_egreso INTEGER PRIMARY KEY AUTOINCREMENT,
+    concepto TEXT NOT NULL CHECK(concepto IN ('PROFESOR', 'PERSONAL', 'CAMPEONATO_FIJO', 'ARBITRAJE', 'VIATICOS')),
+    monto REAL NOT NULL CHECK(monto > 0),
+    fecha TEXT NOT NULL,
+    responsable TEXT,
+    id_usuario INTEGER REFERENCES usuario(id_usuario),
+    observacion TEXT,
+    activo INTEGER DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS configuracion (
@@ -204,6 +250,13 @@ CREATE TABLE IF NOT EXISTS configuracion (
     ruta_backup TEXT DEFAULT 'backups/',
     correo_onedrive TEXT DEFAULT '',
     pin_emergencia TEXT DEFAULT '',
+    precio_inscripcion REAL DEFAULT 100,
+    precio_mensualidad REAL DEFAULT 100,
+    precio_uniforme REAL DEFAULT 20,
+    precio_reingreso REAL DEFAULT 100,
+    tasa_campeonato REAL DEFAULT 15,
+    arbitraje_por_equipo REAL DEFAULT 15,
+    pago_profesor REAL DEFAULT 200,
     fecha_actualizacion TEXT
 );
 
@@ -231,6 +284,10 @@ CREATE INDEX IF NOT EXISTS idx_estudiante_apoderado_estudiante ON estudiante_apo
 CREATE INDEX IF NOT EXISTS idx_matricula_beca_matricula ON matricula_beca(id_matricula);
 CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(id_categoria_producto);
 CREATE INDEX IF NOT EXISTS idx_movimiento_producto ON movimiento_inventario(id_producto);
+CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_venta);
+CREATE INDEX IF NOT EXISTS idx_detalle_venta_venta ON detalle_venta(id_venta);
+CREATE INDEX IF NOT EXISTS idx_egreso_fecha ON egreso(fecha);
+CREATE INDEX IF NOT EXISTS idx_tipo_uniforme_nombre ON tipo_uniforme(nombre);
 """
 
 
@@ -251,6 +308,39 @@ def _migrar_columnas_faltantes(cursor) -> None:
     columnas_config = _obtener_columnas(cursor, "configuracion")
     if "pin_emergencia" not in columnas_config:
         cursor.execute("ALTER TABLE configuracion ADD COLUMN pin_emergencia TEXT DEFAULT ''")
+    for col, sql in [
+        ("precio_inscripcion", "ALTER TABLE configuracion ADD COLUMN precio_inscripcion REAL DEFAULT 100"),
+        ("precio_mensualidad", "ALTER TABLE configuracion ADD COLUMN precio_mensualidad REAL DEFAULT 100"),
+        ("precio_uniforme", "ALTER TABLE configuracion ADD COLUMN precio_uniforme REAL DEFAULT 20"),
+        ("precio_reingreso", "ALTER TABLE configuracion ADD COLUMN precio_reingreso REAL DEFAULT 100"),
+        ("tasa_campeonato", "ALTER TABLE configuracion ADD COLUMN tasa_campeonato REAL DEFAULT 15"),
+        ("arbitraje_por_equipo", "ALTER TABLE configuracion ADD COLUMN arbitraje_por_equipo REAL DEFAULT 15"),
+        ("pago_profesor", "ALTER TABLE configuracion ADD COLUMN pago_profesor REAL DEFAULT 200"),
+    ]:
+        if col not in columnas_config:
+            cursor.execute(sql)
+
+    columnas_est = _obtener_columnas(cursor, "estudiante")
+    for col, sql in [
+        ("foto_path", "ALTER TABLE estudiante ADD COLUMN foto_path TEXT"),
+        ("comprobante_pago_path", "ALTER TABLE estudiante ADD COLUMN comprobante_pago_path TEXT"),
+        ("fecha_matricula", "ALTER TABLE estudiante ADD COLUMN fecha_matricula TEXT"),
+    ]:
+        if col not in columnas_est:
+            cursor.execute(sql)
+
+    columnas_prod = _obtener_columnas(cursor, "producto")
+    for col, sql in [
+        ("precio_compra", "ALTER TABLE producto ADD COLUMN precio_compra REAL DEFAULT 0"),
+        ("precio_venta", "ALTER TABLE producto ADD COLUMN precio_venta REAL DEFAULT 0"),
+        ("id_tipo_uniforme", "ALTER TABLE producto ADD COLUMN id_tipo_uniforme INTEGER REFERENCES tipo_uniforme(id_tipo_uniforme)"),
+    ]:
+        if col not in columnas_prod:
+            cursor.execute(sql)
+
+    columnas_egreso = _obtener_columnas(cursor, "egreso")
+    if "activo" not in columnas_egreso:
+        cursor.execute("ALTER TABLE egreso ADD COLUMN activo INTEGER DEFAULT 1")
 
 
 def _obtener_columnas(cursor, tabla: str) -> list[str]:

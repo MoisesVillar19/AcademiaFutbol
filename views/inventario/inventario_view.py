@@ -184,6 +184,23 @@ class InventarioView(ctk.CTkFrame):
         self.entry_precio = ctk.CTkEntry(row1, placeholder_text="0.00", width=100)
         self.entry_precio.pack(side="left", padx=10)
 
+        row2 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row2.pack(fill="x", anchor="w", pady=3)
+
+        ctk.CTkLabel(row2, text="Compra (S/):").pack(side="left")
+        self.entry_precio_compra = ctk.CTkEntry(row2, placeholder_text="0.00", width=100)
+        self.entry_precio_compra.pack(side="left", padx=10)
+
+        ctk.CTkLabel(row2, text="Venta (S/):").pack(side="left", padx=(20, 0))
+        self.entry_precio_venta = ctk.CTkEntry(row2, placeholder_text="0.00", width=100)
+        self.entry_precio_venta.pack(side="left", padx=10)
+
+        ctk.CTkLabel(scroll, text="Tipo uniforme (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
+        self.combo_tipo_uniforme = ctk.CTkComboBox(scroll, width=300, values=["Sin tipo"])
+        self.combo_tipo_uniforme.set("Sin tipo")
+        self.combo_tipo_uniforme.pack(anchor="w", pady=(0, 5))
+        self._tipos_uniforme_map = {}
+
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
         self.label_form_status.pack(anchor="w", pady=5)
 
@@ -312,10 +329,15 @@ class InventarioView(ctk.CTkFrame):
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w")
 
+        compra = prod.get('precio_compra', 0) or prod.get('precio', 0)
+        venta = prod.get('precio_venta', 0) or prod.get('precio', 0)
+        ganancia = venta - compra if venta and compra else 0
+        tipo_u = prod.get('tipo_uniforme_nombre') or prod.get('nombre_tipo_uniforme') or ''
+        gan_txt = f" | Ganancia: S/{ganancia:.2f}" if ganancia else ""
         ctk.CTkLabel(
             info,
             text=f"Categoría: {prod.get('categoria_nombre', '')} | "
-                 f"Tipo: {prod.get('tipo_uso', '')} | Precio: S/{prod.get('precio', 0):.2f}",
+                 f"Tipo: {prod.get('tipo_uso', '')} | Compra: S/{compra:.2f} Venta: S/{venta:.2f}{gan_txt}" + (f" | Uniforme: {tipo_u}" if tipo_u else ""),
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
 
@@ -342,13 +364,28 @@ class InventarioView(ctk.CTkFrame):
     def _nuevo_producto(self):
         self._limpiar_formulario()
         self._cargar_combo_categorias()
+        self._cargar_combo_tipos_uniforme()
         self.label_codigo.configure(text="Código: Se generará al guardar")
         self._id_producto_editando = None
         self.tabview.set("Registrar Producto")
 
+    def _cargar_combo_tipos_uniforme(self):
+        try:
+            from controllers import tipo_uniforme_controller
+            tipos = tipo_uniforme_controller.listar_tipos()
+        except Exception:
+            from services import tipo_uniforme_service
+            tipos = tipo_uniforme_service.listar_tipos()
+        nombres = ["Sin tipo"] + [t["nombre"] for t in tipos]
+        self.combo_tipo_uniforme.configure(values=nombres)
+        self._tipos_uniforme_map = {t["nombre"]: t["id_tipo_uniforme"] for t in tipos}
+        if "Sin tipo" not in self._tipos_uniforme_map:
+            self._tipos_uniforme_map["Sin tipo"] = None
+
     def _editar_producto(self, prod):
         self._limpiar_formulario()
         self._cargar_combo_categorias()
+        self._cargar_combo_tipos_uniforme()
         self._id_producto_editando = prod["id_producto"]
 
         producto = inventario_controller.obtener_producto(prod["id_producto"])
@@ -358,6 +395,13 @@ class InventarioView(ctk.CTkFrame):
             self.combo_tipo_uso.set(producto.get("tipo_uso", ""))
             self.entry_stock_min.insert(0, str(producto.get("stock_minimo", 0)))
             self.entry_precio.insert(0, str(producto.get("precio", 0)))
+            self.entry_precio_compra.insert(0, str(producto.get("precio_compra", producto.get("precio", 0))))
+            self.entry_precio_venta.insert(0, str(producto.get("precio_venta", producto.get("precio", 0))))
+            if producto.get("id_tipo_uniforme"):
+                for k, v in self._tipos_uniforme_map.items():
+                    if v == producto.get("id_tipo_uniforme"):
+                        self.combo_tipo_uniforme.set(k)
+                        break
 
         self.tabview.set("Registrar Producto")
 
@@ -367,7 +411,12 @@ class InventarioView(ctk.CTkFrame):
             "tipo_uso": self.combo_tipo_uso.get(),
             "stock_minimo": self.entry_stock_min.get().strip() or "0",
             "precio": self.entry_precio.get().strip() or "0",
+            "precio_compra": self.entry_precio_compra.get().strip() or "0",
+            "precio_venta": self.entry_precio_venta.get().strip() or "0",
         }
+        tipo_sel = self.combo_tipo_uniforme.get()
+        if tipo_sel in self._tipos_uniforme_map:
+            data["id_tipo_uniforme"] = self._tipos_uniforme_map[tipo_sel]
 
         cat_selection = self.combo_categoria.get()
         if cat_selection in self._categorias_map:
@@ -496,4 +545,10 @@ class InventarioView(ctk.CTkFrame):
         self.combo_tipo_uso.set("CONSUMO_INTERNO")
         self.entry_stock_min.delete(0, "end")
         self.entry_precio.delete(0, "end")
+        try:
+            self.entry_precio_compra.delete(0, "end")
+            self.entry_precio_venta.delete(0, "end")
+            self.combo_tipo_uniforme.set("Sin tipo")
+        except Exception:
+            pass
         self.label_form_status.configure(text="")

@@ -87,6 +87,26 @@ class DashboardView(ctk.CTkFrame):
         self._crear_card(row3, "Stock Bajo", str(data["stock_bajo"]), "#F59E0B",
                          lambda: self._mostrar_detalle("stock"))
 
+        row4 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
+        row4.pack(fill="x", pady=5)
+
+        self._crear_card(row4, "Ventas Mes", f"S/{data.get('ingresos_ventas_mes',0):.2f}", "#7C3AED",
+                         lambda: self._mostrar_detalle("ventas_mes"))
+        self._crear_card(row4, "Egresos Mes", f"S/{data.get('egresos_mes',0):.2f}", "#DC2626",
+                         lambda: self._mostrar_detalle("egresos_mes"))
+        self._crear_card(row4, "Neto Mes", f"S/{data.get('neto_mes',0):.2f}", "#22C55E" if data.get('neto_mes',0) >=0 else "#DC2626",
+                         lambda: self._mostrar_detalle("neto_mes"))
+
+        row5 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
+        row5.pack(fill="x", pady=5)
+
+        self._crear_card(row5, "Nuevos Mes", str(data.get("nuevos_mes",0)), "#22C55E",
+                         lambda: self._mostrar_detalle("nuevos_mes"))
+        self._crear_card(row5, "Antiguos Mes", str(data.get("antiguos_mes",0)), "#6B21A8",
+                         lambda: self._mostrar_detalle("antiguos_mes"))
+        self._crear_card(row5, "Total Matrículas Mes", str(data.get("matriculas_mes",0)), "#3D1559",
+                         lambda: self._mostrar_detalle("matriculas_mes"))
+
         for widget in self.detalle_frame.winfo_children():
             widget.destroy()
 
@@ -137,6 +157,12 @@ class DashboardView(ctk.CTkFrame):
             "monto_vencido": "Monto Vencido",
             "monto_por_vencer": "Monto por Vencer",
             "stock": "Productos con Stock Bajo",
+            "ventas_mes": "Ventas del Mes (Uniformes/Tienda)",
+            "egresos_mes": "Egresos del Mes",
+            "neto_mes": "Neto del Mes (Ingresos - Egresos)",
+            "nuevos_mes": "Alumnos Nuevos del Mes",
+            "antiguos_mes": "Alumnos Antiguos (Matrículas)",
+            "matriculas_mes": "Matrículas del Mes",
         }
         self.titulo_label.configure(text=titulos.get(tipo, "Detalle"))
 
@@ -158,6 +184,18 @@ class DashboardView(ctk.CTkFrame):
             self._detalle_monto(dashboard_controller.listar_monto_por_vencer(), "por vencer")
         elif tipo == "stock":
             self._detalle_stock()
+        elif tipo == "ventas_mes":
+            self._detalle_ventas_mes()
+        elif tipo == "egresos_mes":
+            self._detalle_egresos_mes()
+        elif tipo == "neto_mes":
+            self._detalle_neto_mes()
+        elif tipo == "nuevos_mes":
+            self._detalle_nuevos_mes()
+        elif tipo == "antiguos_mes":
+            self._detalle_antiguos_mes()
+        elif tipo == "matriculas_mes":
+            self._detalle_matriculas_mes()
 
     def _mostrar_cards(self):
         self._cargar_indicadores()
@@ -394,6 +432,60 @@ class DashboardView(ctk.CTkFrame):
                 text=f"Mostrando 20 de {len(cuotas)} cuotas",
                 text_color="gray",
             ).pack(pady=5)
+
+    def _detalle_ventas_mes(self):
+        from datetime import date
+        hoy = date.today()
+        ini = hoy.replace(day=1).isoformat()
+        try:
+            from controllers import venta_controller
+            ventas = venta_controller.listar_ventas(ini, hoy.isoformat())
+            total = sum(v.get("monto_total",0) for v in ventas)
+            ctk.CTkLabel(self.detalle_frame, text=f"Ventas mes: S/{total:.2f} en {len(ventas)} ventas", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
+            for v in ventas[:20]:
+                row = ctk.CTkFrame(self.detalle_frame)
+                row.pack(fill="x", padx=5, pady=1)
+                ctk.CTkLabel(row, text=f"{v.get('tipo_venta','')} {v.get('numero_recibo','')} S/{v.get('monto_total',0):.2f}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+        except Exception as e:
+            ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
+
+    def _detalle_egresos_mes(self):
+        from datetime import date
+        hoy = date.today()
+        ini = hoy.replace(day=1).isoformat()
+        try:
+            from controllers import egreso_controller
+            egresos = egreso_controller.listar_egresos(ini, hoy.isoformat())
+            total = sum(e.get("monto",0) for e in egresos)
+            ctk.CTkLabel(self.detalle_frame, text=f"Egresos mes: S/{total:.2f} en {len(egresos)}", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
+            for e in egresos[:20]:
+                row = ctk.CTkFrame(self.detalle_frame)
+                row.pack(fill="x", padx=5, pady=1)
+                ctk.CTkLabel(row, text=f"{e.get('concepto','')} S/{e.get('monto',0):.2f} {e.get('fecha','')}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+        except Exception as e:
+            ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
+
+    def _detalle_neto_mes(self):
+        from datetime import date
+        hoy = date.today()
+        ini = hoy.replace(day=1).isoformat()
+        fin = hoy.isoformat()
+        try:
+            from controllers import egreso_controller
+            rep = egreso_controller.reporte_ingresos_vs_egresos(ini, fin)
+            txt = f"Ingresos: S/{rep.get('total_ingresos',0):.2f} (pagos {rep.get('ingresos_pagos',0):.2f} + ventas {rep.get('ingresos_ventas',0):.2f})\nEgresos: S/{rep.get('egresos',0):.2f}\nNeto: S/{rep.get('neto',0):.2f}"
+            ctk.CTkLabel(self.detalle_frame, text=txt, font=ctk.CTkFont(size=14), justify="left").pack(anchor="w", pady=10)
+        except Exception as e:
+            ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
+
+    def _detalle_nuevos_mes(self):
+        ctk.CTkLabel(self.detalle_frame, text="Nuevos vs Antiguos: ver Reportes > Nuevos vs Antiguos", font=ctk.CTkFont(size=12)).pack(pady=20)
+
+    def _detalle_antiguos_mes(self):
+        self._detalle_nuevos_mes()
+
+    def _detalle_matriculas_mes(self):
+        ctk.CTkLabel(self.detalle_frame, text="Matrículas mes: ver listado detallado en Reportes", font=ctk.CTkFont(size=12)).pack(pady=20)
 
     def _detalle_stock(self):
         productos = dashboard_controller.listar_stock_bajo()

@@ -129,6 +129,63 @@ class ReporteView(ctk.CTkFrame):
                 exito, msg = reporte_controller.reporte_inventario(ruta)
             elif reporte_id == "becas_activas":
                 exito, msg = reporte_controller.reporte_becas_activas(ruta)
+            elif reporte_id == "ingresos_vs_egresos":
+                # v2 flexible
+                from controllers import egreso_controller
+                rep = egreso_controller.reporte_ingresos_vs_egresos(fecha_inicio, fecha_fin)
+                # exportar simple via openpyxl
+                try:
+                    from openpyxl import Workbook
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Ingresos vs Egresos"
+                    ws.append(["Concepto","Monto"])
+                    ws.append(["Ingresos pagos", rep.get("ingresos_pagos",0)])
+                    ws.append(["Ingresos ventas", rep.get("ingresos_ventas",0)])
+                    ws.append(["Total ingresos", rep.get("total_ingresos",0)])
+                    ws.append(["Egresos", rep.get("egresos",0)])
+                    ws.append(["Neto", rep.get("neto",0)])
+                    wb.save(ruta)
+                    exito, msg = True, f"Reporte guardado en {ruta}"
+                except Exception as e:
+                    exito, msg = False, str(e)
+            elif reporte_id == "stock_bajo_uniformes":
+                try:
+                    from controllers import inventario_controller
+                    from openpyxl import Workbook
+                    bajos = inventario_controller.listar_productos()
+                    bajos = [p for p in bajos if p.get("stock_actual",0) <= p.get("stock_minimo",0) and p.get("activo",1)]
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Stock bajo uniformes"
+                    ws.append(["Codigo","Nombre","Stock","Minimo"])
+                    for p in bajos:
+                        ws.append([p.get("codigo",""), p.get("nombre",""), p.get("stock_actual",0), p.get("stock_minimo",0)])
+                    wb.save(ruta)
+                    exito, msg = True, f"Reporte guardado en {ruta}"
+                except Exception as e:
+                    exito, msg = False, str(e)
+            elif reporte_id == "nuevos_vs_antiguos":
+                try:
+                    from database.connection import fetch_all
+                    from openpyxl import Workbook
+                    nuevos = len(fetch_all("SELECT id_estudiante FROM estudiante WHERE fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin)))
+                    # matriculas en periodo
+                    from controllers import matricula_controller
+                    mats = fetch_all("SELECT id_matricula FROM matricula WHERE fecha_inicio BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
+                    total_mats = len(mats)
+                    antiguos = max(0, total_mats - nuevos)
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Nuevos vs Antiguos"
+                    ws.append(["Tipo","Cantidad"])
+                    ws.append(["Nuevos", nuevos])
+                    ws.append(["Antiguos", antiguos])
+                    ws.append(["Total matriculas", total_mats])
+                    wb.save(ruta)
+                    exito, msg = True, f"Reporte guardado en {ruta}"
+                except Exception as e:
+                    exito, msg = False, str(e)
             else:
                 messagebox.showerror("Error", "Reporte no reconocido")
                 return

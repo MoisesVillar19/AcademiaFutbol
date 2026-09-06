@@ -2,6 +2,14 @@ import customtkinter as ctk
 from controllers import estudiante_controller
 from widgets.date_picker import DatePicker
 from utils.logger import logger
+import os
+from tkinter import filedialog
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+from utils.constants import FOTOS_DIR
+import shutil
 
 
 class EstudianteView(ctk.CTkFrame):
@@ -92,6 +100,17 @@ class EstudianteView(ctk.CTkFrame):
         ctk.CTkLabel(scroll, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.entry_apellidos = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
         self.entry_apellidos.pack(anchor="w", pady=(0, 5))
+
+        # Foto del niño (RN-041) - flexible, opcional, ≤2MB jpg/png
+        foto_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        foto_frame.pack(fill="x", anchor="w", pady=5)
+        ctk.CTkLabel(foto_frame, text="Foto del niño (opcional):").pack(side="left", padx=(0,5))
+        self.btn_foto = ctk.CTkButton(foto_frame, text="Seleccionar foto", width=150, command=self._seleccionar_foto)
+        self.btn_foto.pack(side="left", padx=5)
+        self.label_foto = ctk.CTkLabel(foto_frame, text="Sin foto", text_color="gray")
+        self.label_foto.pack(side="left", padx=5)
+        self._foto_tmp_path = None
+        self._foto_preview = None
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -252,6 +271,8 @@ class EstudianteView(ctk.CTkFrame):
             info, text=f"DNI: {est.get('dni', '')}  |  Estado: {estado}",
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
+        if est.get("foto_path"):
+            ctk.CTkLabel(info, text=f"Foto: {os.path.basename(est['foto_path'])}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
 
         botones = ctk.CTkFrame(card, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
@@ -301,6 +322,9 @@ class EstudianteView(ctk.CTkFrame):
             self.entry_direccion.insert(0, estudiante.get("direccion", "") or "")
             self.entry_telefono.insert(0, estudiante.get("telefono", "") or "")
             self.entry_correo.insert(0, estudiante.get("correo", "") or "")
+            self._foto_actual = estudiante.get("foto_path")
+            if self._foto_actual:
+                self.label_foto.configure(text=os.path.basename(self._foto_actual))
 
             apoderados = estudiante_controller.obtener_apoderados_por_estudiante(est["id_estudiante"])
             ap_principales = [a for a in apoderados if a.get("es_principal")]
@@ -356,7 +380,23 @@ class EstudianteView(ctk.CTkFrame):
             "tipo_documento": tipo_doc,
         }
 
+        # Copiar foto a OneDrive/fotos si se seleccionó
+        foto_path = None
+        if self._foto_tmp_path:
+            try:
+                os.makedirs(FOTOS_DIR, exist_ok=True)
+                ext = os.path.splitext(self._foto_tmp_path)[1] or ".jpg"
+                foto_path = os.path.join(FOTOS_DIR, f"{documento}{ext}")
+                shutil.copy2(self._foto_tmp_path, foto_path)
+            except Exception as e:
+                logger.warning(f"No se pudo copiar foto: {e}")
+                foto_path = self._foto_tmp_path
+            data["foto_path"] = foto_path
+
         if self._id_estudiante_editando:
+            # Si edita y no seleccionó nueva foto, mantener existente
+            if not foto_path and hasattr(self, '_foto_actual'):
+                data["foto_path"] = self._foto_actual
             logger.info(f"[GUARDAR] Modo edicion id={self._id_estudiante_editando}")
             exito, msg = estudiante_controller.editar_estudiante(
                 self._id_estudiante_editando, data,
@@ -461,9 +501,22 @@ class EstudianteView(ctk.CTkFrame):
         self._limpiar_formulario()
         self.tabview.set("Estudiantes")
 
+    def _seleccionar_foto(self):
+        path = filedialog.askopenfilename(filetypes=[("Imagen","*.jpg *.jpeg *.png"),("Todos","*.*")])
+        if not path:
+            return
+        if os.path.getsize(path) > 2 * 1024 * 1024:
+            self.label_form_status.configure(text="Foto debe ser ≤2MB", text_color="red")
+            return
+        self._foto_tmp_path = path
+        self.label_foto.configure(text=os.path.basename(path))
+
     def _limpiar_formulario(self):
         self._id_estudiante_editando = None
         self._id_apoderado_editando = None
+        self._foto_tmp_path = None
+        self._foto_actual = None
+        self.label_foto.configure(text="Sin foto")
         self.combo_tipo_doc.set("DNI")
         self.entry_dni.delete(0, "end")
         self.entry_nombres.delete(0, "end")
@@ -489,10 +542,69 @@ class EstudianteView(ctk.CTkFrame):
             self._cargar_combo_estudiantes()
 
     def _reingreso(self, est):
+        from tkinter import messagebox
         exito, msg = estudiante_controller.registrar_reingreso(est["id_estudiante"])
         if exito:
             self._cargar_estudiantes()
             self._cargar_combo_estudiantes()
+            # RN-044: reingreso sin uniforme, ofrecer venta aparte flexible
+            if messagebox.askyesno("Reingreso", f"{msg}\n\n¿Vender uniforme ahora? (tipo y precio configurables)"):
+                self._dialog_venta_reingreso(est)
+
+    def _dialog_venta_reingreso(self, est):
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Venta uniforme - Reingreso")
+        dialog.geometry("400x300")
+        dialog.transient(self)
+        dialog.grab_set()
+        ctk.CTkLabel(dialog, text=f"Estudiante: {est.get('nombres','')} {est.get('apellidos','')}", font=ctk.CTkFont(weight="bold")).pack(pady=10)
+        ctk.CTkLabel(dialog, text="Tipo uniforme:").pack(anchor="w", padx=15)
+        combo_tipo = ctk.CTkComboBox(dialog, width=250, values=["Cargando..."])
+        combo_tipo.pack(padx=15, pady=5)
+        ctk.CTkLabel(dialog, text="Cantidad:").pack(anchor="w", padx=15)
+        entry_cant = ctk.CTkEntry(dialog, width=100)
+        entry_cant.insert(0, "1")
+        entry_cant.pack(padx=15)
+        # Cargar tipos
+        try:
+            from controllers import tipo_uniforme_controller
+            tipos = tipo_uniforme_controller.listar_tipos()
+        except Exception:
+            from services import tipo_uniforme_service
+            tipos = tipo_uniforme_service.listar_tipos()
+        nombres = [t["nombre"] for t in tipos]
+        combo_tipo.configure(values=nombres if nombres else ["Uniforme Entrenamiento"])
+        if nombres:
+            combo_tipo.set(nombres[0])
+        label_status = ctk.CTkLabel(dialog, text="")
+        label_status.pack(pady=5)
+        def vender():
+            nombre_tipo = combo_tipo.get()
+            id_tipo = next((t["id_tipo_uniforme"] for t in tipos if t["nombre"]==nombre_tipo), None)
+            # buscar producto por tipo_uniforme
+            from controllers import inventario_controller
+            prods = inventario_controller.listar_productos()
+            prod = next((p for p in prods if p.get("id_tipo_uniforme")==id_tipo), None)
+            if not prod:
+                label_status.configure(text="No hay producto para ese tipo", text_color="red")
+                return
+            try:
+                cant = int(entry_cant.get().strip() or "1")
+            except ValueError:
+                label_status.configure(text="Cantidad inválida", text_color="red")
+                return
+            from controllers import venta_controller
+            exito, msg2, _ = venta_controller.registrar_venta({
+                "id_estudiante": est["id_estudiante"],
+                "tipo_venta": "UNIFORME",
+                "metodo_pago": "EFECTIVO",
+                "items": [{"id_producto": prod["id_producto"], "cantidad": cant}]
+            })
+            label_status.configure(text=msg2, text_color="green" if exito else "red")
+            if exito:
+                dialog.after(800, dialog.destroy)
+        ctk.CTkButton(dialog, text="Vender", command=vender).pack(pady=10)
+        ctk.CTkButton(dialog, text="Omitir", fg_color="gray", command=dialog.destroy).pack()
 
     def _desactivar(self, est):
         from tkinter import messagebox

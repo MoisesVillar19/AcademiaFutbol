@@ -17,6 +17,8 @@ def actualizar(config: Configuracion) -> None:
            dias_por_vencer = ?, permitir_multiples_becas = ?,
            backup_automatico = ?, frecuencia_backup = ?,
            ruta_backup = ?, correo_onedrive = ?,
+           pin_emergencia = ?, precio_inscripcion = ?, precio_mensualidad = ?, precio_uniforme = ?,
+           precio_reingreso = ?, tasa_campeonato = ?, arbitraje_por_equipo = ?, pago_profesor = ?,
            fecha_actualizacion = ?
            WHERE id_configuracion = ?""",
         (
@@ -34,6 +36,14 @@ def actualizar(config: Configuracion) -> None:
             config.frecuencia_backup,
             config.ruta_backup,
             config.correo_onedrive,
+            config.pin_emergencia,
+            config.precio_inscripcion,
+            config.precio_mensualidad,
+            config.precio_uniforme,
+            config.precio_reingreso,
+            config.tasa_campeonato,
+            config.arbitraje_por_equipo,
+            config.pago_profesor,
             now,
             config.id_configuracion,
         ),

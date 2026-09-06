@@ -68,11 +68,19 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
 
         monto_base = round(max(monto_base, 0), 2)
 
+        # RN-043 diferido flexible: genera 1 cuota + N-1 adicionales si diferir_meses >0
+        diferir = int(data.get("diferir_meses", 0) or 0)
         cuota_service.generar_siguiente_cuota(
             id_matricula=id_matricula,
             monto_base=monto_base,
             dia_vencimiento=dia_vencimiento,
         )
+        for _ in range(max(0, diferir - 1)):
+            cuota_service.generar_siguiente_cuota(
+                id_matricula=id_matricula,
+                monto_base=monto_base,
+                dia_vencimiento=dia_vencimiento,
+            )
 
         if estudiante["estado"] == STATUS_REINGRESANTE:
             estudiante_repository.cambiar_estado(id_estudiante, STATUS_ACTIVO)

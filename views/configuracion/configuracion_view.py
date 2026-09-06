@@ -96,6 +96,29 @@ class ConfiguracionView(ctk.CTkFrame):
         if config.get("permitir_multiples_becas", 1):
             self.becas_switch.select()
 
+        precios_frame = ctk.CTkFrame(self.contenido)
+        precios_frame.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            precios_frame, text="Precios Flexibles (S/) — editable sin código",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(10, 5))
+
+        self._crear_campo(precios_frame, "precio_inscripcion", "Inscripción (nuevo, incluye camiseta)",
+                          str(config.get("precio_inscripcion", 100)))
+        self._crear_campo(precios_frame, "precio_mensualidad", "Mensualidad (antiguo, mensual)",
+                          str(config.get("precio_mensualidad", 100)))
+        self._crear_campo(precios_frame, "precio_reingreso", "Reingreso (con uniforme anterior)",
+                          str(config.get("precio_reingreso", 100)))
+        self._crear_campo(precios_frame, "precio_uniforme", "Uniforme base",
+                          str(config.get("precio_uniforme", 20)))
+        self._crear_campo(precios_frame, "tasa_campeonato", "Tasa campeonato",
+                          str(config.get("tasa_campeonato", 15)))
+        self._crear_campo(precios_frame, "arbitraje_por_equipo", "Arbitraje por equipo",
+                          str(config.get("arbitraje_por_equipo", 15)))
+        self._crear_campo(precios_frame, "pago_profesor", "Pago profesor",
+                          str(config.get("pago_profesor", 200)))
+
         backup_frame = ctk.CTkFrame(self.contenido)
         backup_frame.pack(fill="x", padx=5, pady=5)
 
@@ -133,6 +156,21 @@ class ConfiguracionView(ctk.CTkFrame):
             command=self._nueva_categoria,
         ).pack(anchor="w", padx=10, pady=5)
 
+        uniformes_frame = ctk.CTkFrame(self.contenido)
+        uniformes_frame.pack(fill="x", padx=5, pady=5)
+
+        ctk.CTkLabel(
+            uniformes_frame, text="Tipos de Uniforme (flexible)",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(10, 5))
+
+        self._cargar_tipos_uniforme(uniformes_frame)
+
+        ctk.CTkButton(
+            uniformes_frame, text="+ Nuevo Tipo Uniforme", width=180,
+            command=self._nuevo_tipo_uniforme,
+        ).pack(anchor="w", padx=10, pady=5)
+
         btn_frame = ctk.CTkFrame(self.contenido, fg_color="transparent")
         btn_frame.pack(fill="x", padx=5, pady=10)
 
@@ -163,11 +201,11 @@ class ConfiguracionView(ctk.CTkFrame):
                 except ValueError:
                     messagebox.showerror("Error", f"{key} debe ser un número entero")
                     return
-            elif key == "porcentaje_mora":
+            elif key in ("porcentaje_mora", "precio_inscripcion", "precio_mensualidad", "precio_reingreso", "precio_uniforme", "tasa_campeonato", "arbitraje_por_equipo", "pago_profesor"):
                 try:
                     data[key] = float(valor)
                 except ValueError:
-                    messagebox.showerror("Error", "El porcentaje de mora debe ser un número")
+                    messagebox.showerror("Error", f"{key} debe ser un número")
                     return
             else:
                 data[key] = valor
@@ -295,6 +333,49 @@ class ConfiguracionView(ctk.CTkFrame):
         )
         if confirm:
             exito, msg = categoria_controller.desactivar_categoria(cat["id_categoria"])
+            if exito:
+                self._cargar_configuracion()
+            else:
+                messagebox.showerror("Error", msg)
+
+    def _cargar_tipos_uniforme(self, parent):
+        try:
+            from controllers import tipo_uniforme_controller
+            tipos = tipo_uniforme_controller.listar_tipos()
+        except Exception:
+            from services import tipo_uniforme_service
+            tipos = tipo_uniforme_service.listar_tipos()
+        for t in tipos:
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", padx=10, pady=2)
+            ctk.CTkLabel(row, text=f"{t['nombre']} - {t.get('descripcion','')}", font=ctk.CTkFont(size=12)).pack(side="left")
+            ctk.CTkButton(row, text="Desactivar", width=90, height=28, fg_color="#d9534f",
+                          command=lambda x=t: self._desactivar_tipo_uniforme(x)).pack(side="right", padx=2)
+
+    def _nuevo_tipo_uniforme(self):
+        dialog = ctk.CTkInputDialog(text="Nombre del tipo de uniforme:", title="Nuevo Tipo Uniforme")
+        nombre = dialog.get_input()
+        if not nombre:
+            return
+        try:
+            from controllers import tipo_uniforme_controller
+            exito, msg, _ = tipo_uniforme_controller.crear_tipo({"nombre": nombre})
+        except Exception:
+            from services import tipo_uniforme_service
+            exito, msg, _ = tipo_uniforme_service.crear_tipo_uniforme({"nombre": nombre})
+        if exito:
+            self._cargar_configuracion()
+        else:
+            messagebox.showerror("Error", msg)
+
+    def _desactivar_tipo_uniforme(self, t):
+        if messagebox.askyesno("Confirmar", f"¿Desactivar '{t['nombre']}'?"):
+            try:
+                from controllers import tipo_uniforme_controller
+                exito, msg = tipo_uniforme_controller.desactivar_tipo(t["id_tipo_uniforme"])
+            except Exception:
+                from services import tipo_uniforme_service
+                exito, msg = tipo_uniforme_service.desactivar_tipo(t["id_tipo_uniforme"])
             if exito:
                 self._cargar_configuracion()
             else:

@@ -4,7 +4,7 @@ from utils.validators import (validate_documento, validate_not_empty, validate_s
 
 
 def _get_id_usuario() -> int:
-    return auth_service.id_usuario_sesion()
+    return auth_service.id_usuario_sesion_or_system()
 
 
 def crear_estudiante(data: dict) -> tuple[bool, str, int | None]:
@@ -109,8 +109,7 @@ def obtener_apoderado(id_apoderado: int) -> dict | None:
 
 
 def obtener_apoderado_por_persona(id_persona: int) -> dict | None:
-    from repositories import apoderado_repository
-    return apoderado_repository.obtener_por_persona(id_persona)
+    return apoderado_service.obtener_apoderado_por_persona(id_persona)
 
 
 def editar_apoderado(id_apoderado: int, data: dict) -> tuple[bool, str]:

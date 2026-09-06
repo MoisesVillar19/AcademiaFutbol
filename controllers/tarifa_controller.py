@@ -2,7 +2,7 @@
 
 
 def _get_id_usuario() -> int:
-    return auth_service.id_usuario_sesion()
+    return auth_service.id_usuario_sesion_or_system()
 
 
 def crear_tarifa(data: dict) -> tuple[bool, str, int | None]:

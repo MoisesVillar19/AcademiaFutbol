@@ -28,10 +28,72 @@ def _leer_version() -> str:
 
 __version__ = _leer_version()
 
-# ── Base de datos ───────────────────────────────────────────────
-# La BD siempre va al lado del .exe (fuera de _internal) para no borrarla al actualizar
+# ── Detección de OneDrive ──────────────────────────────────────
+def detectar_onedrive() -> str | None:
+    for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
+        ruta = os.environ.get(var)
+        if ruta and os.path.isdir(ruta):
+            return ruta
+    ruta_fallback = os.path.join(os.path.expanduser("~"), "OneDrive")
+    if os.path.isdir(ruta_fallback):
+        return ruta_fallback
+    return None
+
+
+def _obtener_ruta_backup() -> str:
+    ruta_onedrive = detectar_onedrive()
+    if ruta_onedrive:
+        return os.path.join(ruta_onedrive, "BackupsAcademia")
+    return os.path.join(APP_DIR, "backups")
+
+
+BACKUP_DIR = _obtener_ruta_backup()
+
+# ── Base de datos (OneDrive central, flexible) ───────────────────
+# Orden: config.ini (wizard) → OneDrive\Academia\academia.db → APP_DIR/database (dev)
+def _leer_config_ini(clave: str, seccion: str = "database") -> str | None:
+    for base in (APP_DIR, os.path.join(APP_DIR, "_internal") if _FROZEN else APP_DIR):
+        ini = os.path.join(base, "config.ini")
+        if os.path.isfile(ini):
+            try:
+                import configparser
+                cp = configparser.ConfigParser()
+                cp.read(ini, encoding="utf-8")
+                if cp.has_option(seccion, clave):
+                    v = cp.get(seccion, clave).strip()
+                    if v:
+                        return v
+            except Exception:
+                pass
+    return None
+
 DB_NAME = os.getenv("DB_NAME", "academia.db")
-DB_PATH = os.path.join(APP_DIR, "database", DB_NAME)
+
+def _resolver_db_path() -> str:
+    p = _leer_config_ini("path", "database") or os.getenv("DB_PATH")
+    if p:
+        return p if os.path.isabs(p) else os.path.join(APP_DIR, p)
+    od = detectar_onedrive()
+    if od:
+        # OneDrive central por defecto (BD no se mueve)
+        cand = os.path.join(od, "Academia", DB_NAME)
+        return cand
+    return os.path.join(APP_DIR, "database", DB_NAME)
+
+DB_PATH = _resolver_db_path()
+
+# Carpetas OneDrive centralizadas (fotos/comprobantes)
+def _resolver_dir(clave: str, fallback: str) -> str:
+    p = _leer_config_ini(clave, "rutas") or _leer_config_ini("dir", clave)
+    if p:
+        return p if os.path.isabs(p) else os.path.join(APP_DIR, p)
+    od = detectar_onedrive()
+    if od and clave in ("fotos", "comprobantes"):
+        return os.path.join(od, "Academia", clave)
+    return os.path.join(APP_DIR, fallback)
+
+FOTOS_DIR = _resolver_dir("fotos", "fotos")
+COMPROBANTES_DIR = _resolver_dir("comprobantes", "comprobantes")
 
 ROLE_ADMIN = "ADMIN"
 ROLE_SECRETARIA = "SECRETARIA"
@@ -82,23 +144,5 @@ DEFAULT_ADMIN_PASS = "admin123"
 PIN_EMERGENCIA_DEFECTO = "roncalli2026"
 
 
-# ── Detección de OneDrive ──────────────────────────────────────
-def detectar_onedrive() -> str | None:
-    for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
-        ruta = os.environ.get(var)
-        if ruta and os.path.isdir(ruta):
-            return ruta
-    ruta_fallback = os.path.join(os.path.expanduser("~"), "OneDrive")
-    if os.path.isdir(ruta_fallback):
-        return ruta_fallback
-    return None
-
-
-def _obtener_ruta_backup() -> str:
-    ruta_onedrive = detectar_onedrive()
-    if ruta_onedrive:
-        return os.path.join(ruta_onedrive, "BackupsAcademia")
-    return os.path.join(APP_DIR, "backups")
-
-
-BACKUP_DIR = _obtener_ruta_backup()
+# Re-export para imports existentes
+__all__ = ["APP_DIR", "BASE_DIR", "DB_PATH", "DB_NAME", "FOTOS_DIR", "COMPROBANTES_DIR", "BACKUP_DIR"]

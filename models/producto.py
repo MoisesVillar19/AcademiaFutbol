@@ -11,4 +11,7 @@ class Producto:
     stock_actual: int = 0
     stock_minimo: int = 0
     precio: float = 0.0
+    precio_compra: float = 0.0
+    precio_venta: float = 0.0
+    id_tipo_uniforme: int | None = None
     activo: int = 1

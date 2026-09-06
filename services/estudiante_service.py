@@ -9,6 +9,8 @@ from utils.logger import logger
 
 
 def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
+    # RN-041 foto_path flexible
+    foto_path = data.get("foto_path")
     dni = data.get("dni", "")
 
     if not dni:
@@ -30,6 +32,8 @@ def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | 
         id_persona=0,
         estado=STATUS_ACTIVO,
         fecha_ingreso=get_today(),
+        foto_path=foto_path,
+        fecha_matricula=data.get("fecha_matricula", get_today()),
     )
 
     with transaccion():
@@ -51,6 +55,12 @@ def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | 
 
         estudiante.id_persona = id_persona
         id_estudiante = estudiante_repository.insertar(estudiante)
+        # Si hay foto_path, actualizar (estudiante_repository soporta foto_path)
+        if foto_path:
+            try:
+                estudiante_repository.actualizar_foto(id_estudiante, foto_path)
+            except Exception:
+                pass
 
         auditoria_service.registrar_insert(
             id_usuario=id_usuario,

@@ -186,11 +186,14 @@ class App(ctk.CTk):
             ("👤  Estudiantes", self._mostrar_estudiantes),
             ("📋  Matrículas",  self._mostrar_matriculas),
             ("💰  Pagos",       self._mostrar_pagos),
+            ("🛒  Ventas",      self._mostrar_ventas),
             ("📦  Inventario",  self._mostrar_inventario),
             ("📈  Reportes",    self._mostrar_reportes),
         ]
 
+        # Ventas disponible para ambos roles (flexible); Egresos solo ADMIN
         if login_controller.es_admin():
+            botones_data.append(("💸  Egresos",     self._mostrar_egresos))
             botones_data.append(("📤  Importar",    self._mostrar_importar))
             botones_data.append(("🔑  Usuarios",      self._mostrar_usuarios))
             botones_data.append(("🏷️  Tarifas",      self._mostrar_tarifas))
@@ -316,6 +319,16 @@ class App(ctk.CTk):
         self._limpiar_contenido()
         from views.tarifas.tarifa_view import TarifaView
         TarifaView(self.contenido).pack(fill="both", expand=True)
+
+    def _mostrar_ventas(self):
+        self._limpiar_contenido()
+        from views.ventas.venta_view import VentaView
+        VentaView(self.contenido).pack(fill="both", expand=True)
+
+    def _mostrar_egresos(self):
+        self._limpiar_contenido()
+        from views.egresos.egreso_view import EgresoView
+        EgresoView(self.contenido).pack(fill="both", expand=True)
 
     def _mostrar_configuracion(self):
         self._limpiar_contenido()

@@ -37,8 +37,9 @@ class AuditoriaView(ctk.CTkFrame):
         ctk.CTkLabel(filtros, text="Tabla:").pack(side="left", padx=(0, 5))
         self.combo_tabla = ctk.CTkComboBox(
             filtros, values=["", "usuario", "persona", "estudiante",
-                             "matricula", "cuota", "pago", "producto"],
-            width=150, command=self._filtrar_por_tabla,
+                             "matricula", "cuota", "pago", "producto",
+                             "venta", "egreso", "tipo_uniforme", "movimiento_inventario"],
+            width=180, command=self._filtrar_por_tabla,
         )
         self.combo_tabla.set("")
         self.combo_tabla.pack(side="left", padx=5)

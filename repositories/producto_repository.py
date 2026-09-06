@@ -7,8 +7,8 @@ def insertar(producto: Producto) -> int:
     cursor = conn.execute(
         """INSERT INTO producto
            (id_categoria_producto, tipo_uso, codigo, nombre,
-            stock_actual, stock_minimo, precio, activo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            stock_actual, stock_minimo, precio, precio_compra, precio_venta, id_tipo_uniforme, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             producto.id_categoria_producto,
             producto.tipo_uso,
@@ -17,6 +17,9 @@ def insertar(producto: Producto) -> int:
             producto.stock_actual,
             producto.stock_minimo,
             producto.precio,
+            producto.precio_compra,
+            producto.precio_venta,
+            producto.id_tipo_uniforme,
             producto.activo,
         ),
     )
@@ -91,7 +94,7 @@ def actualizar(producto: Producto) -> None:
     conn.execute(
         """UPDATE producto SET
            id_categoria_producto = ?, tipo_uso = ?, codigo = ?, nombre = ?,
-           stock_actual = ?, stock_minimo = ?, precio = ?, activo = ?
+           stock_actual = ?, stock_minimo = ?, precio = ?, precio_compra = ?, precio_venta = ?, id_tipo_uniforme = ?, activo = ?
            WHERE id_producto = ?""",
         (
             producto.id_categoria_producto,
@@ -101,6 +104,9 @@ def actualizar(producto: Producto) -> None:
             producto.stock_actual,
             producto.stock_minimo,
             producto.precio,
+            producto.precio_compra,
+            producto.precio_venta,
+            producto.id_tipo_uniforme,
             producto.activo,
             producto.id_producto,
         ),

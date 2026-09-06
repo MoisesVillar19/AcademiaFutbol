@@ -225,4 +225,7 @@ def listar_reportes() -> list[dict]:
         {"id": "alumnos_categoria", "nombre": "Alumnos por Categoría", "descripcion": "Estudiantes activos por categoría"},
         {"id": "inventario", "nombre": "Inventario", "descripcion": "Estado actual del stock"},
         {"id": "becas_activas", "nombre": "Becas Activas", "descripcion": "Becas asignadas vigentes"},
+        {"id": "ingresos_vs_egresos", "nombre": "Ingresos vs Egresos", "descripcion": "Ingresos (pagos+ventas) vs egresos y neto por periodo"},
+        {"id": "stock_bajo_uniformes", "nombre": "Stock Bajo Uniformes", "descripcion": "Productos con stock ≤ mínimo, por tipo uniforme"},
+        {"id": "nuevos_vs_antiguos", "nombre": "Nuevos vs Antiguos", "descripcion": "Alumnos nuevos vs reingresos/antiguos por periodo"},
     ]

@@ -57,9 +57,19 @@ def obtener_usuario_actual() -> dict | None:
     return _usuario_actual
 
 
-def id_usuario_sesion() -> int:
-    """Retorna el id del usuario en sesion, o 1 (admin seed) si no hay sesion."""
-    return _usuario_actual["id_usuario"] if _usuario_actual else 1
+def id_usuario_sesion() -> int | None:
+    """Retorna el id del usuario en sesion, o None si no hay sesion (fail-closed).
+    Caller debe decidir fallback; auditoria usará 1 solo para seed."""
+    return _usuario_actual["id_usuario"] if _usuario_actual else None
+
+
+def id_usuario_sesion_or_system() -> int:
+    """Compat: retorna 1 si no hay sesión (para seed/background). Loguea warning."""
+    uid = id_usuario_sesion()
+    if uid is None:
+        logger.warning("Audit sin sesión → usando sistema (id=1)")
+        return 1
+    return uid
 
 
 def esta_logueado() -> bool:

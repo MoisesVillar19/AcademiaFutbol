@@ -109,7 +109,12 @@ class PagoView(ctk.CTkFrame):
         self.entry_observacion = ctk.CTkEntry(scroll, placeholder_text="Referencia o nota", width=400)
         self.entry_observacion.pack(anchor="w", pady=(0, 5))
 
-        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
+        ctk.CTkLabel(scroll, text="Comprobante foto (obligatorio si YAPE/PLIN/TRANSFERENCIA)", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.btn_comprobante = ctk.CTkButton(scroll, text="Seleccionar comprobante", width=200, command=self._elegir_comprobante)
+        self.btn_comprobante.pack(anchor="w", pady=3)
+        self.label_comprobante = ctk.CTkLabel(scroll, text="Sin comprobante", text_color="gray")
+        self.label_comprobante.pack(anchor="w")
+        self._comprobante_path = None
         self.label_form_status.pack(anchor="w", pady=5)
 
         btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
@@ -248,8 +253,7 @@ class PagoView(ctk.CTkFrame):
         if not id_mat:
             return
 
-        from services import cuota_service
-        cuotas = cuota_service.obtener_cuotas_pendientes(id_mat)
+        cuotas = pago_controller.obtener_cuotas_pendientes(id_mat)
 
         nombres = []
         self._cuotas_map = {}
@@ -283,12 +287,17 @@ class PagoView(ctk.CTkFrame):
             self.label_form_status.configure(text="Sesión no válida", text_color="red")
             return
 
+        comprobante = self._comprobante_path
+        if self.combo_metodo.get() != "EFECTIVO" and not comprobante:
+            self.label_form_status.configure(text="Suba comprobante para YAPE/PLIN/TRANSFERENCIA (RN-042)", text_color="orange")
+            return
         data = {
             "id_usuario": usuario["id_usuario"],
             "id_cuota": id_cuota,
             "monto_pagado": monto_str,
             "metodo_pago": self.combo_metodo.get(),
             "observacion": self.entry_observacion.get().strip(),
+            "comprobante_path": comprobante,
         }
 
         exito, msg, id_pago = pago_controller.registrar_pago(data)
@@ -298,8 +307,20 @@ class PagoView(ctk.CTkFrame):
             self._cargar_pagos()
             self.entry_monto.delete(0, "end")
             self.entry_observacion.delete(0, "end")
+            self._comprobante_path = None
+            self.label_comprobante.configure(text="Sin comprobante")
         else:
             self.label_form_status.configure(text=msg, text_color="red")
+
+    def _elegir_comprobante(self):
+        from tkinter import filedialog
+        import os
+        from utils.constants import COMPROBANTES_DIR
+        path = filedialog.askopenfilename(filetypes=[("Imagen","*.jpg *.jpeg *.png"),("Todos","*.*")])
+        if path:
+            os.makedirs(COMPROBANTES_DIR, exist_ok=True)
+            self._comprobante_path = path
+            self.label_comprobante.configure(text=os.path.basename(path))
 
     def _cargar_morosos(self):
         for widget in self.scroll_morosos.winfo_children():

@@ -29,10 +29,26 @@ def obtener_indicadores() -> dict:
     fecha_fin_mes = f"{today[:7]}-{ultimo_dia:02d}"
     ingresos_mes = pago_service.obtener_ingresos_por_fecha(fecha_inicio_mes, fecha_fin_mes)
 
-    productos_bajo_stock = inventario_service.obtener_bajo_stock()
-    total_bajo_stock = len(productos_bajo_stock)
+    # v2 flexible: ventas + egresos + nuevos vs antiguos
+    try:
+        from repositories import venta_repository, egreso_repository
+        ingresos_ventas_mes = venta_repository.sumar_por_periodo(fecha_inicio_mes, fecha_fin_mes)
+        egresos_mes = egreso_repository.sumar_por_periodo(fecha_inicio_mes, fecha_fin_mes)
+        # nuevos = fecha_ingreso LIKE YYYY-MM%, antiguos = matriculas_mes - nuevos
+        from database.connection import fetch_all
+        nuevos_mes = len(fetch_all("SELECT id_estudiante FROM estudiante WHERE fecha_ingreso LIKE ? AND activo=1", (f"{today[:7]}%",)))
+    except Exception:
+        ingresos_ventas_mes = 0
+        egresos_mes = 0
+        nuevos_mes = 0
 
     matriculas_mes = matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
+    total_ingresos_mes = round(ingresos_mes + ingresos_ventas_mes, 2)
+    neto_mes = round(total_ingresos_mes - egresos_mes, 2)
+    antiguos_mes = max(0, matriculas_mes - nuevos_mes)
+
+    productos_bajo_stock = inventario_service.obtener_bajo_stock()
+    total_bajo_stock = len(productos_bajo_stock)
 
     return {
         "alumnos_activos": total_activos,
@@ -43,6 +59,12 @@ def obtener_indicadores() -> dict:
         "pagos_hoy": pagos_hoy,
         "ingresos_hoy": ingresos_hoy,
         "ingresos_mes": ingresos_mes,
+        "ingresos_ventas_mes": ingresos_ventas_mes,
+        "total_ingresos_mes": total_ingresos_mes,
+        "egresos_mes": egresos_mes,
+        "neto_mes": neto_mes,
+        "nuevos_mes": nuevos_mes,
+        "antiguos_mes": antiguos_mes,
         "stock_bajo": total_bajo_stock,
         "productos_bajo_stock": productos_bajo_stock,
         "matriculas_mes": matriculas_mes,

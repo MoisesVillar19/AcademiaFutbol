@@ -3,7 +3,13 @@ from utils.logger import logger
 
 
 def id_usuario_sesion() -> int:
-    """Retorna el id del usuario en sesion, o 1 (admin seed) si no hay sesion."""
+    """Retorna el id del usuario en sesion, o 1 (sistema) si no hay sesion — fail-open solo para seed."""
+    from services import auth_service
+    return auth_service.id_usuario_sesion_or_system()
+
+
+def id_usuario_sesion_strict() -> int | None:
+    """Fail-closed: None si no hay sesión (usar en controllers que exigen login)."""
     from services import auth_service
     return auth_service.id_usuario_sesion()
 

@@ -30,6 +30,14 @@ def actualizar_configuracion(data: dict) -> tuple[bool, str]:
         frecuencia_backup=data.get("frecuencia_backup", config.get("frecuencia_backup", 7)),
         ruta_backup=data.get("ruta_backup", config.get("ruta_backup", "backups/")),
         correo_onedrive=data.get("correo_onedrive", config.get("correo_onedrive", "")),
+        pin_emergencia=config.get("pin_emergencia", ""),
+        precio_inscripcion=data.get("precio_inscripcion", config.get("precio_inscripcion", 100)),
+        precio_mensualidad=data.get("precio_mensualidad", config.get("precio_mensualidad", 100)),
+        precio_uniforme=data.get("precio_uniforme", config.get("precio_uniforme", 20)),
+        precio_reingreso=data.get("precio_reingreso", config.get("precio_reingreso", 100)),
+        tasa_campeonato=data.get("tasa_campeonato", config.get("tasa_campeonato", 15)),
+        arbitraje_por_equipo=data.get("arbitraje_por_equipo", config.get("arbitraje_por_equipo", 15)),
+        pago_profesor=data.get("pago_profesor", config.get("pago_profesor", 200)),
     )
 
     configuracion_repository.actualizar(config_obj)
@@ -39,7 +47,7 @@ def actualizar_configuracion(data: dict) -> tuple[bool, str]:
         tabla="configuracion",
         id_registro=config["id_configuracion"],
         valores_anteriores=f"mora_habilitada={config.get('mora_habilitada', 0)}, porcentaje_mora={config.get('porcentaje_mora', 0)}, dias_por_vencer={config.get('dias_por_vencer', 3)}",
-        valores_nuevos=f"mora_habilitada={config_obj.mora_habilitada}, porcentaje_mora={config_obj.porcentaje_mora}, dias_por_vencer={config_obj.dias_por_vencer}",
+        valores_nuevos=f"mora_habilitada={config_obj.mora_habilitada}, porcentaje_mora={config_obj.porcentaje_mora}, dias_por_vencer={config_obj.dias_por_vencer}, precio_inscripcion={config_obj.precio_inscripcion}, precio_mensualidad={config_obj.precio_mensualidad}",
     )
 
     logger.info("Configuración actualizada")

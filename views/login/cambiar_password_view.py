@@ -15,18 +15,43 @@ class CambiarPasswordView(ctk.CTkToplevel):
         self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self.on_success = on_success
+        self.transient(parent)
+        self.grab_set()
+        self.attributes("-topmost", True)
         self._crear_widgets()
         self._centrar_ventana()
+        self.after(100, self._elevar)
+        self.after(500, lambda: self.attributes("-topmost", False))
+
+    def _elevar(self):
+        try:
+            self.lift()
+            self.focus_force()
+            self.grab_set()
+            self.attributes("-topmost", True)
+        except Exception:
+            pass
 
     def _centrar_ventana(self):
         self.update_idletasks()
         ancho = 440
         alto = 460
-        x = (self.winfo_screenwidth() // 2) - (ancho // 2)
-        y = (self.winfo_screenheight() // 2) - (alto // 2)
+        # centrado respecto al padre, no solo pantalla
+        try:
+            px = self.master.winfo_x()
+            py = self.master.winfo_y()
+            pw = self.master.winfo_width()
+            ph = self.master.winfo_height()
+            x = px + (pw - ancho)//2
+            y = py + (ph - alto)//2
+            # fallback si padre aún 1x1
+            if pw < 100:
+                x = (self.winfo_screenwidth() // 2) - (ancho // 2)
+                y = (self.winfo_screenheight() // 2) - (alto // 2)
+        except Exception:
+            x = (self.winfo_screenwidth() // 2) - (ancho // 2)
+            y = (self.winfo_screenheight() // 2) - (alto // 2)
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
-        self.lift()
-        self.focus_force()
 
     def _crear_widgets(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")

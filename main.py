@@ -129,13 +129,21 @@ class App(ctk.CTk):
         self.deiconify()
         self.lift()
         self.focus_force()
+        # siempre dejar algo visible detrás (no en blanco) antes del dialog
+        self._mostrar_dashboard()
+        # velo sutil para resaltar el dialog si es primer acceso
         if login_controller.necesita_cambiar_password():
-            CambiarPasswordView(self, on_success=self._on_password_cambiado)
-        else:
-            self._mostrar_dashboard()
+            # pequeño delay para que dashboard pinte antes del modal
+            self.after(150, lambda: CambiarPasswordView(self, on_success=self._on_password_cambiado))
 
     def _on_password_cambiado(self):
-        self._mostrar_dashboard()
+        # ya hay dashboard de fondo, solo refrescar si hace falta
+        try:
+            # si el contenido quedó vacío por alguna razón, mostrar placeholder
+            if not self.contenido.winfo_children():
+                self._mostrar_placeholder()
+        except Exception:
+            self._mostrar_placeholder()
 
     def _mostrar_dashboard(self):
         for widget in self.winfo_children():
@@ -310,8 +318,26 @@ class App(ctk.CTk):
 
     def _mostrar_placeholder(self):
         self._limpiar_contenido()
-        from views.dashboard.dashboard_view import DashboardView
-        DashboardView(self.contenido).pack(fill="both", expand=True)
+        # fallback si algo deja contenido vacío: nunca dejar blanco
+        try:
+            from views.dashboard.dashboard_view import DashboardView
+            DashboardView(self.contenido).pack(fill="both", expand=True)
+            # si aún queda vacío (error), mostrar aviso amigable
+            self.after(300, self._asegurar_contenido_no_vacio)
+        except Exception as e:
+            from utils.logger import logger
+            logger.error(f"Error placeholder: {e}")
+            import customtkinter as ctk
+            ctk.CTkLabel(self.contenido, text="Cargando dashboard...", font=ctk.CTkFont(size=14), text_color="#6B5B7B").pack(expand=True, pady=20)
+
+    def _asegurar_contenido_no_vacio(self):
+        try:
+            if not self.contenido.winfo_children():
+                import customtkinter as ctk
+                ctk.CTkFrame(self.contenido, fg_color="transparent").pack(fill="both", expand=True)
+                ctk.CTkLabel(self.contenido, text="Bienvenido — seleccione una opción del menú", font=ctk.CTkFont(size=14, weight="bold"), text_color="#3D1559").pack(expand=True)
+        except Exception:
+            pass
 
     def _mostrar_usuarios(self):
         self._limpiar_contenido()

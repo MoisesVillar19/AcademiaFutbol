@@ -24,6 +24,10 @@ def registrar_egreso(data: dict) -> tuple[bool, str, int | None]:
     if err:
         return False, err, None
     id_usuario = data.get("id_usuario") or auditoria_service.id_usuario_sesion()
+    comprobante = data.get("comprobante_path")
+    # validar comprobante si se proporciona
+    if comprobante and not isinstance(comprobante, str):
+        comprobante = str(comprobante)
     egreso = Egreso(
         concepto=concepto,
         monto=round(monto_f, 2),
@@ -31,10 +35,11 @@ def registrar_egreso(data: dict) -> tuple[bool, str, int | None]:
         responsable=data.get("responsable", ""),
         id_usuario=id_usuario,
         observacion=data.get("observacion", ""),
+        comprobante_path=comprobante,
     )
     id_egreso = egreso_repository.insertar(egreso)
-    auditoria_service.registrar_insert(id_usuario, "egreso", id_egreso, f"concepto={concepto}, monto={monto_f}")
-    logger.info(f"Egreso registrado: {concepto} {monto_f}")
+    auditoria_service.registrar_insert(id_usuario, "egreso", id_egreso, f"concepto={concepto}, monto={monto_f}, comprobante={bool(comprobante)}")
+    logger.info(f"Egreso registrado: {concepto} {monto_f} comprobante={bool(comprobante)}")
     return True, "Egreso registrado correctamente", id_egreso
 
 

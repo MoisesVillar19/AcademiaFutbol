@@ -10,3 +10,5 @@ class Egreso:
     responsable: str = ""
     id_usuario: int | None = None
     observacion: str = ""
+    comprobante_path: str | None = None
+    activo: int = 1

@@ -5,8 +5,8 @@ from models.egreso import Egreso
 def insertar(egreso: Egreso) -> int:
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO egreso (concepto, monto, fecha, responsable, id_usuario, observacion) VALUES (?, ?, ?, ?, ?, ?)",
-        (egreso.concepto, egreso.monto, egreso.fecha, egreso.responsable, egreso.id_usuario, egreso.observacion),
+        "INSERT INTO egreso (concepto, monto, fecha, responsable, id_usuario, observacion, comprobante_path, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (egreso.concepto, egreso.monto, egreso.fecha, egreso.responsable, egreso.id_usuario, egreso.observacion, egreso.comprobante_path, egreso.activo),
     )
     conn.commit()
     return cursor.lastrowid

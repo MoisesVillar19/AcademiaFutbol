@@ -29,26 +29,64 @@ def obtener_indicadores() -> dict:
     fecha_fin_mes = f"{today[:7]}-{ultimo_dia:02d}"
     ingresos_mes = pago_service.obtener_ingresos_por_fecha(fecha_inicio_mes, fecha_fin_mes)
 
-    # v2 flexible: ventas + egresos + nuevos vs antiguos
+    # v2 flexible: ventas + egresos + nuevos vs antiguos (robusto, no silencioso)
+    from utils.logger import logger as _log
     try:
         from repositories import venta_repository, egreso_repository
         ingresos_ventas_mes = venta_repository.sumar_por_periodo(fecha_inicio_mes, fecha_fin_mes)
         egresos_mes = egreso_repository.sumar_por_periodo(fecha_inicio_mes, fecha_fin_mes)
-        # nuevos = fecha_ingreso LIKE YYYY-MM%, antiguos = matriculas_mes - nuevos
+    except Exception as e:
+        _log.warning(f"Dashboard ventas/egresos fallo: {e}")
+        ingresos_ventas_mes = None
+        egresos_mes = None
+    try:
         from database.connection import fetch_all
-        nuevos_mes = len(fetch_all("SELECT id_estudiante FROM estudiante WHERE fecha_ingreso LIKE ? AND activo=1", (f"{today[:7]}%",)))
-    except Exception:
-        ingresos_ventas_mes = 0
-        egresos_mes = 0
+        # nuevos = primera matrícula en el mes (no solo fecha_ingreso LIKE, que cuenta reingreso mal)
+        rows = fetch_all("SELECT COUNT(DISTINCT m.id_estudiante) as c FROM matricula m WHERE m.fecha_inicio BETWEEN ? AND ? AND m.activo=1 AND m.id_matricula IN (SELECT MIN(id_matricula) FROM matricula GROUP BY id_estudiante)", (fecha_inicio_mes, fecha_fin_mes))
+        nuevos_mes = rows[0]["c"] if rows and rows[0]["c"] is not None else 0
+        matriculas_mes = matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
+        antiguos_mes = max(0, matriculas_mes - nuevos_mes)
+    except Exception as e:
+        _log.warning(f"Dashboard nuevos/antiguos fallo: {e}")
         nuevos_mes = 0
+        matriculas_mes = matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
+        antiguos_mes = max(0, matriculas_mes - nuevos_mes)
 
-    matriculas_mes = matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
-    total_ingresos_mes = round(ingresos_mes + ingresos_ventas_mes, 2)
-    neto_mes = round(total_ingresos_mes - egresos_mes, 2)
-    antiguos_mes = max(0, matriculas_mes - nuevos_mes)
+    # MoM (mes anterior vs actual) para ingresos
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(fecha_inicio_mes, "%Y-%m-%d")
+        # mes anterior
+        if dt.month == 1:
+            prev_dt = dt.replace(year=dt.year-1, month=12, day=1)
+        else:
+            prev_dt = dt.replace(month=dt.month-1, day=1)
+        prev_ini = prev_dt.strftime("%Y-%m-%d")
+        # ultimo dia mes anterior
+        import calendar
+        prev_fin = f"{prev_dt.strftime('%Y-%m')}-{calendar.monthrange(prev_dt.year, prev_dt.month)[1]:02d}"
+        ingresos_mes_prev = pago_service.obtener_ingresos_por_fecha(prev_ini, prev_fin)
+        try:
+            ventas_prev = venta_repository.sumar_por_periodo(prev_ini, prev_fin)
+        except Exception:
+            ventas_prev = 0
+        total_prev = (ingresos_mes_prev or 0) + (ventas_prev or 0)
+        total_actual = (ingresos_mes or 0) + (ingresos_ventas_mes or 0)
+        mom = round((total_actual - total_prev) / total_prev * 100, 1) if total_prev else 0
+    except Exception as e:
+        _log.warning(f"MoM fallo: {e}")
+        mom = 0
+        total_prev = 0
+
+    total_ingresos_mes = round((ingresos_mes or 0) + (ingresos_ventas_mes or 0), 2) if ingresos_ventas_mes is not None else None
+    neto_mes = round((total_ingresos_mes or 0) - (egresos_mes or 0), 2) if egresos_mes is not None and total_ingresos_mes is not None else None
 
     productos_bajo_stock = inventario_service.obtener_bajo_stock()
     total_bajo_stock = len(productos_bajo_stock)
+    # si ventas/egresos fallaron, dejar None para que UI muestre —
+    if ingresos_ventas_mes is None or egresos_mes is None or total_ingresos_mes is None:
+        logger = _log
+        # ya logueado arriba
 
     return {
         "alumnos_activos": total_activos,
@@ -63,6 +101,8 @@ def obtener_indicadores() -> dict:
         "total_ingresos_mes": total_ingresos_mes,
         "egresos_mes": egresos_mes,
         "neto_mes": neto_mes,
+        "mom_ingresos": mom,
+        "ingresos_mes_prev": total_prev,
         "nuevos_mes": nuevos_mes,
         "antiguos_mes": antiguos_mes,
         "stock_bajo": total_bajo_stock,

@@ -88,15 +88,31 @@ class DashboardView(ctk.CTkFrame):
         self._crear_card(row3, "Stock Bajo", str(data["stock_bajo"]), "#F59E0B",
                          lambda: self._mostrar_detalle("stock"))
 
+        # Helper para mostrar — si es None (error) muestra —
+        def _fmt(v, suf=""):
+            if v is None:
+                return "—"
+            try:
+                return f"S/{v:.2f}{suf}" if isinstance(v, (int, float)) else str(v)
+            except Exception:
+                return str(v)
+
         row4 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row4.pack(fill="x", pady=5)
 
-        self._crear_card(row4, "Ventas Mes", f"S/{data.get('ingresos_ventas_mes',0):.2f}", "#7C3AED",
+        self._crear_card(row4, "Ventas Mes", _fmt(data.get('ingresos_ventas_mes')), "#7C3AED",
                          lambda: self._mostrar_detalle("ventas_mes"))
-        self._crear_card(row4, "Egresos Mes", f"S/{data.get('egresos_mes',0):.2f}", "#DC2626",
+        self._crear_card(row4, "Egresos Mes", _fmt(data.get('egresos_mes')), "#DC2626",
                          lambda: self._mostrar_detalle("egresos_mes"))
-        self._crear_card(row4, "Neto Mes", f"S/{data.get('neto_mes',0):.2f}", "#22C55E" if data.get('neto_mes',0) >=0 else "#DC2626",
+        neto = data.get('neto_mes')
+        self._crear_card(row4, "Neto Mes", _fmt(neto), "#22C55E" if (neto or 0) >=0 else "#DC2626",
                          lambda: self._mostrar_detalle("neto_mes"))
+        # MoM si existe
+        mom = data.get('mom_ingresos')
+        if mom is not None:
+            mom_txt = f"{mom:+.1f}% vs mes anterior"
+            mom_color = "#22C55E" if mom >=0 else "#DC2626"
+            self._crear_card(row4, "MoM Ingresos", mom_txt, mom_color, lambda: self._mostrar_detalle("ingresos_mes"))
 
         row5 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row5.pack(fill="x", pady=5)

@@ -301,6 +301,7 @@ CREATE TABLE IF NOT EXISTS egreso (
     responsable TEXT,
     id_usuario INTEGER REFERENCES usuario(id_usuario),
     observacion TEXT,
+    comprobante_path TEXT,
     activo INTEGER DEFAULT 1
 );
 
@@ -416,6 +417,8 @@ def _migrar_columnas_faltantes(cursor) -> None:
     columnas_egreso = _obtener_columnas(cursor, "egreso")
     if "activo" not in columnas_egreso:
         cursor.execute("ALTER TABLE egreso ADD COLUMN activo INTEGER DEFAULT 1")
+    if "comprobante_path" not in columnas_egreso:
+        cursor.execute("ALTER TABLE egreso ADD COLUMN comprobante_path TEXT")
 
     # v2 escalable: nuevas columnas para multi-almacén/variante/lote (si tabla ya existe)
     try:

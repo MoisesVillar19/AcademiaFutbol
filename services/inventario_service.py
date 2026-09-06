@@ -116,10 +116,11 @@ def crear_producto(data: dict) -> tuple[bool, str, int | None]:
     )
     id_producto = producto_repository.insertar(producto)
 
-    # S1 escalable: crear variantes si se especifica talla
+    # S1 escalable: crear variantes si se especifica talla + stock_almacen
     try:
         from repositories import producto_variante_repository, stock_almacen_repository, almacen_repository
         talla_codigo = data.get("talla") or data.get("talla_codigo")
+        stock_inicial = int(data.get("stock_actual", 0) or data.get("stock_inicial", 0) or 0)
         if talla_codigo and talla_codigo != "UNICA":
             from repositories import talla_repository
             t = talla_repository.obtener_por_codigo(talla_codigo)
@@ -128,11 +129,28 @@ def crear_producto(data: dict) -> tuple[bool, str, int | None]:
                 if not producto_variante_repository.existe_sku(sku):
                     from models.producto_variante import ProductoVariante
                     var = ProductoVariante(id_producto=id_producto, id_talla=t["id_talla"], sku=sku, stock_minimo=stock_minimo)
-                    producto_variante_repository.insertar(var)
-        # stock_almacen para Principal (si solo 1 almacén, no se ve)
-        alm = almacen_repository.obtener_por_nombre("Principal")
-        if alm:
-            stock_almacen_repository.upsert_stock(id_producto, None, alm["id_almacen"], None, 0)
+                    id_var = producto_variante_repository.insertar(var)
+                    # stock para variante
+                    alm = almacen_repository.obtener_por_nombre("Principal")
+                    if alm:
+                        stock_almacen_repository.upsert_stock(id_producto, id_var, alm["id_almacen"], None, stock_inicial)
+                        # también mantener producto.stock_actual para compatibilidad 1 sede
+                        if stock_inicial > 0:
+                            producto_repository.actualizar_stock(id_producto, stock_inicial)
+                else:
+                    # variante ya existe, actualizar stock si se dio inicial
+                    if stock_inicial > 0:
+                        var = producto_variante_repository.obtener_por_sku(sku)
+                        alm = almacen_repository.obtener_por_nombre("Principal")
+                        if var and alm:
+                            stock_almacen_repository.upsert_stock(id_producto, var["id_variante"], alm["id_almacen"], None, stock_inicial)
+        else:
+            # sin talla: stock_almacen para producto base
+            alm = almacen_repository.obtener_por_nombre("Principal")
+            if alm:
+                stock_almacen_repository.upsert_stock(id_producto, None, alm["id_almacen"], None, stock_inicial)
+                if stock_inicial > 0:
+                    producto_repository.actualizar_stock(id_producto, stock_inicial)
     except Exception as e:
         logger.warning(f"Variante/stock escalable no creado: {e}")
 

@@ -91,7 +91,7 @@ python -m pytest tests/test_validators.py::test_validate_dni_valid -v
 
 ---
 
-## Resumen
+## Resumen (actualizado 2026-09-06)
 
 | Archivo | Tests | Estado |
 |---------|-------|--------|
@@ -103,7 +103,9 @@ python -m pytest tests/test_validators.py::test_validate_dni_valid -v
 | `test_pago_service.py` | 7 | ✅ TODOS PASARON |
 | `test_login.py` | 6 | ✅ TODOS PASARON |
 | `test_matriculas.py` | 6 | ✅ TODOS PASARON |
-| **TOTAL** | **78** | **✅ 78/78** |
+| `test_inventario.py` | 13 | ✅ TODOS PASARON |
+| `test_inventario_escalable.py` | 8 | ✅ TODOS PASARON |
+| **TOTAL** | **99** | **✅ 99/99** |
 
 ---
 
@@ -178,9 +180,25 @@ python -m pytest tests/test_validators.py::test_validate_dni_valid -v
 
 ---
 
+### `test_inventario_escalable.py` — 8 tests ✅ (v2 escalable, 2026-09-06)
+
+| Test | Qué verifica (simple) | Resultado |
+|------|---|---|
+| `test_talla_seed_existen` | Seed crea S/M/L/XL/UNICA | ✅ PASSED |
+| `test_almacen_caja_seed_principal` | Seed crea Almacén Principal y Caja 1 (si 1, UI oculta) | ✅ PASSED |
+| `test_crear_producto_con_talla_crea_variante_y_stock` | `talla M` → `sku PROD-M` + `stock_almacen 10` | ✅ PASSED |
+| `test_crear_producto_sin_talla_no_crea_variante` | `UNICA` no crea variante | ✅ PASSED |
+| `test_venta_con_talla_descuenta_variante` | Vender `2 M` → `stock 10→8` solo variante M | ✅ PASSED |
+| `test_venta_stock_insuficiente_variante_rechazada` | `stock 1` pedir 5 → `Stock insuficiente` | ✅ PASSED |
+| `test_valorizado_stock_por_almacen` | `3×30 + 2×20 =130` valorizado | ✅ PASSED |
+| `test_lote_fifo_descuento` | Lote vence `2026-10-01` primero (FIFO) | ✅ PASSED |
+
+> **Para Dayanna y asistente:** Estos tests prueban lo que ves en `Inventario → Registrar Producto` (elegir `Talla M` y `Stock inicial 10`), luego `Ventas → Uniforme M 2 unidades` y ver que el stock baja solo de esa talla. Si cambias a `UNICA`, no crea variante. `Lote` es para alimentos que vencen.
+
 ## Próximos Tests
 
-Todos los tests planificados completados ✅
+- Inventario escalable S1 completo ✅ (arriba)
+- Falta: test multi-almacén explícito con 2 sedes (cuando haya 2 `almacen`)
 
 ---
 

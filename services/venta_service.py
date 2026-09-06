@@ -53,7 +53,7 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
 
     try:
         with transaccion():
-            # Validar stock y calcular total DENTRO de transacción (evita TOCTOU)
+            # Validar stock y calcular total DENTRO de transacción (evita TOCTOU) — maneja variante/talla
             total = 0
             for it in items:
                 prod = producto_repository.obtener_por_id(it["id_producto"])
@@ -61,8 +61,25 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
                     raise ValueError(f"Producto {it['id_producto']} no encontrado")
                 if prod["activo"] == 0:
                     raise ValueError(f"Producto {prod['nombre']} desactivado")
-                if prod["stock_actual"] < it["cantidad"]:
-                    raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})")
+                id_variante = it.get("id_variante")
+                # si hay variante, validar stock_almacen de variante, no solo producto
+                disp = prod["stock_actual"]
+                if id_variante:
+                    try:
+                        from repositories import stock_almacen_repository, almacen_repository
+                        alm = almacen_repository.obtener_por_nombre("Principal")
+                        alm_id = alm["id_almacen"] if alm else 1
+                        # id_almacen puede venir en item
+                        alm_id = it.get("id_almacen") or alm_id
+                        sa = stock_almacen_repository.obtener(it["id_producto"], id_variante, alm_id, it.get("id_caja"))
+                        if sa:
+                            disp = sa["stock"]
+                        else:
+                            disp = 0
+                    except Exception:
+                        disp = prod["stock_actual"]
+                if disp < it["cantidad"]:
+                    raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {disp})")
                 precio_u = it.get("precio_unitario") or prod.get("precio_venta") or prod.get("precio") or 0
                 if precio_u <= 0:
                     logger.warning(f"Venta con precio 0 para {prod['nombre']}")

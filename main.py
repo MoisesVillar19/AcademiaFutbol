@@ -37,11 +37,29 @@ COLOR_BORDER       = "#DDD6E5"  # Borde morado claro
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
+        # Aplicar escala visual guardada (si existe) — letra más grande por defecto
+        try:
+            import json, pathlib
+            p = pathlib.Path(__file__).parent / "config_visual.json"
+            if p.is_file():
+                data = json.loads(p.read_text(encoding="utf-8"))
+                scale_map = {"Pequeña": 0.95, "Mediana (default)": 1.05, "Grande": 1.18, "Extra grande": 1.32}
+                sel = data.get("font_scale", "Mediana (default)")
+                factor = scale_map.get(sel, 1.05)
+                # por defecto 1.05 para letra no tan chica
+                ctk.set_widget_scaling(factor)
+                ctk.set_window_scaling(factor)
+            else:
+                # default más grande que antes (antes 1.0 → ahora 1.05)
+                ctk.set_widget_scaling(1.05)
+                ctk.set_window_scaling(1.05)
+        except Exception:
+            pass
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         self.title("Academia Deportiva")
-        self.geometry("1100x700")
-        self.minsize(900, 600)
+        self.geometry("1120x720")
+        self.minsize(940, 640)
         self.configure(fg_color=COLOR_BG)
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self._centrar_ventana()
@@ -150,11 +168,22 @@ class App(ctk.CTk):
         ctk.CTkLabel(header_frame, text="Academia Deportiva", font=ctk.CTkFont(size=19, weight="bold"), text_color="#ffffff").pack(anchor="w", pady=(2, 0))
         ctk.CTkLabel(header_frame, text="Gestión integral", font=ctk.CTkFont(size=11), text_color="#c0c8d4").pack(anchor="w")
 
-        # Info del usuario (más grande)
-        user_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, corner_radius=10)
+        # Info del usuario — clickeable → Perfil (intuitivo)
+        user_frame = ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, corner_radius=10, border_width=1, border_color="#4E1D70")
         user_frame.pack(fill="x", padx=12, pady=(10, 12))
         ctk.CTkLabel(user_frame, text=f"👤  {nombre}", font=ctk.CTkFont(size=13, weight="bold"), text_color="#ffffff", anchor="w").pack(fill="x", padx=10, pady=(8, 0))
-        ctk.CTkLabel(user_frame, text=f"   {rol} • En línea", font=ctk.CTkFont(size=11), text_color="#8899aa", anchor="w").pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(user_frame, text=f"   {rol} • En línea  ✎", font=ctk.CTkFont(size=11), text_color="#c0c8d4", anchor="w").pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(user_frame, text="Click para editar perfil", font=ctk.CTkFont(size=10), text_color="#9CA3AF", anchor="w").pack(fill="x", padx=10, pady=(0, 6))
+        # hacer clickeable
+        for w in (user_frame,):
+            try:
+                w.bind("<Button-1>", lambda e: self._mostrar_usuarios())
+                w.configure(cursor="hand2")
+                # hover sutil
+                w.bind("<Enter>", lambda e, f=user_frame: f.configure(border_color="#7C3AED", cursor="hand2"))
+                w.bind("<Leave>", lambda e, f=user_frame: f.configure(border_color="#4E1D70", cursor=""))
+            except Exception:
+                pass
 
         ctk.CTkFrame(sidebar, fg_color=COLOR_SIDEBAR_HOVER, height=1).pack(fill="x", padx=15, pady=6)
 
@@ -172,6 +201,7 @@ class App(ctk.CTk):
         def _btn(text, cmd, indent=False):
             w = 200 if not indent else 186
             pad = 8 if not indent else 20
+            # sin border en hover para evitar que se corra el texto
             btn = ctk.CTkButton(
                 menu_scroll, text=text, width=w, height=38,
                 fg_color="transparent", anchor="w",
@@ -179,13 +209,14 @@ class App(ctk.CTk):
                 text_color="#E5E7EB" if not indent else "#cbd5e1",
                 hover_color="#4E1D70" if not indent else "#3A1A5E",
                 corner_radius=8,
+                border_width=0,
                 command=lambda c=cmd, b=text: self._on_menu_click(c, b),
             )
             btn.pack(pady=2, padx=pad)
             self._sidebar_botones.append((text, btn))
             try:
-                btn.bind("<Enter>", lambda e, b=btn: (b.configure(cursor="hand2"), b.configure(border_width=1, border_color="#7C3AED") if indent else None))
-                btn.bind("<Leave>", lambda e, b=btn: (b.configure(cursor=""), b.configure(border_width=0) if indent else None))
+                btn.bind("<Enter>", lambda e, b=btn: b.configure(cursor="hand2"))
+                btn.bind("<Leave>", lambda e, b=btn: b.configure(cursor=""))
             except Exception:
                 pass
             return btn
@@ -209,7 +240,7 @@ class App(ctk.CTk):
             _header("SISTEMA")
             _btn("📤  Importar", self._mostrar_importar, indent=True)
             _btn("🔑  Usuarios", self._mostrar_usuarios, indent=True)
-            _btn("🏷️  Tarifas", self._mostrar_tarifas, indent=True)
+            _btn("🏷  Tarifas", self._mostrar_tarifas, indent=True)
             _btn("📝  Auditoría", self._mostrar_auditoria, indent=True)
             _btn("⚙️  Configuración", self._mostrar_configuracion, indent=True)
             _btn("💾  Respaldo", self._crear_backup_manual, indent=True)
@@ -262,6 +293,10 @@ class App(ctk.CTk):
             pass
 
     def _on_menu_click(self, command, label):
+        # Respaldo es acción, no vista → no resalta como activo
+        if "Respaldo" in label:
+            command()
+            return
         for text, btn in self._sidebar_botones:
             if text == label:
                 btn.configure(fg_color=COLOR_SIDEBAR_ACT, text_color="#ffffff")

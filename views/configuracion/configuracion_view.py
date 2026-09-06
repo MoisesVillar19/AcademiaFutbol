@@ -29,20 +29,22 @@ class ConfiguracionView(ctk.CTkFrame):
         self.contenido = ctk.CTkScrollableFrame(self)
         self.contenido.pack(fill="both", expand=True, padx=15, pady=5)
 
-    # ── Helpers UI ordenada y explicada ──────────────────────────
+    # ── Helpers UI ordenada y explicada (sin hover para evitar glitch) ──
     def _seccion(self, titulo, icono, descripcion, nro):
-        """Crea un frame sección ordenada con número, icono y descripción."""
-        sec = ctk.CTkFrame(self.contenido, fg_color="white", border_width=1, border_color="#E5E7EB", corner_radius=10)
-        sec.pack(fill="x", padx=5, pady=6)
+        sec = ctk.CTkFrame(self.contenido, fg_color="white", corner_radius=8)
+        sec.pack(fill="x", padx=5, pady=5)
         head = ctk.CTkFrame(sec, fg_color="transparent")
-        head.pack(fill="x", padx=12, pady=(10, 4))
-        ctk.CTkLabel(head, text=f"{nro}. {icono}  {titulo}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#3D1559").pack(side="left")
-        ctk.CTkLabel(head, text="ADMIN", font=ctk.CTkFont(size=11), text_color="white", fg_color="#7C3AED", corner_radius=6, width=55).pack(side="right")
-        ctk.CTkLabel(sec, text=descripcion, font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=700, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+        head.pack(fill="x", padx=10, pady=(8, 4))
+        ctk.CTkLabel(head, text=f"{nro}. {icono}  {titulo}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#3D1559").pack(side="left")
+        ctk.CTkLabel(head, text="ADMIN", font=ctk.CTkFont(size=10), text_color="white", fg_color="#7C3AED", corner_radius=6, width=50).pack(side="right")
+        # descripción sin wraplength grande para evitar sobrepuesto
+        desc = ctk.CTkLabel(sec, text=descripcion, font=ctk.CTkFont(size=11), text_color="#6B5B7B", justify="left", wraplength=650)
+        desc.pack(anchor="w", padx=10, pady=(0, 6))
         return sec
 
     def _nota(self, parent, texto):
-        ctk.CTkLabel(parent, text=f"ℹ {texto}", font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=680, justify="left").pack(anchor="w", padx=10, pady=2)
+        lbl = ctk.CTkLabel(parent, text=f"ℹ {texto}", font=ctk.CTkFont(size=11), text_color="#6B5B7B", justify="left", wraplength=620)
+        lbl.pack(anchor="w", padx=10, pady=2)
 
     def _cargar_configuracion(self):
         for widget in self.contenido.winfo_children():
@@ -114,6 +116,33 @@ class ConfiguracionView(ctk.CTkFrame):
         self._cargar_tipos_uniforme(sec7)
         crear_boton_interactivo(sec7, text="+ Nuevo Tipo Uniforme", width=180, command=self._nuevo_tipo_uniforme, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
+        # 8 — Apariencia Visual (nuevo, ordenado y explicado)
+        sec8 = self._seccion("Apariencia Visual", "🎨", "Ajusta tamaño de letra, colores y fuente. Se guarda local y aplica al reiniciar.", 8)
+        vis_frame = ctk.CTkFrame(sec8, fg_color="transparent")
+        vis_frame.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(vis_frame, text="Tamaño de letra:", width=160, anchor="w").pack(side="left")
+        self.combo_font_scale = ctk.CTkComboBox(vis_frame, width=160, values=["Pequeña", "Mediana (default)", "Grande", "Extra grande"])
+        self.combo_font_scale.set(self._cargar_visual("font_scale", "Mediana (default)"))
+        self.combo_font_scale.pack(side="left", padx=5)
+        ctk.CTkLabel(vis_frame, text="↳ Pequeña 0.9x, Grande 1.15x", font=ctk.CTkFont(size=10), text_color="#9CA3AF").pack(side="left", padx=5)
+
+        vis2 = ctk.CTkFrame(sec8, fg_color="transparent")
+        vis2.pack(fill="x", padx=10, pady=3)
+        ctk.CTkLabel(vis2, text="Tema color:", width=160, anchor="w").pack(side="left")
+        self.combo_tema = ctk.CTkComboBox(vis2, width=160, values=["Morado Roncalli", "Azul", "Verde"])
+        self.combo_tema.set(self._cargar_visual("tema", "Morado Roncalli"))
+        self.combo_tema.pack(side="left", padx=5)
+        ctk.CTkLabel(vis2, text="↳ Cambia cabeceras y botones", font=ctk.CTkFont(size=10), text_color="#9CA3AF").pack(side="left", padx=5)
+
+        vis3 = ctk.CTkFrame(sec8, fg_color="transparent")
+        vis3.pack(fill="x", padx=10, pady=3)
+        ctk.CTkLabel(vis3, text="Fuente:", width=160, anchor="w").pack(side="left")
+        self.combo_fuente = ctk.CTkComboBox(vis3, width=160, values=["Normal", "Grande (accesible)"])
+        self.combo_fuente.set(self._cargar_visual("fuente", "Normal"))
+        self.combo_fuente.pack(side="left", padx=5)
+        ctk.CTkButton(vis3, text="Aplicar vista previa", width=140, height=28, fg_color="#6B21A8", command=self._aplicar_visual).pack(side="left", padx=10)
+        self._nota(sec8, "Tip: Usa Grande si la letra se ve pequeña. Se guarda en config_visual.json y aplica al reiniciar.")
+
         # Guardar fijo abajo
         btn_frame = ctk.CTkFrame(self.contenido, fg_color="transparent")
         btn_frame.pack(fill="x", padx=5, pady=12)
@@ -124,25 +153,60 @@ class ConfiguracionView(ctk.CTkFrame):
 
     def _crear_campo(self, parent, key, label, valor, help=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.pack(fill="x", padx=10, pady=2)
-        # label con tooltip help
-        ctk.CTkLabel(frame, text=label, width=220, anchor="w", font=ctk.CTkFont(size=12)).pack(side="left")
-        entry = ctk.CTkEntry(frame, width=280, border_width=1, border_color="#E5E7EB")
+        frame.pack(fill="x", padx=10, pady=3)
+        ctk.CTkLabel(frame, text=label, width=200, anchor="w", font=ctk.CTkFont(size=12)).pack(side="left")
+        entry = ctk.CTkEntry(frame, width=260, border_width=1, border_color="#E5E7EB")
         entry.insert(0, str(valor))
         entry.pack(side="left", padx=5)
-        # hover en entry para distinguir interactivo vs estático
-        try:
-            entry.bind("<Enter>", lambda e, en=entry: en.configure(border_color="#7C3AED"))
-            entry.bind("<Leave>", lambda e, en=entry: en.configure(border_color="#E5E7EB"))
-            entry.bind("<FocusIn>", lambda e, en=entry: en.configure(border_color="#7C3AED", border_width=2))
-            entry.bind("<FocusOut>", lambda e, en=entry: en.configure(border_color="#E5E7EB", border_width=1))
-        except Exception:
-            pass
         self.entries[key] = entry
         if help:
-            ctk.CTkLabel(parent, text=f"↳ {help}", font=ctk.CTkFont(size=10), text_color="#9CA3AF", wraplength=650, justify="left").pack(anchor="w", padx=10)
+            ctk.CTkLabel(parent, text=f"↳ {help}", font=ctk.CTkFont(size=10), text_color="#9CA3AF", justify="left", wraplength=600).pack(anchor="w", padx=10, pady=(0,2))
+
+    def _cargar_visual(self, clave, defecto):
+        try:
+            import json, os
+            path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config_visual.json")
+            if os.path.isfile(path):
+                import json as js
+                with open(path, "r", encoding="utf-8") as f:
+                    data = js.load(f)
+                    return data.get(clave, defecto)
+        except Exception:
+            pass
+        return defecto
+
+    def _guardar_visual(self):
+        try:
+            import json, os
+            path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config_visual.json")
+            data = {}
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            data["font_scale"] = self.combo_font_scale.get()
+            data["tema"] = self.combo_tema.get()
+            data["fuente"] = self.combo_fuente.get()
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            from utils.logger import logger
+            logger.warning(f"No se pudo guardar visual: {e}")
+
+    def _aplicar_visual(self):
+        escala = {"Pequeña": 0.9, "Mediana (default)": 1.0, "Grande": 1.15, "Extra grande": 1.3}
+        sel = self.combo_font_scale.get()
+        factor = escala.get(sel, 1.0)
+        try:
+            import customtkinter as ctk
+            ctk.set_widget_scaling(factor)
+            ctk.set_window_scaling(factor)
+            messagebox.showinfo("Vista previa", f"Escala {sel} ({factor}x) aplicada.\nGuarda para que quede al reiniciar.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
     def _guardar(self):
+        # guardar visual primero
+        self._guardar_visual()
         data = {}
         for key, entry in self.entries.items():
             valor = entry.get().strip()
@@ -167,7 +231,7 @@ class ConfiguracionView(ctk.CTkFrame):
 
         exito, msg = configuracion_controller.actualizar_configuracion(data)
         if exito:
-            messagebox.showinfo("Éxito", msg)
+            messagebox.showinfo("Éxito", msg + "\n\nVisual guardado. Reinicia para aplicar fuente/tamaño.")
         else:
             messagebox.showerror("Error", msg)
 
@@ -177,15 +241,12 @@ class ConfiguracionView(ctk.CTkFrame):
             ctk.CTkLabel(parent, text="No hay categorías — crea la primera con + Nueva", text_color="gray").pack(anchor="w", padx=10, pady=3)
             return
         for cat in cats:
-            # card interactiva: hover resalta
-            from utils.ui_helpers import crear_card_interactiva
-            row = crear_card_interactiva(parent)
-            row.pack(fill="x", padx=10, pady=3)
-            ctk.CTkLabel(row, text=f"🏷 {cat['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10)
+            row = ctk.CTkFrame(parent, fg_color="#F8F5FA", corner_radius=8)
+            row.pack(fill="x", padx=10, pady=2)
+            ctk.CTkLabel(row, text=f"{cat['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10, pady=6)
             ctk.CTkLabel(row, text=f"Edad {cat['edad_min']}-{cat['edad_max']} años", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(side="left", padx=10)
-            from utils.ui_helpers import crear_boton_interactivo
-            crear_boton_interactivo(row, text="✏ Editar", width=75, height=28, command=lambda c=cat: self._editar_categoria(c), fg_color="#7C3AED").pack(side="right", padx=2)
-            crear_boton_interactivo(row, text="⛔ Desactivar", width=95, height=28, fg_color="#d9534f", command=lambda c=cat: self._desactivar_categoria(c)).pack(side="right", padx=2)
+            ctk.CTkButton(row, text="Editar", width=70, height=28, command=lambda c=cat: self._editar_categoria(c)).pack(side="right", padx=2, pady=4)
+            ctk.CTkButton(row, text="Desactivar", width=85, height=28, fg_color="#d9534f", command=lambda c=cat: self._desactivar_categoria(c)).pack(side="right", padx=2, pady=4)
 
     def _nueva_categoria(self):
         dialog = ctk.CTkToplevel(self)
@@ -301,12 +362,11 @@ class ConfiguracionView(ctk.CTkFrame):
             ctk.CTkLabel(parent, text="No hay tipos — crea Entrenamiento/Competencia", text_color="gray").pack(anchor="w", padx=10)
             return
         for t in tipos:
-            from utils.ui_helpers import crear_card_interactiva, crear_boton_interactivo
-            row = crear_card_interactiva(parent)
+            row = ctk.CTkFrame(parent, fg_color="#F8F5FA", corner_radius=8)
             row.pack(fill="x", padx=10, pady=2)
-            ctk.CTkLabel(row, text=f"👕 {t['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10)
+            ctk.CTkLabel(row, text=f"{t['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10, pady=6)
             ctk.CTkLabel(row, text=t.get('descripcion',''), font=ctk.CTkFont(size=11), text_color="#6B5B7B").pack(side="left")
-            crear_boton_interactivo(row, text="⛔ Desactivar", width=95, height=28, fg_color="#d9534f", command=lambda x=t: self._desactivar_tipo_uniforme(x)).pack(side="right", padx=2)
+            ctk.CTkButton(row, text="Desactivar", width=85, height=28, fg_color="#d9534f", command=lambda x=t: self._desactivar_tipo_uniforme(x)).pack(side="right", padx=2, pady=4)
 
     def _nuevo_tipo_uniforme(self):
         dialog = ctk.CTkInputDialog(text="Nombre del tipo de uniforme:", title="Nuevo Tipo Uniforme")

@@ -34,6 +34,20 @@ def crear_matricula(data: dict) -> tuple[bool, str, int | None]:
         return False, "Día de vencimiento no válido", None
     data["dia_vencimiento"] = dia_venc
 
+    # productos configurables: validar ids y cantidad
+    productos = data.get("productos", [])
+    if productos:
+        for p in productos:
+            if not p.get("id_producto"):
+                return False, "Producto inválido en selección", None
+            try:
+                cant = int(p.get("cantidad", 0))
+                if cant <= 0:
+                    return False, "Cantidad de producto debe ser >0", None
+                p["cantidad"] = cant
+            except (ValueError, TypeError):
+                return False, "Cantidad de producto no válida", None
+
     return matricula_service.crear_matricula(data, id_usuario=_get_id_usuario())
 
 

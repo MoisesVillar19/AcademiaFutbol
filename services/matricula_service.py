@@ -47,123 +47,103 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
     tarifa_data = tarifa_repository.obtener_por_id(id_tarifa)
     monto_base = monto_pactado if monto_pactado is not None else tarifa_data["monto"]
 
-    # Determinar si es primera matrícula (inscripción) vs reingreso
     es_primera_matricula = len(matriculas_existentes) == 0
     es_reingreso = estudiante["estado"] == STATUS_REINGRESANTE
-    # RN-036: solo primera matrícula (nuevo) descuenta -1 uniforme; reingreso va por venta separada
 
-    with transaccion():
-        id_matricula = matricula_repository.insertar(matricula)
+    try:
+        with transaccion():
+            id_matricula = matricula_repository.insertar(matricula)
 
-        # RN-036: primera matrícula descuenta 1 Camiseta Entrenamiento del inventario
-        if es_primera_matricula and not es_reingreso:
-            from repositories import producto_repository, tipo_uniforme_repository
-            from repositories import detalle_venta_repository, venta_repository
-            from models.venta import Venta
-            from models.detalle_venta import DetalleVenta
-            from utils.helpers import generate_receipt_number
-            from utils.dates import get_today as _get_today
-            # buscar tipo uniforme Entrenamiento y producto camiseta
-            tipo_ent = tipo_uniforme_repository.obtener_por_nombre("Uniforme Entrenamiento")
-            prod_camiseta = None
-            if tipo_ent:
-                # buscar producto con ese tipo
-                from database.connection import fetch_all as _fetch_all
-                prods = _fetch_all("SELECT * FROM producto WHERE id_tipo_uniforme = ? AND activo=1", (tipo_ent["id_tipo_uniforme"],))
-                if prods:
-                    prod_camiseta = prods[0]
-                else:
-                    # fallback por código
-                    prod_camiseta = producto_repository.obtener_por_codigo("CAMISETA-ENT")
-            if prod_camiseta:
-                if prod_camiseta["stock_actual"] < 1:
-                    raise ValueError("Stock insuficiente de Camiseta Entrenamiento para inscripción")
-                # crear venta INSCRIPCION atómica
-                numero_recibo = generate_receipt_number()
-                venta = Venta(
-                    id_estudiante=id_estudiante,
-                    id_usuario=id_usuario,
-                    fecha_venta=_get_today(),
-                    monto_total=0,  # inscripción incluye camiseta, monto 0 para inventario; el cobro va en matrícula/cuota
-                    metodo_pago="EFECTIVO",
-                    tipo_venta="INSCRIPCION",
-                    numero_recibo=numero_recibo,
-                )
-                # manejar colisión recibo
-                import sqlite3
-                id_venta = None
-                for _ in range(3):
-                    try:
-                        id_venta = venta_repository.insertar(venta)
-                        break
-                    except sqlite3.IntegrityError:
-                        venta.numero_recibo = generate_receipt_number()
-                if id_venta is None:
-                    raise RuntimeError("No se pudo generar recibo para inscripción")
-                # detalle + stock
-                detalle_venta_repository.insertar(DetalleVenta(id_venta=id_venta, id_producto=prod_camiseta["id_producto"], cantidad=1, precio_unitario=0, subtotal=0))
-                stock_ant = prod_camiseta["stock_actual"]
-                stock_nuevo = stock_ant - 1
-                producto_repository.actualizar_stock(prod_camiseta["id_producto"], stock_nuevo)
-                from repositories import movimiento_inventario_repository
-                from models.movimiento_inventario import MovimientoInventario
-                from utils.dates import get_now
-                movimiento_inventario_repository.insertar(MovimientoInventario(
-                    id_producto=prod_camiseta["id_producto"],
-                    id_usuario=id_usuario,
-                    tipo_movimiento="SALIDA",
-                    cantidad=1,
-                    stock_anterior=stock_ant,
-                    stock_nuevo=stock_nuevo,
-                    fecha_movimiento=get_now(),
-                    motivo=f"Inscripción primera matrícula estudiante {id_estudiante} - Camiseta Entrenamiento",
-                ))
-                auditoria_service.registrar_insert(id_usuario, "venta", id_venta, f"INSCRIPCION camiseta -1 stock {stock_ant}->{stock_nuevo}")
+            if es_primera_matricula and not es_reingreso:
+                from repositories import producto_repository, tipo_uniforme_repository
+                from repositories import detalle_venta_repository, venta_repository
+                from models.venta import Venta
+                from models.detalle_venta import DetalleVenta
+                from utils.helpers import generate_receipt_number
+                from utils.dates import get_today as _get_today
+                tipo_ent = tipo_uniforme_repository.obtener_por_nombre("Uniforme Entrenamiento")
+                prod_camiseta = None
+                if tipo_ent:
+                    from database.connection import fetch_all as _fetch_all
+                    prods = _fetch_all("SELECT * FROM producto WHERE id_tipo_uniforme = ? AND activo=1", (tipo_ent["id_tipo_uniforme"],))
+                    if prods:
+                        prod_camiseta = prods[0]
+                    else:
+                        prod_camiseta = producto_repository.obtener_por_codigo("CAMISETA-ENT")
+                if prod_camiseta:
+                    if prod_camiseta["stock_actual"] < 1:
+                        raise ValueError("Stock insuficiente de Camiseta Entrenamiento para inscripción")
+                    numero_recibo = generate_receipt_number()
+                    venta = Venta(id_estudiante=id_estudiante, id_usuario=id_usuario, fecha_venta=_get_today(), monto_total=0, metodo_pago="EFECTIVO", tipo_venta="INSCRIPCION", numero_recibo=numero_recibo)
+                    import sqlite3
+                    id_venta = None
+                    for _ in range(3):
+                        try:
+                            id_venta = venta_repository.insertar(venta)
+                            break
+                        except sqlite3.IntegrityError:
+                            venta.numero_recibo = generate_receipt_number()
+                    if id_venta is None:
+                        raise RuntimeError("No se pudo generar recibo para inscripción")
+                    detalle_venta_repository.insertar(DetalleVenta(id_venta=id_venta, id_producto=prod_camiseta["id_producto"], cantidad=1, precio_unitario=0, subtotal=0))
+                    stock_ant = prod_camiseta["stock_actual"]
+                    stock_nuevo = stock_ant - 1
+                    producto_repository.actualizar_stock(prod_camiseta["id_producto"], stock_nuevo)
+                    from repositories import movimiento_inventario_repository
+                    from models.movimiento_inventario import MovimientoInventario
+                    from utils.dates import get_now
+                    movimiento_inventario_repository.insertar(MovimientoInventario(id_producto=prod_camiseta["id_producto"], id_usuario=id_usuario, tipo_movimiento="SALIDA", cantidad=1, stock_anterior=stock_ant, stock_nuevo=stock_nuevo, fecha_movimiento=get_now(), motivo=f"Inscripción primera matrícula estudiante {id_estudiante} - Camiseta Entrenamiento"))
+                    auditoria_service.registrar_insert(id_usuario, "venta", id_venta, f"INSCRIPCION camiseta -1 stock {stock_ant}->{stock_nuevo}")
 
-        for beca_info in becas_asignadas:
-            id_beca = beca_info.get("id_beca")
-            beca_data = beca_service.obtener_beca(id_beca)
-            if beca_data:
-                if beca_data["tipo"] == "PORCENTAJE":
-                    descuento = monto_base * (beca_data["valor"] / 100)
-                    monto_base -= descuento
-                else:
-                    monto_base -= beca_data["valor"]
+            productos_sel = data.get("productos", [])
+            if productos_sel:
+                from repositories import producto_repository as prod_repo2
+                from services import venta_service as venta_svc2
+                for p in productos_sel:
+                    pid = p.get("id_producto")
+                    cant = int(p.get("cantidad", 1))
+                    prod = prod_repo2.obtener_por_id(pid)
+                    if not prod:
+                        raise ValueError(f"Producto {pid} no encontrado")
+                    if prod["stock_actual"] < cant:
+                        raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})")
+                    ok_v, msg_v, _ = venta_svc2.registrar_venta({"id_estudiante": id_estudiante, "id_usuario": id_usuario, "tipo_venta": "UNIFORME", "metodo_pago": "EFECTIVO", "items": [{"id_producto": pid, "cantidad": cant}]})
+                    if not ok_v:
+                        raise ValueError(msg_v)
 
-                matricula_beca_repository.insertar(
-                    id_matricula=id_matricula,
-                    id_beca=id_beca,
-                    observacion=beca_info.get("observacion", ""),
-                )
+            for beca_info in becas_asignadas:
+                id_beca = beca_info.get("id_beca")
+                beca_data = beca_service.obtener_beca(id_beca)
+                if beca_data:
+                    if beca_data["tipo"] == "PORCENTAJE":
+                        descuento = monto_base * (beca_data["valor"] / 100)
+                        monto_base -= descuento
+                    else:
+                        monto_base -= beca_data["valor"]
+                    matricula_beca_repository.insertar(id_matricula=id_matricula, id_beca=id_beca, observacion=beca_info.get("observacion", ""))
 
-        monto_base = round(max(monto_base, 0), 2)
+            monto_base = round(max(monto_base, 0), 2)
+            diferir = int(data.get("diferir_meses", 0) or 0)
+            cuota_service.generar_siguiente_cuota(id_matricula=id_matricula, monto_base=monto_base, dia_vencimiento=dia_vencimiento)
+            for _ in range(max(0, diferir - 1)):
+                cuota_service.generar_siguiente_cuota(id_matricula=id_matricula, monto_base=monto_base, dia_vencimiento=dia_vencimiento)
 
-        # RN-043 diferido flexible: genera 1 cuota + N-1 adicionales si diferir_meses >0
-        diferir = int(data.get("diferir_meses", 0) or 0)
-        cuota_service.generar_siguiente_cuota(
-            id_matricula=id_matricula,
-            monto_base=monto_base,
-            dia_vencimiento=dia_vencimiento,
-        )
-        for _ in range(max(0, diferir - 1)):
-            cuota_service.generar_siguiente_cuota(
-                id_matricula=id_matricula,
-                monto_base=monto_base,
-                dia_vencimiento=dia_vencimiento,
-            )
+            if estudiante["estado"] == STATUS_REINGRESANTE:
+                estudiante_repository.cambiar_estado(id_estudiante, STATUS_ACTIVO)
 
-        if estudiante["estado"] == STATUS_REINGRESANTE:
-            estudiante_repository.cambiar_estado(id_estudiante, STATUS_ACTIVO)
+            auditoria_service.registrar_insert(id_usuario=id_usuario, tabla="matricula", id_registro=id_matricula, valores_nuevos=f"id_estudiante={id_estudiante}, id_tarifa={id_tarifa}, monto={monto_base}")
 
-        auditoria_service.registrar_insert(
-            id_usuario=id_usuario,
-            tabla="matricula",
-            id_registro=id_matricula,
-            valores_nuevos=f"id_estudiante={id_estudiante}, id_tarifa={id_tarifa}, monto={monto_base}",
-        )
-
-    logger.info(f"Matrícula creada: ID={id_matricula}, estudiante={id_estudiante}")
-    return True, "Matrícula registrada correctamente", id_matricula
+        logger.info(f"Matrícula creada: ID={id_matricula}, estudiante={id_estudiante}")
+        return True, "Matrícula registrada correctamente", id_matricula
+    except ValueError as e:
+        logger.warning(f"Matrícula fallida: {e}")
+        return False, str(e), None
+    except RuntimeError as e:
+        logger.warning(f"Matrícula fallida: {e}")
+        return False, str(e), None
+    except Exception as e:
+        logger.error(f"Error al crear matrícula: {e}", exc_info=True)
+        return False, "Error al registrar matrícula", None
 
 
 def obtener_matricula(id_matricula: int) -> dict | None:
@@ -179,7 +159,6 @@ def listar_matriculas_activas() -> list[dict]:
 
 
 def _recalcular_cuotas_pendientes(id_matricula: int):
-    """Recalcula monto_total/saldo de cuotas PENDIENTE tras cambio de becas (flexible)."""
     from repositories import tarifa_repository, cuota_repository
     from models.cuota import Cuota
     matricula = matricula_repository.obtener_por_id(id_matricula)
@@ -189,7 +168,6 @@ def _recalcular_cuotas_pendientes(id_matricula: int):
     if not tarifa:
         return
     monto_base = matricula["monto_pactado"] if matricula["monto_pactado"] is not None else tarifa["monto"]
-    # aplicar todas las becas activas en orden
     becas = [b for b in matricula_beca_repository.obtener_por_matricula(id_matricula) if b.get("activo", 1)]
     for mb in becas:
         bd = beca_service.obtener_beca(mb["id_beca"])
@@ -200,62 +178,31 @@ def _recalcular_cuotas_pendientes(id_matricula: int):
         else:
             monto_base -= bd["valor"]
     monto_base = round(max(monto_base, 0), 2)
-    # actualizar solo cuotas PENDIENTE (no pagadas) — mantiene invariante saldo=total-pagado= total
     for c in cuota_repository.obtener_por_matricula(id_matricula):
         if c["estado"] != "PENDIENTE":
             continue
         if abs(c["monto_total"] - monto_base) < 0.01:
             continue
         nuevo_saldo = round(monto_base - c["monto_pagado"], 2)
-        cuota_obj = Cuota(
-            id_cuota=c["id_cuota"],
-            id_matricula=c["id_matricula"],
-            periodo=c["periodo"],
-            fecha_vencimiento=c["fecha_vencimiento"],
-            monto_total=monto_base,
-            monto_pagado=c["monto_pagado"],
-            saldo=nuevo_saldo,
-            estado="PENDIENTE",
-            monto_mora=c.get("monto_mora", 0),
-            activo=c["activo"],
-        )
+        cuota_obj = Cuota(id_cuota=c["id_cuota"], id_matricula=c["id_matricula"], periodo=c["periodo"], fecha_vencimiento=c["fecha_vencimiento"], monto_total=monto_base, monto_pagado=c["monto_pagado"], saldo=nuevo_saldo, estado="PENDIENTE", monto_mora=c.get("monto_mora", 0), activo=c["activo"])
         cuota_repository.actualizar(cuota_obj)
-        auditoria_service.registrar_update(
-            id_usuario=auditoria_service.id_usuario_sesion(),
-            tabla="cuota",
-            id_registro=c["id_cuota"],
-            valores_anteriores=f"monto_total={c['monto_total']}, saldo={c['saldo']}",
-            valores_nuevos=f"monto_total={monto_base}, saldo={nuevo_saldo}",
-        )
+        auditoria_service.registrar_update(id_usuario=auditoria_service.id_usuario_sesion(), tabla="cuota", id_registro=c["id_cuota"], valores_anteriores=f"monto_total={c['monto_total']}, saldo={c['saldo']}", valores_nuevos=f"monto_total={monto_base}, saldo={nuevo_saldo}")
 
 
-def asignar_beca(id_matricula: int, id_beca: int,
-                 observacion: str = "") -> tuple[bool, str]:
+def asignar_beca(id_matricula: int, id_beca: int, observacion: str = "") -> tuple[bool, str]:
     beca = beca_service.obtener_beca(id_beca)
     if not beca:
         return False, "Beca no encontrada"
-
-    actuales = [
-        b for b in matricula_beca_repository.obtener_por_matricula(id_matricula)
-        if b.get("activo", 1)
-    ]
+    actuales = [b for b in matricula_beca_repository.obtener_por_matricula(id_matricula) if b.get("activo", 1)]
     if actuales:
         from services import configuracion_service
         if not configuracion_service.permite_multiples_becas():
             return False, "La configuración actual no permite múltiples becas por matrícula"
-
     from database.connection import transaccion
     with transaccion():
         matricula_beca_repository.insertar(id_matricula, id_beca, observacion)
         _recalcular_cuotas_pendientes(id_matricula)
-
-    auditoria_service.registrar_insert(
-        id_usuario=auditoria_service.id_usuario_sesion(),
-        tabla="matricula_beca",
-        id_registro=id_matricula,
-        valores_nuevos=f"id_beca={id_beca}, observacion={observacion}",
-    )
-
+    auditoria_service.registrar_insert(id_usuario=auditoria_service.id_usuario_sesion(), tabla="matricula_beca", id_registro=id_matricula, valores_nuevos=f"id_beca={id_beca}, observacion={observacion}")
     return True, "Beca asignada correctamente (cuotas pendientes recalculadas)"
 
 
@@ -264,15 +211,7 @@ def desasignar_beca(id_matricula: int, id_beca: int) -> tuple[bool, str]:
     with transaccion():
         matricula_beca_repository.eliminar(id_matricula, id_beca)
         _recalcular_cuotas_pendientes(id_matricula)
-
-    auditoria_service.registrar_desactivacion(
-        id_usuario=auditoria_service.id_usuario_sesion(),
-        tabla="matricula_beca",
-        id_registro=id_matricula,
-        valores_anteriores=f"id_beca={id_beca}, activo=1",
-        valores_nuevos="activo=0",
-    )
-
+    auditoria_service.registrar_desactivacion(id_usuario=auditoria_service.id_usuario_sesion(), tabla="matricula_beca", id_registro=id_matricula, valores_anteriores=f"id_beca={id_beca}, activo=1", valores_nuevos="activo=0")
     return True, "Beca desasignada correctamente (cuotas pendientes recalculadas)"
 
 

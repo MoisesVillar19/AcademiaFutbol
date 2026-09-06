@@ -105,12 +105,14 @@ class EstudianteView(ctk.CTkFrame):
         foto_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         foto_frame.pack(fill="x", anchor="w", pady=5)
         ctk.CTkLabel(foto_frame, text="Foto del niño (opcional):").pack(side="left", padx=(0,5))
-        self.btn_foto = ctk.CTkButton(foto_frame, text="Seleccionar foto", width=150, command=self._seleccionar_foto)
+        self.btn_foto = ctk.CTkButton(foto_frame, text="📷 Seleccionar foto", width=150, command=self._seleccionar_foto)
         self.btn_foto.pack(side="left", padx=5)
         self.label_foto = ctk.CTkLabel(foto_frame, text="Sin foto", text_color="gray")
         self.label_foto.pack(side="left", padx=5)
         self._foto_tmp_path = None
         self._foto_preview = None
+        self.label_foto_preview = ctk.CTkLabel(foto_frame, text="")
+        self.label_foto_preview.pack(side="left", padx=5)
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -271,30 +273,34 @@ class EstudianteView(ctk.CTkFrame):
             info, text=f"DNI: {est.get('dni', '')}  |  Estado: {estado}",
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
-        # Mostrar foto thumbnail si existe (RN-041)
+        # Mostrar foto thumbnail grande si existe (RN-041) — Pillow 12.3 ya en requirements
         foto_path = est.get("foto_path")
         if foto_path and os.path.isfile(foto_path) and Image:
             try:
                 img = Image.open(foto_path)
-                img.thumbnail((60, 60))
-                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(60, 60))
-                # guardar referencia para no ser GC
+                # thumbnail más grande y visible (90x90) + borde
+                img.thumbnail((90, 90))
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(90, 90))
                 if not hasattr(self, "_fotos_cache"):
                     self._fotos_cache = {}
                 self._fotos_cache[est["id_estudiante"]] = ctk_img
-                lbl = ctk.CTkLabel(info, image=ctk_img, text="")
-                lbl.pack(anchor="w", pady=2)
-                # click para ampliar
+                # frame con borde para destacar
+                foto_frame = ctk.CTkFrame(info, fg_color="white", border_width=1, border_color="#E5E7EB", corner_radius=8)
+                foto_frame.pack(anchor="w", pady=4)
+                lbl = ctk.CTkLabel(foto_frame, image=ctk_img, text="")
+                lbl.pack(padx=4, pady=4)
+                ctk.CTkLabel(info, text=f"📷 {os.path.basename(foto_path)} (clic para ampliar)", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
                 def _abrir(path=foto_path):
                     try:
                         os.startfile(path)
                     except Exception:
                         pass
                 lbl.bind("<Button-1>", lambda e, p=foto_path: _abrir(p))
+                foto_frame.bind("<Button-1>", lambda e, p=foto_path: _abrir(p))
             except Exception:
-                ctk.CTkLabel(info, text=f"Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+                ctk.CTkLabel(info, text=f"📷 Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
         elif foto_path:
-            ctk.CTkLabel(info, text=f"Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+            ctk.CTkLabel(info, text=f"📷 Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
 
         botones = ctk.CTkFrame(card, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
@@ -528,10 +534,20 @@ class EstudianteView(ctk.CTkFrame):
         if not path:
             return
         if os.path.getsize(path) > 2 * 1024 * 1024:
-            self.label_form_status.configure(text="Foto debe ser ≤2MB", text_color="red")
+            self.label_form_status.configure(text="❌ Foto debe ser ≤2MB", text_color="red")
             return
         self._foto_tmp_path = path
-        self.label_foto.configure(text=os.path.basename(path))
+        self.label_foto.configure(text=f"✅ {os.path.basename(path)}")
+        # preview thumbnail grande en form
+        if Image and os.path.isfile(path):
+            try:
+                img = Image.open(path)
+                img.thumbnail((80, 80))
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(80, 80))
+                self._foto_preview = ctk_img
+                self.label_foto_preview.configure(image=ctk_img, text="")
+            except Exception:
+                pass
 
     def _limpiar_formulario(self):
         self._id_estudiante_editando = None

@@ -1,7 +1,12 @@
+import os
 import customtkinter as ctk
 from controllers import pago_controller, login_controller
 from controllers import estudiante_controller, matricula_controller
 from widgets.date_picker import DatePicker
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 
 class PagoView(ctk.CTkFrame):
@@ -93,10 +98,14 @@ class PagoView(ctk.CTkFrame):
         self.entry_observacion.pack(anchor="w", pady=(0, 5))
 
         ctk.CTkLabel(scroll, text="Comprobante foto (obligatorio si YAPE/PLIN/TRANSFERENCIA)", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.btn_comprobante = ctk.CTkButton(scroll, text="Seleccionar comprobante", width=200, command=self._elegir_comprobante)
-        self.btn_comprobante.pack(anchor="w", pady=3)
-        self.label_comprobante = ctk.CTkLabel(scroll, text="Sin comprobante", text_color="gray")
-        self.label_comprobante.pack(anchor="w")
+        comp_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        comp_frame.pack(fill="x", anchor="w", pady=2)
+        self.btn_comprobante = ctk.CTkButton(comp_frame, text="📎 Seleccionar comprobante", width=200, command=self._elegir_comprobante)
+        self.btn_comprobante.pack(side="left", padx=5)
+        self.label_comprobante = ctk.CTkLabel(comp_frame, text="Sin comprobante", text_color="gray")
+        self.label_comprobante.pack(side="left", padx=5)
+        self.label_comprobante_preview = ctk.CTkLabel(comp_frame, text="")
+        self.label_comprobante_preview.pack(side="left", padx=5)
         self._comprobante_path = None
 
         self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
@@ -178,6 +187,25 @@ class PagoView(ctk.CTkFrame):
         ctk.CTkLabel(info, text=f"🧾 Recibo: {pago.get('numero_recibo', '')}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#1F0A33").pack(anchor="w")
         ctk.CTkLabel(info, text=f"💵 S/{pago.get('monto_total', 0):.2f}  •  {pago.get('metodo_pago', '')}  •  📅 {pago.get('fecha_pago', '')}", font=ctk.CTkFont(size=13), text_color="#374151").pack(anchor="w", pady=2)
         ctk.CTkLabel(info, text=f"👤 Registrado por: {pago.get('username', '')}", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(anchor="w")
+        # comprobante thumbnail si existe (OneDrive)
+        comp_path = pago.get("comprobante_path") or pago.get("comprobante") or ""
+        if comp_path and os.path.isfile(comp_path):
+            try:
+                from PIL import Image
+                img = Image.open(comp_path)
+                img.thumbnail((70, 70))
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(70, 70))
+                if not hasattr(self, "_comp_cache"):
+                    self._comp_cache = {}
+                self._comp_cache[pago.get("id_pago", pago.get("numero_recibo"))] = ctk_img
+                lbl = ctk.CTkLabel(info, image=ctk_img, text="")
+                lbl.pack(anchor="w", pady=3)
+                lbl.bind("<Button-1>", lambda e, p=comp_path: os.startfile(p) if os.path.exists(p) else None)
+                ctk.CTkLabel(info, text=f"📎 {os.path.basename(comp_path)} (clic para ampliar)", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+            except Exception:
+                ctk.CTkLabel(info, text=f"📎 {os.path.basename(comp_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
+        elif comp_path:
+            ctk.CTkLabel(info, text=f"📎 {os.path.basename(comp_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
         # badge monto
         badge = ctk.CTkFrame(card, fg_color="#F3E8FF", corner_radius=8)
         badge.pack(side="right", padx=10)
@@ -285,13 +313,24 @@ class PagoView(ctk.CTkFrame):
 
     def _elegir_comprobante(self):
         from tkinter import filedialog
-        import os
         from utils.constants import COMPROBANTES_DIR
         path = filedialog.askopenfilename(filetypes=[("Imagen","*.jpg *.jpeg *.png"),("Todos","*.*")])
         if path:
+            if os.path.getsize(path) > 5 * 1024 * 1024:
+                self.label_form_status.configure(text="❌ Comprobante debe ser ≤5MB", text_color="red")
+                return
             os.makedirs(COMPROBANTES_DIR, exist_ok=True)
             self._comprobante_path = path
-            self.label_comprobante.configure(text=os.path.basename(path))
+            self.label_comprobante.configure(text=f"✅ {os.path.basename(path)}")
+            if Image and os.path.isfile(path):
+                try:
+                    img = Image.open(path)
+                    img.thumbnail((70, 70))
+                    ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(70, 70))
+                    self._comprobante_preview = ctk_img
+                    self.label_comprobante_preview.configure(image=ctk_img, text="")
+                except Exception:
+                    pass
 
     def _cargar_morosos(self):
         for widget in self.scroll_morosos.winfo_children():

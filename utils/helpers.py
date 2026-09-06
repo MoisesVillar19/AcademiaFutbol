@@ -14,9 +14,12 @@ def generate_receipt_number() -> str:
 
 
 def generate_product_code() -> str:
+    """Genera código único con microsegundos + aleatorio para evitar colisión."""
     from datetime import datetime
+    import random
     now = datetime.now()
-    return now.strftime("PRD%Y%m%d%H%M%S")
+    rand = random.randint(100, 999)
+    return now.strftime("PRD%Y%m%d%H%M%S") + f"{now.microsecond // 1000:03d}" + str(rand)
 
 
 def clean_dni(dni: str) -> str:

@@ -32,84 +32,94 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
     if metodo != METODO_EFECTIVO and not comprobante and data.get("requiere_comprobante"):
         logger.warning(f"Venta {tipo_venta} sin comprobante para {metodo} (RN-042)")
 
-    # Validación precio >0 flexible
-
-    # Validar stock previo
-    for it in items:
-        prod = producto_repository.obtener_por_id(it["id_producto"])
-        if not prod:
-            return False, f"Producto {it['id_producto']} no encontrado", None
-        if prod["stock_actual"] < it["cantidad"]:
-            return False, f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})", None
-        if prod["activo"] == 0:
-            return False, f"Producto {prod['nombre']} desactivado", None
-
-    total = sum(
-        (producto_repository.obtener_por_id(it["id_producto"]) or {}).get("precio_venta", 0) * it["cantidad"]
-        if not it.get("precio_unitario")
-        else it["precio_unitario"] * it["cantidad"]
-        for it in items
-    )
+    # total flexible (se recalculará dentro de transacción con precios actuales)
     # Permitir monto pactado flexible (descuento)
+    total_precalculado = None
     if data.get("monto_total") is not None:
-        total = float(data["monto_total"])
+        total_precalculado = float(data["monto_total"])
 
     numero_recibo = data.get("numero_recibo") or generate_receipt_number()
-    venta = Venta(
-        id_estudiante=id_estudiante,
-        id_usuario=id_usuario,
-        fecha_venta=data.get("fecha_venta", get_today()),
-        monto_total=round(total, 2),
-        metodo_pago=metodo,
-        tipo_venta=tipo_venta,
-        numero_recibo=numero_recibo,
-        comprobante_path=comprobante,
-    )
+    # venta se crea dentro de transacción con total correcto
 
-    with transaccion():
-        id_venta = None
-        for _ in range(3):
-            try:
-                id_venta = venta_repository.insertar(venta)
-                break
-            except sqlite3.IntegrityError:
-                venta.numero_recibo = generate_receipt_number()
-        if id_venta is None:
-            return False, "No se pudo generar recibo único", None
+    try:
+        with transaccion():
+            # Validar stock y calcular total DENTRO de transacción (evita TOCTOU)
+            total = 0
+            for it in items:
+                prod = producto_repository.obtener_por_id(it["id_producto"])
+                if not prod:
+                    raise ValueError(f"Producto {it['id_producto']} no encontrado")
+                if prod["activo"] == 0:
+                    raise ValueError(f"Producto {prod['nombre']} desactivado")
+                if prod["stock_actual"] < it["cantidad"]:
+                    raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})")
+                precio_u = it.get("precio_unitario") or prod.get("precio_venta") or prod.get("precio") or 0
+                if precio_u <= 0:
+                    logger.warning(f"Venta con precio 0 para {prod['nombre']}")
+                total += round(precio_u * it["cantidad"], 2)
+            if total_precalculado is not None:
+                total = total_precalculado
 
-        for it in items:
-            prod = producto_repository.obtener_por_id(it["id_producto"])
-            stock_ant = prod["stock_actual"]
-            stock_nuevo = stock_ant - it["cantidad"]
-            precio_u = it.get("precio_unitario") or prod.get("precio_venta") or prod.get("precio") or 0
-            detalle = DetalleVenta(
-                id_venta=id_venta,
-                id_producto=it["id_producto"],
-                cantidad=it["cantidad"],
-                precio_unitario=round(precio_u, 2),
-                subtotal=round(precio_u * it["cantidad"], 2),
+            venta = Venta(
+                id_estudiante=id_estudiante,
+                id_usuario=id_usuario,
+                fecha_venta=data.get("fecha_venta", get_today()),
+                monto_total=round(total, 2),
+                metodo_pago=metodo,
+                tipo_venta=tipo_venta,
+                numero_recibo=numero_recibo,
+                comprobante_path=comprobante,
             )
-            detalle_venta_repository.insertar(detalle)
-            producto_repository.actualizar_stock(it["id_producto"], stock_nuevo)
-            from models.movimiento_inventario import MovimientoInventario
-            from utils.dates import get_now
-            movimiento_inventario_repository.insertar(
-                MovimientoInventario(
+            id_venta = None
+            for _ in range(3):
+                try:
+                    id_venta = venta_repository.insertar(venta)
+                    break
+                except sqlite3.IntegrityError:
+                    venta.numero_recibo = generate_receipt_number()
+            if id_venta is None:
+                raise RuntimeError("No se pudo generar recibo único")
+
+            for it in items:
+                prod = producto_repository.obtener_por_id(it["id_producto"])
+                stock_ant = prod["stock_actual"]
+                stock_nuevo = stock_ant - it["cantidad"]
+                precio_u = it.get("precio_unitario") or prod.get("precio_venta") or prod.get("precio") or 0
+                detalle = DetalleVenta(
+                    id_venta=id_venta,
                     id_producto=it["id_producto"],
-                    id_usuario=id_usuario,
-                    tipo_movimiento="SALIDA",
                     cantidad=it["cantidad"],
-                    stock_anterior=stock_ant,
-                    stock_nuevo=stock_nuevo,
-                    fecha_movimiento=get_now(),
-                    motivo=f"Venta {tipo_venta} recibo {venta.numero_recibo}",
+                    precio_unitario=round(precio_u, 2),
+                    subtotal=round(precio_u * it["cantidad"], 2),
                 )
-            )
+                detalle_venta_repository.insertar(detalle)
+                producto_repository.actualizar_stock(it["id_producto"], stock_nuevo)
+                from models.movimiento_inventario import MovimientoInventario
+                from utils.dates import get_now
+                movimiento_inventario_repository.insertar(
+                    MovimientoInventario(
+                        id_producto=it["id_producto"],
+                        id_usuario=id_usuario,
+                        tipo_movimiento="SALIDA",
+                        cantidad=it["cantidad"],
+                        stock_anterior=stock_ant,
+                        stock_nuevo=stock_nuevo,
+                        fecha_movimiento=get_now(),
+                        motivo=f"Venta {tipo_venta} recibo {venta.numero_recibo}",
+                    )
+                )
 
-        auditoria_service.registrar_insert(id_usuario, "venta", id_venta, f"recibo={venta.numero_recibo}, total={total}, tipo={tipo_venta}")
+            auditoria_service.registrar_insert(id_usuario, "venta", id_venta, f"recibo={venta.numero_recibo}, total={total}, tipo={tipo_venta}")
 
-    logger.info(f"Venta registrada: {venta.numero_recibo} total={total}")
-    return True, f"Venta registrada. Recibo: {venta.numero_recibo}", id_venta
+        logger.info(f"Venta registrada: {venta.numero_recibo} total={total}")
+        return True, f"Venta registrada. Recibo: {venta.numero_recibo}", id_venta
+    except ValueError as e:
+        return False, str(e), None
+    except RuntimeError as e:
+        return False, str(e), None
+    except Exception as e:
+        logger.error(f"Error en venta: {e}", exc_info=True)
+        return False, "Error al registrar venta", None
 
 
 def registrar_inscripcion_con_uniforme(id_estudiante: int, id_usuario: int, id_producto_camiseta: int, metodo: str = METODO_EFECTIVO, comprobante: str | None = None) -> tuple[bool, str, int | None]:

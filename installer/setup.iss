@@ -29,6 +29,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x86compatible
 ArchitecturesInstallIn64BitMode=x86compatible
+SetupIconFile=..\assets\icons\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoVersion={#MyAppVersion}.0
 VersionInfoDescription=Sistema de Gestion - Academia Deportiva
@@ -46,6 +47,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\dist\AcademiaFutbol\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\AcademiaFutbol\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\setup_onedrive.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "README_BLOQUEO.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [INI]
 ; config.ini se genera en setup_onedrive.bat / CurStepChanged, no se empaqueta fijo

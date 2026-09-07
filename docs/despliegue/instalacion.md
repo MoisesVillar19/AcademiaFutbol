@@ -1,13 +1,13 @@
-# Guía de Instalación — AcademiaFutbol v1.0.0
+# Guía de Instalación — AcademiaFutbol v1.0.1
 
-> **Versión:** 1.0.0 · **Fecha:** 2026-09-06 · **BD Central:** `OneDrive\Academia\academia.db` (virgen producción) · **Instalador:** `AcademiaFutbol-Setup-1.0.0.exe` (42 MB) · **Relacionado:** `despliegue_produccion.md`, `manual_sistema.md`, `AcademiaFutbol.spec`
+> **Versión:** 1.0.1 · **Fecha:** 2026-09-06 · **BD Central:** `OneDrive\Academia\academia.db` (virgen producción) · **Instalador:** `AcademiaFutbol-Setup-1.0.1.exe` (42 MB) · **Portable:** `AcademiaFutbol-v1.0.1.zip` (57 MB) · **Relacionado:** `despliegue_produccion.md`, `manual_sistema.md`, `AcademiaFutbol.spec`
 
 ---
 
 ## Resumen despliegue actual
 
-- **Build generado:** 2026-09-06 21:02 con `build.bat` → `dist/AcademiaFutbol/AcademiaFutbol.exe` (17.5 MB, 1922 archivos) — **no contiene BD** (`AcademiaFutbol.spec:18` excluye `academia.db` y `config.ini`)
-- **Instalador:** `installer/Output/AcademiaFutbol-Setup-1.0.0.exe` (42.1 MB) via Inno Setup 6.7 — `setup.iss:82` `CurStepChanged` genera `config.ini` y estructura OneDrive solo si no existe (no sobreescribe en updates)
+- **Build generado:** 2026-09-06 21:47 con `build.bat` `v1.0.1` → `dist/AcademiaFutbol/AcademiaFutbol.exe` (17.5 MB, 1922 archivos) — **no contiene BD** (`AcademiaFutbol.spec:18` excluye `academia.db` y `config.ini`), `version.txt` y `upx=False` para menos falsos positivos
+- **Instalador:** `installer/Output/AcademiaFutbol-Setup-1.0.1.exe` (42.1 MB) via Inno Setup 6.7 — `setup.iss:23` `OutputDir=Output` (fix) + `setup.iss:82` `CurStepChanged` genera `config.ini` y estructura OneDrive solo si no existe
 - **BD central producción:** `C:\Users\{usuario}\OneDrive\Academia\academia.db` **virgen** (294 KB) — `create_db:370` + `seed:13` → 0 alumnos, 1 usuario `admin`, 5 categorías edad, 2 `categoria_producto`, 1 `CAMISETA-ENT` stock 50, 4 `tipo_uniforme`, precios `100/100/100/20`. BD de prueba respaldada en `OneDrive\BackupsAcademia\academia_TEST_20260906_210703.db` + `fotos_TEST_*` / `comprobantes_TEST_*`
 - **Carpetas OneDrive:** `Academia\fotos\` y `Academia\comprobantes\` vacías (listas para fotos `FOTOS_DIR` y comprobantes `COMPROBANTES_DIR` `utils/constants.py:95`), `BackupsAcademia\` para backups cada 6h `main.py:242`
 - **Tests:** 234 passed `pytest`
@@ -27,9 +27,50 @@
 - Opcional: `AcademiaFutbol-v1.0.0.zip` (56 MB) — `dist\` portable sin wizard
 
 ### Paso 2: Ejecutar el instalador
-1. Doble clic en `AcademiaFutbol-Setup-1.0.0.exe`
-2. Si SmartScreen: `Más información → Ejecutar de todas formas` (exe sin firma)
-3. Aparece wizard `AcademiaFutbol v1.0.0`
+1. Doble clic en `AcademiaFutbol-Setup-1.0.0.exe` (en v1.0.1 es `AcademiaFutbol-Setup-1.0.1.exe`)
+2. Si SmartScreen: `Más información → Ejecutar de todas formas` (exe sin firma — ver §2.1 si está bloqueado)
+3. Aparece wizard `AcademiaFutbol v1.0.1`
+
+### Paso 2.1: Si Windows bloquea el EXE (SmartScreen / Antivirus / Permisos) — sin firma, cualquier PC
+
+> **Por dinero no se usa firma de código.** El exe es legítimo (PyInstaller) pero Windows lo marca `Editor desconocido`. **Todas** las PCs pueden instalar: elige **A, B, C o D** según tu caso. Si tu PC no tiene permiso de admin para `C:\Program Files\`, usa **D) ZIP** (no pide permisos).
+
+**A) SmartScreen azul `Windows protegió su PC` (más común):**
+1. Clic `Más información`
+2. Clic `Ejecutar de todas formas`
+3. Continúa wizard normal (6 pasos)
+> Tip: tras ~50-100 descargas y con el archivo desbloqueado, SmartScreen gana reputación y deja de advertir.
+
+**B) Archivo bloqueado `No se puede ejecutar / Zone.Identifier` (descargado de internet):**
+- Opción gráfica: clic derecho `AcademiaFutbol-Setup-1.0.1.exe` → `Propiedades` → marcar `Desbloquear` → `Aplicar` → doble clic de nuevo
+- Opción PowerShell (recomendado si copias por OneDrive/USB):
+  ```powershell
+  Unblock-File -Path ".\AcademiaFutbol-Setup-1.0.1.exe"
+  # verificar:
+  Get-Content ".\AcademiaFutbol-Setup-1.0.1.exe:Zone.Identifier" -ErrorAction SilentlyContinue
+  # si existe, borrar ADS:
+  Remove-Item -Path ".\AcademiaFutbol-Setup-1.0.1.exe:Zone.Identifier" -ErrorAction SilentlyContinue
+  ```
+- Si viene de ZIP, desbloquear también el ZIP antes de extraer: `Unblock-File AcademiaFutbol-v1.0.1.zip`
+
+**C) Windows Defender / Antivirus `Amenaza encontrada / Trojan:Win32/Wacatac` (falso positivo PyInstaller):**
+1. `Seguridad de Windows → Protección antivirus → Historial de protección → Acciones → Permitir`
+2. Agregar exclusión permanente (evita que lo borre de nuevo):
+   `Seguridad de Windows → Protección antivirus → Administrar configuración → Exclusiones → Agregar → Carpeta → C:\Program Files\AcademiaFutvol\` (o la carpeta donde extrajiste el ZIP)
+3. Volver a descargar/extraer `Setup` o `ZIP` si Defender lo puso en cuarentena
+> Verificación hash SHA256 (publicado en Release notes) para confirmar que no fue modificado:
+  ```bat
+  certutil -hashfile AcademiaFutbol-Setup-1.0.1.exe SHA256
+  # comparar con hash del Release
+  ```
+
+**D) Sin permiso de admin / PC bloqueada para instaladores (cualquier PC sin `C:\Program Files`):**
+- **No uses el Setup.** Usa el **portable ZIP** (ver §2) que no pide permisos:
+  1. Desbloquear ZIP: `Unblock-File AcademiaFutbol-v1.0.1.zip`
+  2. Extraer a `C:\AcademiaFutbol\` o `Documentos\AcademiaFutbol\` (no necesita admin, elige `Extraer todo...` → `C:\AcademiaFutbol`)
+  3. Doble clic `AcademiaFutbol.exe` → funciona igual (BD sigue en `OneDrive\Academia\academia.db`)
+  4. Crear acceso directo manual: clic derecho `AcademiaFutbol.exe` → `Crear acceso directo` → mover a Escritorio
+> Este ZIP es la alternativa oficial para PCs de cabina, colegio o sin OneDrive admin.
 
 ### Paso 3: Wizard (6 pantallas)
 1. **Bienvenida** → `Siguiente`
@@ -233,12 +274,19 @@ Eliminar carpeta `C:\AcademiaFutbol\` + acceso directo
 
 | Problema | Causa | Solución |
 |---|---|---|
+| `Permiso denegado _internal/logs` | v1.0.0 instalado en `Program Files` sin fallback | Actualizar a **v1.0.1** (fix `utils/logger.py:8` → `LOCALAPPDATA\AcademiaFutbol\logs`) |
+| `Windows protegió su PC` (SmartScreen) | Exe sin firma (sin dinero para certificado) | `Más información → Ejecutar` o **B) Desbloquear** `Unblock-File` (ver §2.1) |
+| `No se puede ejecutar / Zone.Identifier` | Archivo descargado bloqueado | `Propiedades → Desbloquear` o `Unblock-File -Path Setup.exe` (ver §2.1 B) |
+| `Defender lo borra / Trojan` | Falso positivo PyInstaller | `Historial → Permitir` + `Exclusión Carpeta C:\Program Files\AcademiaFutbol\` + verificar `certutil -hashfile` SHA256 |
+| `No tengo permiso admin` | PC sin `Program Files` | Usar **ZIP portable §2.1 D** en `C:\AcademiaFutbol\` (no pide admin) |
 | `database is locked` | 2 PCs escriben sin sync OneDrive | Esperar icono verde, WAL + `transaccion:43` reintenta |
 | `academia (conflicto).db` | Edición offline simultánea | Cerrar apps, OneDrive resuelve, restaurar `academia_TEST_*.db` |
-| `No se encontró OneDrive` | OneDrive no instalado | Instalar OneDrive o usar fallback local |
+| `No se encontró OneDrive` | OneDrive no instalado | Instalar OneDrive o usa fallback `LOCALAPPDATA\AcademiaFutbol\backups` |
 | `admin123` no entra | Ya cambió contraseña | Usar nueva o PIN emergencia `roncalli2026` `seed:64` |
 | Foto no se ve | `FOTOS_DIR` sin permiso | Verificar `OneDrive\Academia\fotos` existe y `PIL` instalado |
 
+> **Reputación SmartScreen:** sin firma, el exe gana confianza tras varias instalaciones y si se publica hash SHA256 en el Release. No es virus — PyInstaller + `bcrypt` a veces da falso positivo `Wacatac`.
+
 ---
 
-*PDF generado desde este markdown para entrega. Artefactos listos en `installer/Output/` y `AcademiaFutbol-v1.0.0.zip`.*
+*PDF generado desde este markdown (v1.0.1). Artefactos: `installer/Output/AcademiaFutbol-Setup-1.0.1.exe` + `AcademiaFutbol-v1.0.1.zip` + `README_BLOQUEO.txt` + hashes SHA256 en Release notes.*

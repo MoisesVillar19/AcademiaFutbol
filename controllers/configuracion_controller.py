@@ -49,14 +49,16 @@ def verificar_backup_automatico() -> tuple[bool, str]:
     return backup_service.verificar_backup_automatico()
 
 def listar_backups() -> list[dict]:
-    if not puede_acceder():
+    from services import auth_service
+    if not auth_service.tiene_permiso("respaldo"):
         return []
     from services import backup_service
     return backup_service.listar_backups()
 
 def verificar_backup(ruta: str) -> tuple[bool, str]:
-    if not puede_acceder():
-        return False, "Solo ADMIN"
+    from services import auth_service
+    if not auth_service.tiene_permiso("respaldo"):
+        return False, "Solo ADMIN/SECRETARIA con permiso respaldo"
     from services import backup_service
     return backup_service.verificar_backup(ruta)
 

@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     id_persona INTEGER UNIQUE NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA', 'CAJA', 'INVENTARIO')),
+    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA')),
     activo INTEGER DEFAULT 1,
     fecha_creacion TEXT NOT NULL,
     fecha_actualizacion TEXT,
@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS estudiante (
     estado TEXT NOT NULL DEFAULT 'ACTIVO' CHECK(estado IN ('ACTIVO', 'RETIRADO', 'REINGRESANTE')),
     fecha_ingreso TEXT NOT NULL,
     fecha_retiro TEXT,
+    es_nuevo INTEGER DEFAULT 0 CHECK(es_nuevo IN (0,1)),
     foto_path TEXT,
     comprobante_pago_path TEXT,
     fecha_matricula TEXT,
@@ -343,6 +344,23 @@ CREATE TABLE IF NOT EXISTS log (
     fecha TEXT NOT NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 );
+
+CREATE TABLE IF NOT EXISTS concepto_cobro (
+    id_concepto INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    tipo TEXT NOT NULL CHECK(tipo IN ('INSCRIPCION', 'MENSUALIDAD', 'REINGRESO', 'PROMOCION', 'CAMPEONATO', 'OTRO')),
+    monto REAL NOT NULL CHECK(monto >= 0),
+    descripcion TEXT,
+    activo INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS concepto_item (
+    id_item INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_concepto INTEGER NOT NULL REFERENCES concepto_cobro(id_concepto),
+    id_producto INTEGER NOT NULL REFERENCES producto(id_producto),
+    cantidad INTEGER NOT NULL DEFAULT 1 CHECK(cantidad > 0),
+    UNIQUE(id_concepto, id_producto)
+);
 """
 
 INDEXES_SQL = """
@@ -398,6 +416,7 @@ def _migrar_columnas_faltantes(cursor) -> None:
 
     columnas_est = _obtener_columnas(cursor, "estudiante")
     for col, sql in [
+        ("es_nuevo", "ALTER TABLE estudiante ADD COLUMN es_nuevo INTEGER DEFAULT 0 CHECK(es_nuevo IN (0,1))"),
         ("foto_path", "ALTER TABLE estudiante ADD COLUMN foto_path TEXT"),
         ("comprobante_pago_path", "ALTER TABLE estudiante ADD COLUMN comprobante_pago_path TEXT"),
         ("fecha_matricula", "ALTER TABLE estudiante ADD COLUMN fecha_matricula TEXT"),
@@ -456,6 +475,20 @@ def _migrar_columnas_faltantes(cursor) -> None:
     except Exception:
         pass
 
+    # Índices v2.1
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_estudiante_es_nuevo ON estudiante(es_nuevo)")
+    except Exception:
+        pass
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_concepto_tipo ON concepto_cobro(tipo)")
+    except Exception:
+        pass
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_concepto_item_concepto ON concepto_item(id_concepto)")
+    except Exception:
+        pass
+
     # Índices escalables (si columnas ya existen)
     try:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_movimiento_almacen ON movimiento_inventario(id_almacen, id_producto)")
@@ -466,11 +499,15 @@ def _migrar_columnas_faltantes(cursor) -> None:
     except Exception:
         pass
 
-    # v2: ampliar CHECK rol para CAJA/INVENTARIO si tabla vieja
+    # v2.1: restringir CHECK rol a ADMIN/SECRETARIA (migra CAJA/INVENTARIO → SECRETARIA)
     try:
         row = cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='usuario'").fetchone()
-        if row and row[0] and "CAJA" not in row[0]:
-            # recrear tabla con nuevo CHECK (SQLite no permite ALTER CHECK)
+        if row and row[0] and "CAJA" in row[0]:
+            # mapear legacy antes de recrear
+            try:
+                cursor.execute("UPDATE usuario SET rol='SECRETARIA' WHERE rol IN ('CAJA','INVENTARIO')")
+            except Exception:
+                pass
             cursor.execute("ALTER TABLE usuario RENAME TO usuario_old")
             cursor.execute("""
                 CREATE TABLE usuario (
@@ -478,7 +515,7 @@ def _migrar_columnas_faltantes(cursor) -> None:
                     id_persona INTEGER UNIQUE NOT NULL,
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
-                    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA', 'CAJA', 'INVENTARIO')),
+                    rol TEXT NOT NULL CHECK(rol IN ('ADMIN', 'SECRETARIA')),
                     activo INTEGER DEFAULT 1,
                     fecha_creacion TEXT NOT NULL,
                     fecha_actualizacion TEXT,

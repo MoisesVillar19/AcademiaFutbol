@@ -43,18 +43,34 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
         estado=STATUS_ACTIVO,
     )
 
-    from repositories import tarifa_repository
-    tarifa_data = tarifa_repository.obtener_por_id(id_tarifa)
-    monto_base = monto_pactado if monto_pactado is not None else tarifa_data["monto"]
+    # RN-052: precedencia concepto > monto_pactado > tarifa
+    id_concepto = data.get("id_concepto")
+    monto_base = None
+    concepto_data = None
+    if id_concepto:
+        try:
+            from repositories import concepto_cobro_repository
+            concepto_data = concepto_cobro_repository.obtener_por_id(int(id_concepto))
+            if concepto_data:
+                monto_base = float(concepto_data["monto"])
+        except Exception:
+            pass
+    if monto_base is None:
+        from repositories import tarifa_repository
+        tarifa_data = tarifa_repository.obtener_por_id(id_tarifa)
+        monto_base = monto_pactado if monto_pactado is not None else tarifa_data["monto"]
 
     es_primera_matricula = len(matriculas_existentes) == 0
     es_reingreso = estudiante["estado"] == STATUS_REINGRESANTE
+    es_nuevo_flag = int(estudiante.get("es_nuevo", 0) or 0) == 1
 
     try:
         with transaccion():
             id_matricula = matricula_repository.insertar(matricula)
 
-            if es_primera_matricula and not es_reingreso:
+            # RN-051: camiseta 0 solo si es_nuevo=1 y primera matrícula y no reingreso
+            debe_regalar_camiseta = es_nuevo_flag and es_primera_matricula and not es_reingreso
+            if debe_regalar_camiseta:
                 from repositories import producto_repository, tipo_uniforme_repository
                 from repositories import detalle_venta_repository, venta_repository
                 from models.venta import Venta
@@ -92,24 +108,50 @@ def crear_matricula(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | N
                     from repositories import movimiento_inventario_repository
                     from models.movimiento_inventario import MovimientoInventario
                     from utils.dates import get_now
-                    movimiento_inventario_repository.insertar(MovimientoInventario(id_producto=prod_camiseta["id_producto"], id_usuario=id_usuario, tipo_movimiento="SALIDA", cantidad=1, stock_anterior=stock_ant, stock_nuevo=stock_nuevo, fecha_movimiento=get_now(), motivo=f"Inscripción primera matrícula estudiante {id_estudiante} - Camiseta Entrenamiento"))
+                    movimiento_inventario_repository.insertar(MovimientoInventario(id_producto=prod_camiseta["id_producto"], id_usuario=id_usuario, tipo_movimiento="SALIDA", cantidad=1, stock_anterior=stock_ant, stock_nuevo=stock_nuevo, fecha_movimiento=get_now(), motivo=f"Regalo inscripción nuevo es_nuevo=1 estudiante {id_estudiante} - Camiseta Entrenamiento"))
                     auditoria_service.registrar_insert(id_usuario, "venta", id_venta, f"INSCRIPCION camiseta -1 stock {stock_ant}->{stock_nuevo}")
 
-            productos_sel = data.get("productos", [])
-            if productos_sel:
-                from repositories import producto_repository as prod_repo2
-                from services import venta_service as venta_svc2
-                for p in productos_sel:
-                    pid = p.get("id_producto")
-                    cant = int(p.get("cantidad", 1))
-                    prod = prod_repo2.obtener_por_id(pid)
+            # RN-052: si hay concepto, sus items se venden aparte (atomico) con precedencia de monto ya aplicada
+            if id_concepto and concepto_data:
+                from repositories import concepto_item_repository as ci_repo
+                from services import venta_service as venta_svc_concepto
+                from repositories import producto_repository as prod_repo_concepto
+                concepto_items = ci_repo.obtener_por_concepto(int(id_concepto))
+                for ci in concepto_items:
+                    pid = ci["id_producto"]
+                    cant = int(ci.get("cantidad", 1))
+                    # RN-051: bloquear extras si es_nuevo y ya regaló camiseta? concepto items sí se permiten (son el bundle)
+                    prod = prod_repo_concepto.obtener_por_id(pid)
                     if not prod:
-                        raise ValueError(f"Producto {pid} no encontrado")
+                        raise ValueError(f"Producto concepto {pid} no encontrado")
                     if prod["stock_actual"] < cant:
-                        raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})")
-                    ok_v, msg_v, _ = venta_svc2.registrar_venta({"id_estudiante": id_estudiante, "id_usuario": id_usuario, "tipo_venta": "UNIFORME", "metodo_pago": "EFECTIVO", "items": [{"id_producto": pid, "cantidad": cant}]})
+                        raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']}) para concepto")
+                    ok_v, msg_v, _ = venta_svc_concepto.registrar_venta({"id_estudiante": id_estudiante, "id_usuario": id_usuario, "tipo_venta": "UNIFORME", "metodo_pago": "EFECTIVO", "items": [{"id_producto": pid, "cantidad": cant}]})
                     if not ok_v:
                         raise ValueError(msg_v)
+                auditoria_service.registrar_insert(id_usuario, "concepto_cobro", int(id_concepto), f"matricula {id_matricula} concepto {concepto_data['nombre']} monto {concepto_data['monto']}")
+
+            # RN-051: bloquear productos extra si es_nuevo con regalo (solo concepto permitido)
+            if es_nuevo_flag and debe_regalar_camiseta and data.get("productos"):
+                # permitir solo si no hay concepto (ya bloqueado por UI); backend ignora extras para no cobrar doble
+                # si quiere vender extra debe usar Ventas
+                pass
+            else:
+                productos_sel = data.get("productos", [])
+                if productos_sel:
+                    from repositories import producto_repository as prod_repo2
+                    from services import venta_service as venta_svc2
+                    for p in productos_sel:
+                        pid = p.get("id_producto")
+                        cant = int(p.get("cantidad", 1))
+                        prod = prod_repo2.obtener_por_id(pid)
+                        if not prod:
+                            raise ValueError(f"Producto {pid} no encontrado")
+                        if prod["stock_actual"] < cant:
+                            raise ValueError(f"Stock insuficiente de {prod['nombre']} (disp: {prod['stock_actual']})")
+                        ok_v, msg_v, _ = venta_svc2.registrar_venta({"id_estudiante": id_estudiante, "id_usuario": id_usuario, "tipo_venta": "UNIFORME", "metodo_pago": "EFECTIVO", "items": [{"id_producto": pid, "cantidad": cant}]})
+                        if not ok_v:
+                            raise ValueError(msg_v)
 
             for beca_info in becas_asignadas:
                 id_beca = beca_info.get("id_beca")

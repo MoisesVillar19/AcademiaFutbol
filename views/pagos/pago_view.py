@@ -124,6 +124,11 @@ class PagoView(ctk.CTkFrame):
             command=lambda: self.tabview.set("Pagos"),
         ).pack(side="left", padx=5)
 
+        ctk.CTkButton(
+            btn_frame, text="🧹 Limpiar", width=90, fg_color="#6B7280", hover_color="#4B5563",
+            command=self._limpiar_form_pago,
+        ).pack(side="left", padx=5)
+
     def _crear_tab_morosos(self):
         header = ctk.CTkFrame(self.tab_morosos, fg_color="transparent")
         header.pack(fill="x", padx=5, pady=5)
@@ -149,19 +154,27 @@ class PagoView(ctk.CTkFrame):
         self._renderizar_pagos(self._pagos_actuales)
 
     def _on_busqueda_cambiar(self, event=None):
-        texto = self.entry_busqueda.get().strip().lower()
-        pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
-
-        if texto:
+        texto = self.entry_busqueda.get().strip()
+        if not texto:
+            pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
+            self._renderizar_pagos(pagos)
+            return
+        # buscador avanzado por DNI/Nombre/Recibo vía backend join
+        try:
+            pagos = pago_controller.buscar_por_texto(texto)
+            self._renderizar_pagos(pagos)
+        except Exception:
+            texto_l = texto.lower()
+            pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
             filtrados = []
             for p in pagos:
                 recibo = str(p.get('numero_recibo', '')).lower()
                 metodo = str(p.get('metodo_pago', '')).lower()
-                if texto in recibo or texto in metodo:
+                dni = str(p.get('dni','')).lower()
+                nom = (str(p.get('nombres',''))+ " " + str(p.get('apellidos',''))).lower()
+                if texto_l in recibo or texto_l in metodo or texto_l in dni or texto_l in nom:
                     filtrados.append(p)
             self._renderizar_pagos(filtrados)
-        else:
-            self._renderizar_pagos(pagos)
 
     def _renderizar_pagos(self, pagos):
         for widget in self.scroll_pagos.winfo_children():
@@ -230,6 +243,20 @@ class PagoView(ctk.CTkFrame):
         self.date_picker_inicio.delete()
         self.date_picker_fin.delete()
         self.label_status.configure(text="")
+
+    def _limpiar_form_pago(self):
+        try:
+            self.combo_estudiante.set("Seleccionar estudiante...")
+            self.combo_cuota.set("Sin cuotas pendientes")
+            self.entry_monto.delete(0, "end")
+            self.entry_observacion.delete(0, "end")
+            self.combo_metodo.set("EFECTIVO")
+            self._comprobante_path = None
+            self.label_comprobante.configure(text="Sin comprobante")
+            self.label_comprobante_preview.configure(image=None, text="")
+            self.label_form_status.configure(text="")
+        except Exception:
+            pass
 
     def _nuevo_pago(self):
         self._cargar_combo_estudiantes()

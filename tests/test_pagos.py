@@ -11,6 +11,7 @@ def test_multiples_pagos_parciales_hasta_pagado(crear_matricula):
         exito, msg, id_pago = pago_service.registrar_pago({
             "id_usuario": 1, "id_cuota": id_cuota,
             "monto_pagado": monto, "metodo_pago": "YAPE",
+            "comprobante_path": "dummy_yape.jpg",
         })
         assert exito, msg
 
@@ -39,6 +40,7 @@ def test_detalles_por_pago(crear_matricula):
     exito, _, id_pago = pago_service.registrar_pago({
         "id_usuario": 1, "id_cuota": ids["id_cuota"],
         "monto_pagado": 40.0, "metodo_pago": "PLIN",
+        "comprobante_path": "dummy_plin.jpg",
     })
     detalles = detalle_pago_repository.obtener_por_pago(id_pago)
     assert len(detalles) == 1
@@ -58,6 +60,7 @@ def test_listar_por_fecha_e_ingresos(crear_matricula):
     pago_service.registrar_pago({
         "id_usuario": 1, "id_cuota": ids["id_cuota"],
         "monto_pagado": 20.0, "metodo_pago": "TRANSFERENCIA",
+        "comprobante_path": "dummy_trans.jpg",
     })
 
     pagos = pago_service.listar_por_fecha(hoy, hoy)

@@ -97,7 +97,7 @@ Valores:
 | fecha_creacion | TEXT |
 | fecha_actualizacion | TEXT |
 
-### Restricción
+### Restricción (v2.1 solo 2 roles, migración CAJA/INVENTARIO→SECRETARIA)
 
 ```sql
 CHECK(
@@ -185,7 +185,7 @@ CHECK(
 
 ---
 
-# ESTUDIANTE (v2: + foto)
+# ESTUDIANTE (v2.1: + es_nuevo RN-051 + foto)
 
 | Campo | Tipo |
 |---------|---------|
@@ -194,6 +194,7 @@ CHECK(
 | estado | TEXT |
 | fecha_ingreso | TEXT |
 | fecha_retiro | TEXT |
+| es_nuevo | INTEGER DEFAULT 0 CHECK(0,1) — RN-051, checkbox única vez en registro estudiante, si 1 primera matrícula regala Camiseta 0 |
 | foto_path | TEXT |
 | comprobante_pago_path | TEXT |
 | fecha_matricula | TEXT |
@@ -462,9 +463,9 @@ CHECK(
 | observacion | TEXT |
 | activo | INTEGER |
 
-# CONFIGURACION (v2: +7 precios)
+# CONFIGURACION (v2: +7 precios, v2.1 fallback para RN-052)
 
-Solo existirá una fila.
+Solo existirá una fila. `precio_*` se mantienen como fallback; catálogo nuevo `concepto_cobro` evita redundancia (precedencia en `plan_dayanna_v2.1.md:1.2`).
 
 | Campo | Tipo |
 |---------|---------|
@@ -492,6 +493,26 @@ Solo existirá una fila.
 | arbitraje_por_equipo | REAL |
 | pago_profesor | REAL |
 | fecha_actualizacion | TEXT |
+
+# CONCEPTO_COBRO (v2.1 RN-052 — catálogo flexible sin redundancia)
+
+| Campo | Tipo | Restricción |
+|---------|---------|---------|
+| id_concepto | INTEGER PK | |
+| nombre | TEXT UNIQUE NOT NULL | |
+| tipo | TEXT NOT NULL | CHECK(INSCRIPCION,MENSUALIDAD,REINGRESO,PROMOCION,CAMPEONATO,OTRO) |
+| monto | REAL NOT NULL | >=0 |
+| descripcion | TEXT | |
+| activo | INTEGER DEFAULT 1 | |
+
+# CONCEPTO_ITEM (v2.1)
+
+| Campo | Tipo |
+|---------|---------|
+| id_item | INTEGER PK |
+| id_concepto | INTEGER FK → concepto_cobro |
+| id_producto | INTEGER FK → producto |
+| cantidad | INTEGER >0 |
 
 
 ### Ejemplo de registro inicial

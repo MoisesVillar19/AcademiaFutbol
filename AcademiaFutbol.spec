@@ -97,7 +97,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,
+    upx=True,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -105,7 +105,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(BASE_DIR, 'assets', 'icons', 'app.ico'),
-    version=os.path.join(BASE_DIR, 'version.txt'),
 )
 
 coll = COLLECT(

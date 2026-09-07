@@ -1,6 +1,7 @@
 # Cambios a Reglas de Negocio — v2.0 (Inscripción / Mensualidad / Uniformes / Ingresos y Egresos)
 
 > **Fecha:** 2026-09-05 · **Versión base:** `reglas_negocio.md` RN-001..RN-035 · **Nuevas:** RN-036..RN-050 · **Origen:** Requerimientos empresa (sept 2026). Arranque desde 0 sin BD legado, **sistema 100% flexible y configurable** (ningún precio hardcodeado), **1ª matrícula descuenta -1 uniforme**, **reingreso = venta separada**. Centralizado OneDrive (ver `despliegue_produccion.md`).
+> **v2.1 (2026-09-06):** Añade `RN-051 es_nuevo + Camiseta 0 única vez` y `RN-052 concepto_cobro flexible sin redundancia` + matriz permisos secretaria ampliada. Ver `desarrollo/plan_dayanna_v2.1.md`.
 
 ### Principios de flexibilidad (consolidado)
 

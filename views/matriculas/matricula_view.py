@@ -55,8 +55,12 @@ class MatriculaView(ctk.CTkFrame):
         self.label_status.pack(pady=3)
 
     def _crear_tab_formulario(self):
-        scroll = ctk.CTkScrollableFrame(self.tab_form)
-        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        # contenedor con scroll para campos + footer fijo para totales/acciones
+        self._form_container = ctk.CTkFrame(self.tab_form, fg_color="transparent")
+        self._form_container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        scroll = ctk.CTkScrollableFrame(self._form_container)
+        scroll.pack(fill="both", expand=True, pady=(0,5))
 
         ctk.CTkLabel(
             scroll, text="Nueva Matrícula",
@@ -73,6 +77,12 @@ class MatriculaView(ctk.CTkFrame):
         ctk.CTkLabel(scroll, text="Tarifa *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_tarifa = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
         self.combo_tarifa.pack(anchor="w", pady=(0, 5))
+
+        ctk.CTkLabel(scroll, text="Concepto flexible (opcional, con ítems incluidos) — si eliges, ignora Tarifa/monto:", font=ctk.CTkFont(size=11)).pack(anchor="w")
+        self.combo_concepto = ctk.CTkComboBox(scroll, width=400, values=["Ninguno"])
+        self.combo_concepto.set("Ninguno")
+        self.combo_concepto.pack(anchor="w", pady=(0, 5))
+        ctk.CTkLabel(scroll, text="↳ Ej: Matrícula Promocional S/150 incluye Camiseta. Se descuenta stock de cada ítem.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
@@ -95,27 +105,36 @@ class MatriculaView(ctk.CTkFrame):
         self.combo_diferir.set("Ahora (0)")
         self.combo_diferir.pack(anchor="w", pady=3)
 
-        # Productos configurables (uniforme, etc.) — clic para sumar al importe y descontar inventario
-        ctk.CTkLabel(scroll, text="Productos adicionales (uniforme, etc.) — clic para añadir:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(10,5))
-        ctk.CTkLabel(scroll, text="Precios de Configuración y del producto (editable sin código).", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
-        self.frame_productos = ctk.CTkScrollableFrame(scroll, height=140)
+        # Productos configurables (uniforme, etc.) — -1/+1
+        ctk.CTkLabel(scroll, text="Productos adicionales — usa −1 / +1:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(10,5))
+        ctk.CTkLabel(scroll, text="Si es estudiante nuevo con regalo S/0, extras se bloquean (usa Ventas).", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
+        self.frame_productos = ctk.CTkScrollableFrame(scroll, height=150)
         self.frame_productos.pack(fill="x", anchor="w", pady=5)
         self._productos_disponibles = []
         self._productos_seleccionados = {}  # id_producto -> {cantidad, precio, nombre}
         self._productos_map = {}
-        self.label_total = ctk.CTkLabel(scroll, text="Total matricula: S/0.00 | Productos: S/0.00 | Importe total: S/0.00", font=ctk.CTkFont(size=12, weight="bold"), text_color="#7C3AED")
-        self.label_total.pack(anchor="w", pady=5)
+        self._conceptos_map = {}
         self._cargar_productos_matricula()
-        # actualizar total al cambiar monto/beca
+        self._cargar_conceptos()
+        # actualizar total al cambiar monto/beca/concepto
         self.entry_monto_pactado.bind("<KeyRelease>", lambda e: self._actualizar_total())
         self.combo_beca.configure(command=lambda v: self._actualizar_total())
         self.combo_tarifa.configure(command=lambda v: self._actualizar_total())
+        self.combo_concepto.configure(command=lambda v: self._actualizar_total())
 
-        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
-        self.label_form_status.pack(anchor="w", pady=5)
+        # footer fijo (no scrollea)
+        footer = ctk.CTkFrame(self._form_container, fg_color="#F8F5FA", border_width=1, border_color="#DDD6E5", corner_radius=8)
+        footer.pack(fill="x", pady=(5,0))
 
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.pack(anchor="w", pady=10)
+        self.label_total = ctk.CTkLabel(footer, text="Total matricula: S/0.00 | Productos: S/0.00 | Importe total: S/0.00", font=ctk.CTkFont(size=12, weight="bold"), text_color="#7C3AED")
+        self.label_total.pack(anchor="w", padx=10, pady=4)
+        self.label_seleccionados = ctk.CTkLabel(footer, text="Seleccionados: ninguno", font=ctk.CTkFont(size=11), text_color="#7C3AED")
+        self.label_seleccionados.pack(anchor="w", padx=10)
+        self.label_form_status = ctk.CTkLabel(footer, text="", font=ctk.CTkFont(size=12))
+        self.label_form_status.pack(anchor="w", padx=10, pady=2)
+
+        btn_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        btn_frame.pack(anchor="w", padx=10, pady=6)
 
         ctk.CTkButton(
             btn_frame, text="Registrar Matrícula", width=150,
@@ -125,6 +144,10 @@ class MatriculaView(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="Cancelar", width=100, fg_color="gray",
             command=lambda: self.tabview.set("Matrículas"),
+        ).pack(side="left", padx=5)
+        ctk.CTkButton(
+            btn_frame, text="🧹 Limpiar", width=100, fg_color="#6B7280", hover_color="#4B5563",
+            command=self._limpiar_form_matricula,
         ).pack(side="left", padx=5)
 
     def _crear_tab_cuotas(self):
@@ -219,8 +242,14 @@ class MatriculaView(ctk.CTkFrame):
         self._cargar_combo_estudiantes()
         self._cargar_combo_tarifas()
         self._cargar_combo_becas()
+        self._cargar_conceptos()
         self._productos_seleccionados = {}
-        self.label_total.configure(text="Total matricula: S/0.00 | Productos: S/0.00 | Importe total: S/0.00")
+        try:
+            self.label_total.configure(text="Total matricula: S/0.00 | Productos: S/0.00 | Importe total: S/0.00")
+            self.label_seleccionados.configure(text="Seleccionados: ninguno")
+            self.combo_concepto.set("Ninguno")
+        except Exception:
+            pass
         self._cargar_productos_matricula()
         self.tabview.set("Registrar")
 
@@ -257,12 +286,20 @@ class MatriculaView(ctk.CTkFrame):
         self.combo_beca.configure(values=nombres)
         self._becas_map = {n: b["id_beca"] for n, b in zip(nombres[1:], becas)}
 
+    def _cargar_conceptos(self):
+        try:
+            from services import concepto_service
+            conceptos = concepto_service.listar_conceptos(activo=1)
+            nombres = ["Ninguno"] + [f"{c['nombre']} — S/{c['monto']:.2f} ({c['tipo']})" for c in conceptos]
+            self.combo_concepto.configure(values=nombres)
+            self._conceptos_map = {n: c["id_concepto"] for n, c in zip(nombres[1:], conceptos)}
+        except Exception:
+            pass
+
     def _cargar_productos_matricula(self):
         try:
             from controllers import inventario_controller
             prods = inventario_controller.listar_productos(activo=1)
-            # solo productos configurables para matrícula (tipo VENTA con stock)
-            # filtrar configurable: si no hay, mostrar todos VENTA
             self._productos_disponibles = [p for p in prods if p.get("tipo_uso") == "VENTA"] or prods
             for w in self.frame_productos.winfo_children():
                 w.destroy()
@@ -274,93 +311,128 @@ class MatriculaView(ctk.CTkFrame):
                 row.pack(fill="x", padx=3, pady=2)
                 precio = prod.get("precio_venta") or prod.get("precio", 0)
                 stock = prod.get("stock_actual", 0)
-                ctk.CTkLabel(row, text=f"{prod.get('nombre','')} — S/{precio:.2f} (stock {stock})", font=ctk.CTkFont(size=12)).pack(side="left", padx=8, pady=6)
-                # stock color
+                cant_sel = self._productos_seleccionados.get(prod["id_producto"], {}).get("cantidad", 0)
+                ctk.CTkLabel(row, text=f"{prod.get('nombre','')} — S/{precio:.2f}", font=ctk.CTkFont(size=12)).pack(side="left", padx=8, pady=6)
                 col = "green" if stock > 5 else "orange" if stock > 0 else "red"
                 ctk.CTkLabel(row, text=f"stock {stock}", text_color=col, font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
-                btn = ctk.CTkButton(row, text="+ Añadir", width=80, height=28, fg_color="#7C3AED", command=lambda p=prod: self._toggle_producto(p))
-                btn.pack(side="right", padx=5, pady=4)
-                # guardar map
+                if cant_sel:
+                    ctk.CTkLabel(row, text=f"x{cant_sel}", font=ctk.CTkFont(size=11, weight="bold"), text_color="#7C3AED").pack(side="left", padx=5)
+                # -1
+                ctk.CTkButton(row, text="−1", width=40, height=28, fg_color="#E5E7EB", text_color="#374151", hover_color="#D1D5DB", command=lambda p=prod: self._cambiar_cantidad(p, -1)).pack(side="right", padx=2, pady=4)
+                ctk.CTkButton(row, text="+1", width=40, height=28, fg_color="#7C3AED", command=lambda p=prod: self._cambiar_cantidad(p, 1)).pack(side="right", padx=2, pady=4)
                 self._productos_map[prod["id_producto"]] = prod
             self._actualizar_total()
         except Exception as e:
             ctk.CTkLabel(self.frame_productos, text=f"Error cargando productos: {e}", text_color="red").pack()
 
-    def _toggle_producto(self, prod):
-        pid = prod["id_producto"]
-        if pid in self._productos_seleccionados:
-            # quitar si ya está
-            del self._productos_seleccionados[pid]
-        else:
-            precio = prod.get("precio_venta") or prod.get("precio", 0)
-            # verificar stock
-            if prod.get("stock_actual", 0) <= 0:
-                self.label_form_status.configure(text=f"Sin stock: {prod.get('nombre')}", text_color="orange")
+    def _cambiar_cantidad(self, prod, delta):
+        # bloqueo RN-051: si estudiante es nuevo, no permitir extras
+        try:
+            est_name = self.combo_estudiante.get()
+            est = self._estudiantes_map.get(est_name)
+            if est and int(est.get("es_nuevo",0) or 0)==1:
+                # si ya tiene regalo, bloquea
+                from controllers import matricula_controller
+                # check si es primera matricula (no tiene matricula activa)
+                # simplifica: avisar y no permitir
+                self.label_form_status.configure(text="Estudiante nuevo: extras bloqueados (usa Ventas)", text_color="orange")
                 return
-            self._productos_seleccionados[pid] = {"cantidad": 1, "precio": precio, "nombre": prod.get("nombre","")}
-        self._actualizar_total()
-        # feedback
-        sel = ", ".join([f"{v['nombre']} x{v['cantidad']}" for v in self._productos_seleccionados.values()])
-        self.label_form_status.configure(text=f"Seleccionados: {sel or 'ninguno'}", text_color="#7C3AED")
+        except Exception:
+            pass
+        pid = prod["id_producto"]
+        cur = self._productos_seleccionados.get(pid, {"cantidad":0, "precio": prod.get("precio_venta") or prod.get("precio",0), "nombre": prod.get("nombre","")})
+        nueva = cur["cantidad"] + delta
+        if nueva <= 0:
+            self._productos_seleccionados.pop(pid, None)
+        else:
+            if prod.get("stock_actual",0) < nueva:
+                self.label_form_status.configure(text=f"Stock insuficiente: {prod.get('nombre')} (disp {prod.get('stock_actual')})", text_color="orange")
+                return
+            cur["cantidad"] = nueva
+            cur["precio"] = prod.get("precio_venta") or prod.get("precio",0)
+            self._productos_seleccionados[pid] = cur
+        self._cargar_productos_matricula()
+
+    def _toggle_producto(self, prod):
+        self._cambiar_cantidad(prod, 1)
 
     def _actualizar_total(self):
-        # matricula base
         base = 0
-        try:
-            monto_pactado = self.entry_monto_pactado.get().strip()
-            if monto_pactado:
-                base = float(monto_pactado)
-            else:
-                tarifa_sel = self.combo_tarifa.get()
-                tid = self._tarifas_map.get(tarifa_sel)
-                if tid:
-                    from controllers import tarifa_controller
-                    # buscar monto tarifa
-                    for n, tid2 in self._tarifas_map.items():
-                        if tid2 == tid:
-                            # extraer monto de texto "S/120.00"
-                            import re
-                            m = re.search(r"S/([0-9.]+)", n)
-                            if m:
-                                base = float(m.group(1))
-                            break
-        except Exception:
-            base = 0
-        # beca
-        beca_sel = self.combo_beca.get() if hasattr(self, 'combo_beca') else "Ninguna"
-        if beca_sel != "Ninguna" and beca_sel in getattr(self, '_becas_map', {}):
+        # RN-052: concepto precede a tarifa/monto
+        concepto_sel = self.combo_concepto.get() if hasattr(self, 'combo_concepto') else "Ninguno"
+        if concepto_sel != "Ninguno" and concepto_sel in getattr(self, '_conceptos_map', {}):
             try:
-                from controllers import beca_controller
-                # buscar beca valor
                 import re
-                m = re.search(r"\((PORCENTAJE|MONTO_FIJO) ([0-9.]+)\)", beca_sel)
+                m = re.search(r"S/([0-9.]+)", concepto_sel)
                 if m:
-                    tipo, val = m.group(1), float(m.group(2))
-                    if tipo == "PORCENTAJE":
-                        base = base * (1 - val/100)
-                    else:
-                        base = base - val
-                    base = max(0, base)
+                    base = float(m.group(1))
             except Exception:
                 pass
+        else:
+            try:
+                monto_pactado = self.entry_monto_pactado.get().strip()
+                if monto_pactado:
+                    base = float(monto_pactado)
+                else:
+                    tarifa_sel = self.combo_tarifa.get()
+                    tid = self._tarifas_map.get(tarifa_sel)
+                    if tid:
+                        for n, tid2 in self._tarifas_map.items():
+                            if tid2 == tid:
+                                import re
+                                m = re.search(r"S/([0-9.]+)", n)
+                                if m:
+                                    base = float(m.group(1))
+                                break
+            except Exception:
+                base = 0
+            beca_sel = self.combo_beca.get() if hasattr(self, 'combo_beca') else "Ninguna"
+            if beca_sel != "Ninguna" and beca_sel in getattr(self, '_becas_map', {}):
+                try:
+                    import re
+                    m = re.search(r"\((PORCENTAJE|MONTO_FIJO) ([0-9.]+)\)", beca_sel)
+                    if m:
+                        tipo, val = m.group(1), float(m.group(2))
+                        if tipo == "PORCENTAJE":
+                            base = base * (1 - val/100)
+                        else:
+                            base = base - val
+                        base = max(0, base)
+                except Exception:
+                    pass
         prod_total = sum(v["precio"] * v["cantidad"] for v in self._productos_seleccionados.values())
         total = base + prod_total
-        self.label_total.configure(text=f"Total matricula: S/{base:.2f} | Productos: S/{prod_total:.2f} | Importe total: S/{total:.2f}")
+        try:
+            self.label_total.configure(text=f"Total matricula: S/{base:.2f} | Productos: S/{prod_total:.2f} | Importe total: S/{total:.2f}")
+            sel = ", ".join([f"{v['nombre']} x{v['cantidad']}" for v in self._productos_seleccionados.values()])
+            self.label_seleccionados.configure(text=f"Seleccionados: {sel or 'ninguno'}")
+        except Exception:
+            pass
+
+    def _limpiar_form_matricula(self):
+        self.entry_monto_pactado.delete(0, "end")
+        self.entry_dia_venc.delete(0, "end")
+        self.entry_dia_venc.insert(0, "1")
+        self.combo_beca.set("Ninguna")
+        self.combo_diferir.set("Ahora (0)")
+        self.combo_concepto.set("Ninguno")
+        self._productos_seleccionados = {}
+        self._cargar_productos_matricula()
+        self.label_form_status.configure(text="")
 
     def _registrar_matricula(self):
+        from tkinter import messagebox
         est_selection = self.combo_estudiante.get()
         est = self._estudiantes_map.get(est_selection)
         id_est = est["id_estudiante"] if est else None
         if not id_est:
             self.label_form_status.configure(text="Seleccione un estudiante", text_color="red")
             return
-
         tarifa_selection = self.combo_tarifa.get()
         id_tarifa = self._tarifas_map.get(tarifa_selection)
         if not id_tarifa:
             self.label_form_status.configure(text="Seleccione una tarifa", text_color="red")
             return
-
         diferir_map = {"Ahora (0)": 0, "2 meses": 2, "3 meses": 3}
         data = {
             "id_estudiante": id_est,
@@ -369,17 +441,25 @@ class MatriculaView(ctk.CTkFrame):
             "dia_vencimiento": self.entry_dia_venc.get().strip() or "1",
             "diferir_meses": diferir_map.get(self.combo_diferir.get(), 0),
         }
-
+        concepto_sel = self.combo_concepto.get()
+        if concepto_sel != "Ninguno" and concepto_sel in self._conceptos_map:
+            data["id_concepto"] = self._conceptos_map[concepto_sel]
         beca_selection = self.combo_beca.get()
         if beca_selection != "Ninguna" and beca_selection in self._becas_map:
             data["becas"] = [{"id_beca": self._becas_map[beca_selection]}]
-
-        # productos configurables: se suman al importe y descuentan inventario al guardar
         if self._productos_seleccionados:
+            # bloqueo RN-051 se maneja en service, pero avisar
+            if est and int(est.get("es_nuevo",0) or 0)==1:
+                # permitir solo concepto items; avisar
+                pass
             data["productos"] = [{"id_producto": pid, "cantidad": v["cantidad"]} for pid, v in self._productos_seleccionados.items()]
-
+        # MessageBox desglose
+        base_txt = self.label_total.cget("text") if hasattr(self.label_total, 'cget') else ""
+        sel_txt = self.label_seleccionados.cget("text") if hasattr(self.label_seleccionados,'cget') else ""
+        detalle = f"Estudiante: {est_selection}\nTarifa: {tarifa_selection}\nConcepto: {concepto_sel}\n{sel_txt}\n{base_txt}\n\n¿Confirmar matrícula?"
+        if not messagebox.askyesno("Confirmar matrícula", detalle):
+            return
         exito, msg, id_mat = matricula_controller.crear_matricula(data)
-
         if exito:
             self.label_form_status.configure(text=msg, text_color="green")
             self._cargar_matriculas()

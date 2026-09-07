@@ -155,11 +155,9 @@ class EgresoView(ctk.CTkFrame):
                     dest = os.path.join(COMPROBANTES_DIR, f"EG-{id_eg}{ext}")
                     import shutil
                     shutil.copy2(self._comprobante_path, dest)
-                    # actualizar registro con path final
-                    from database.connection import get_connection
-                    conn = get_connection()
-                    conn.execute("UPDATE egreso SET comprobante_path=? WHERE id_egreso=?", (dest, id_eg))
-                    conn.commit()
+                    # actualizar via service (respeta capas)
+                    from services import egreso_service
+                    egreso_service.editar_egreso(id_eg, {"comprobante_path": dest})
                 except Exception:
                     pass
             self._comprobante_path = None

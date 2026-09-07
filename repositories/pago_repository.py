@@ -95,3 +95,20 @@ def sumar_por_fecha(fecha_inicio: str, fecha_fin: str) -> float:
         (fecha_inicio, fecha_fin),
     )
     return row["total"] if row else 0.0
+
+
+def buscar_por_texto(texto: str) -> list[dict]:
+    like = f"%{texto}%"
+    return fetch_all(
+        """SELECT DISTINCT p.*, u.username, per.dni, per.nombres, per.apellidos
+           FROM pago p
+           JOIN usuario u ON p.id_usuario = u.id_usuario
+           LEFT JOIN detalle_pago dp ON dp.id_pago = p.id_pago
+           LEFT JOIN cuota c ON c.id_cuota = dp.id_cuota
+           LEFT JOIN matricula m ON m.id_matricula = c.id_matricula
+           LEFT JOIN estudiante e ON e.id_estudiante = m.id_estudiante
+           LEFT JOIN persona per ON per.id_persona = e.id_persona
+           WHERE p.activo=1 AND (p.numero_recibo LIKE ? OR p.metodo_pago LIKE ? OR per.dni LIKE ? OR per.nombres LIKE ? OR per.apellidos LIKE ?)
+           ORDER BY p.fecha_pago DESC LIMIT 100""",
+        (like, like, like, like, like),
+    )

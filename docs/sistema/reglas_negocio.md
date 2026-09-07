@@ -404,9 +404,7 @@ admin123
 # RN-034 Acceso a Auditoría
 
 El módulo de auditoría será accesible únicamente para usuarios con rol ADMIN.
-
 Los usuarios con rol SECRETARIA no podrán:
-
 - Consultar registros de auditoría.
 - Visualizar cambios históricos.
 - Exportar registros de auditoría.
@@ -414,8 +412,40 @@ Los usuarios con rol SECRETARIA no podrán:
 
 Los registros de auditoría son de solo lectura incluso para el ADMIN.
 
+> **v2.1 (2026-09-06):** SECRETARIA gana libertad operativa (registrar/editar egresos, ver backups) pero sigue sin acceso a Auditoría, Configuración, Usuarios, Restaurar/Rotar backups. Ver matriz en desarrollo/plan_dayanna_v2.1.md:1.3.
+
 # RN-035 Inmutabilidad de Auditoría
 
 Los registros almacenados en LOG no podrán ser editados ni eliminados desde la aplicación.
 
 Toda entrada de auditoría será considerada evidencia histórica del sistema.
+
+# RN-051 Estudiante Nuevo y Camiseta Costo Cero (única vez) — v2.1 2026-09-06
+
+Campo `estudiante.es_nuevo INTEGER DEFAULT 0 CHECK(0,1)`. Checkbox `¿Es estudiante nuevo?` en `Estudiantes → + Nuevo` (default `0` para cargas masivas de existentes). Al guardar `es_nuevo=1`, el campo queda bloqueado/inmutable en ediciones futuras.
+
+Al registrar la **primera matrícula** de un estudiante con `es_nuevo=1`:
+- Se genera automáticamente `venta tipo=INSCRIPCION monto_total=0` con `detalle_venta 1× Camiseta Entrenamiento (producto con id_tipo_uniforme=Entrenamiento)` precio `0`.
+- Descuenta `-1` `stock_actual` de ese producto + `movimiento_inventario tipo=SALIDA motivo='Regalo inscripción nuevo es_nuevo=1'` atomico en `transaccion()`.
+- Si `stock<1` → `ValueError "Stock insuficiente de Camiseta Entrenamiento para inscripción"` y rollback (no se crea matrícula).
+- Mientras `es_nuevo=1` y el regalo no se ha consumido, `Matrículas → Registrar` bloquea añadir productos extra (para evitar confusión); venta extra va por `Ventas`.
+
+Si `es_nuevo=0` (existentes cargados manualmente) no se genera regalo.
+
+Trazabilidad: `LOG tabla=venta/ movimiento_inventario`, badge `NUEVO` en lista Estudiantes y card `Nuevos` en Dashboard.
+
+# RN-052 Conceptos de Cobro Flexibles sin Redundancia — v2.1 2026-09-06
+
+Catálogo único `concepto_cobro(id_concepto, nombre UNIQUE, tipo CHECK INSCRIPCION/MENSUALIDAD/REINGRESO/PROMOCION/CAMPEONATO/OTRO, monto REAL >=0, descripcion, activo)` + `concepto_item(id_concepto, id_producto, cantidad)`.
+
+`configuracion.precio_inscripcion/mensualidad/reingreso/uniforme` se mantienen como **fallback/defaults** para compatibilidad y matrícula rápida sin bundle. No se duplican.
+
+**Precedencia al calcular `monto_base` de matrícula:**
+1. Si se selecciona `concepto_cobro` → `monto_base = concepto_cobro.monto`
+2. Si no → `monto_base = monto_pactado ?? tarifa.monto ?? configuracion.precio_*` según operación (inscripción/mensualidad/reingreso).
+
+Si el concepto tiene `concepto_item` (ej. `Promocional 150 incluye Camiseta + Media`), al matricular se itera cada item y se crea `venta UNIFORME` + `movimiento SALIDA` por producto, descontando stock atomico (mismo flujo que `matricula_service.py:98 productos`).
+
+`configuracion.precio_*` y `producto.precio_venta` siguen siendo fuente para uniformes sueltos; `concepto_cobro.monto` es precio del bundle promo (no suma automática).
+
+Roles: CRUD `concepto_cobro` solo `ADMIN` en `Sistema → Configuración → Conceptos`.

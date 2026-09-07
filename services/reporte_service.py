@@ -277,6 +277,34 @@ def reporte_becas_activas(ruta_archivo: str) -> tuple[bool, str]:
     return exportar_a_excel(datos, columnas, "Becas Activas", ruta_archivo)
 
 
+def contar_nuevos(fecha_inicio: str, fecha_fin: str) -> int:
+    from database.connection import fetch_all
+    rows = fetch_all("SELECT id_estudiante FROM estudiante WHERE fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
+    return len(rows)
+
+
+def contar_matriculas_periodo(fecha_inicio: str, fecha_fin: str) -> int:
+    from database.connection import fetch_all
+    rows = fetch_all("SELECT id_matricula FROM matricula WHERE fecha_inicio BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
+    return len(rows)
+
+
+def reporte_regalos_matricula(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    from database.connection import fetch_all
+    # regalos: venta INSCRIPCION monto 0 con detalle camiseta
+    rows = fetch_all("""
+        SELECT v.fecha_venta as fecha, p.nombre as producto, dv.cantidad, per.nombres || ' ' || per.apellidos as estudiante
+        FROM venta v
+        JOIN detalle_venta dv ON dv.id_venta=v.id_venta
+        JOIN producto p ON p.id_producto=dv.id_producto
+        LEFT JOIN estudiante e ON e.id_estudiante=v.id_estudiante
+        LEFT JOIN persona per ON per.id_persona=e.id_persona
+        WHERE v.tipo_venta='INSCRIPCION' AND v.monto_total=0 AND v.fecha_venta BETWEEN ? AND ?
+        ORDER BY v.fecha_venta
+    """, (fecha_inicio, fecha_fin))
+    return rows
+
+
 def listar_reportes() -> list[dict]:
     return [
         {"id": "morosos", "nombre": "Morosos", "descripcion": "Estudiantes con cuotas vencidas"},
@@ -288,4 +316,5 @@ def listar_reportes() -> list[dict]:
         {"id": "ingresos_vs_egresos", "nombre": "Ingresos vs Egresos", "descripcion": "Ingresos (pagos+ventas) vs egresos y neto por periodo"},
         {"id": "stock_bajo_uniformes", "nombre": "Stock Bajo Uniformes", "descripcion": "Productos con stock ≤ mínimo, por tipo uniforme"},
         {"id": "nuevos_vs_antiguos", "nombre": "Nuevos vs Antiguos", "descripcion": "Alumnos nuevos vs reingresos/antiguos por periodo"},
+        {"id": "regalos_matricula", "nombre": "Regalos por Matrícula", "descripcion": "Camisetas y productos entregados como regalo (monto 0) por periodo"},
     ]

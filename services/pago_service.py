@@ -32,6 +32,11 @@ def registrar_pago(data: dict) -> tuple[bool, str, int | None]:
         return False, "El monto debe ser mayor a 0", None
     if metodo_pago not in METODOS_VALIDOS:
         return False, "Método de pago no válido", None
+    # RN-042: comprobante obligatorio si no es EFECTIVO
+    if metodo_pago != METODO_EFECTIVO:
+        comp = (data.get("comprobante_path") or "").strip() if data.get("comprobante_path") else ""
+        if not comp:
+            return False, "Suba comprobante para YAPE/PLIN/TRANSFERENCIA (RN-042)", None
 
     from repositories import cuota_repository
     cuota = cuota_repository.obtener_por_id(id_cuota)

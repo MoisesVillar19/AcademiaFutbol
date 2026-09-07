@@ -40,7 +40,7 @@ docs/
 ### Cómo navegar
 
 - **¿Nueva regla?** → `sistema/reglas_negocio.md` (RN) → `sistema/arquitectura_bd.md` (DDL) → `sistema/diccionario_datos.md`.
-- **¿Nuevo feature?** → `desarrollo/roadmap.md` → `desarrollo/plan_sprints.md`.
+- **¿Nuevo feature?** → `desarrollo/roadmap.md` → `desarrollo/plan_sprints.md` → `desarrollo/plan_dayanna_v2.1.md` (v2.1 documentado: es_nuevo, conceptos sin redundancia, permisos secretaria).
 - **¿Deploy?** → `despliegue/despliegue_produccion.md` + `setup_onedrive.bat` (raíz).
 - **¿Uso?** → `manuales/manual_sistema.md`.
 

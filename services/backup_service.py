@@ -55,7 +55,7 @@ def dias_desde_ultimo_backup() -> float | None:
 
 
 def listar_backups() -> list[dict]:
-    """Lista backups con fecha, tamaño y hash corto."""
+    """Lista backups con fecha UTC-5, tamaño y hash corto."""
     import hashlib
     destino = _resolver_ruta_backup()
     archivos = glob.glob(os.path.join(destino, "academia_*.db"))
@@ -63,12 +63,11 @@ def listar_backups() -> list[dict]:
     for f in sorted(archivos, key=lambda x: os.path.getmtime(x), reverse=True):
         try:
             st = os.stat(f)
-            # hash corto primeros 4 hex
             h = hashlib.sha256()
             with open(f, "rb") as fh:
                 for chunk in iter(lambda: fh.read(8192), b""):
                     h.update(chunk)
-            lista.append({"ruta": f, "fecha": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M"), "tamano_mb": round(st.st_size/1024/1024,2), "hash": h.hexdigest()[:8]})
+            lista.append({"ruta": f, "fecha": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M (UTC-5)"), "tamano_mb": round(st.st_size/1024/1024,2), "hash": h.hexdigest()[:8]})
         except Exception:
             lista.append({"ruta": f, "fecha": "", "tamano_mb": 0, "hash": ""})
     return lista

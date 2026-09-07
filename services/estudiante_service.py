@@ -9,9 +9,10 @@ from utils.logger import logger
 
 
 def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | None]:
-    # RN-041 foto_path flexible
+    # RN-041 foto_path flexible, RN-051 es_nuevo
     foto_path = data.get("foto_path")
     dni = data.get("dni", "")
+    es_nuevo = 1 if data.get("es_nuevo") in (1, "1", True, "true", "True") else 0
 
     if not dni:
         return False, "El DNI es obligatorio", None
@@ -34,6 +35,7 @@ def crear_estudiante(data: dict, id_usuario: int = 1) -> tuple[bool, str, int | 
         fecha_ingreso=get_today(),
         foto_path=foto_path,
         fecha_matricula=data.get("fecha_matricula", get_today()),
+        es_nuevo=es_nuevo,
     )
 
     with transaccion():

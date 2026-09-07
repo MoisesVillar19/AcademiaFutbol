@@ -99,6 +99,13 @@ Desarrollar un sistema de gestión para academia deportiva que permita administr
 
 ---
 
+# Versión 1.3b - v2.1 Documentada (2026-09-06) — es_nuevo + conceptos sin redundancia + secretaria ampliada
+
+- `estudiante.es_nuevo` checkbox única vez en `Estudiantes → Nuevo` (para cargas masivas de existentes), primera matrícula si `es_nuevo=1` regala `Camiseta Entrenamiento S/0` atomico + bloquea extras (RN-051)
+- `concepto_cobro`+`concepto_item` catálogo flexible con títulos e ítems incluidos, sin duplicar `configuracion.precio_*` (fallback) ni `tarifa` — precedencia definida en `plan_dayanna_v2.1.md:1.2` (RN-052)
+- Secretaria: `egresos crear/editar` permitido, `restaurar/rotar backup` y `auditoría/config` siguen ADMIN (matriz `plan_dayanna_v2.1.md:1.3`)
+- Backups `UTC-5`, tipos uniforme solo nombre, reingresantes en Activos, matrícula `-1/+1` totales fijos + MessageBox, reporte regalos mensual, dashboard `Nuevos`
+
 # Versión 1.3 - v2 Entregada (2026-09) — Flexible + OneDrive
 
 ## Comercial flexible

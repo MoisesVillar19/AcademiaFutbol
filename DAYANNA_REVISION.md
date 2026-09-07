@@ -1,5 +1,6 @@
 # Revisión del Sistema — Academia Deportiva
-### Para: Dayanna y asistente  •  v2.1 OneDrive + Flexible
+### Para: Dayanna y asistente  •  v2.1 OneDrive + Flexible + Plan 2026-09-06 documentado
+> **v2.1 documentado:** `docs/desarrollo/plan_dayanna_v2.1.md` resuelve 3 dudas: `es_nuevo` en `Estudiantes→Nuevo`, `concepto_cobro` sin redundancia con `configuracion.precio_*`, secretaria con egresos. RN-051/RN-052 + `estudiante.es_nuevo` + `concepto_cobro` en `sistema/`.
 ### Objetivo: Probar el sistema **como secretaria y admin reales**, anotando qué funciona, qué confunde y qué falta. Cada fila es una mini-prueba.
 
 > **Cómo usar (a mano):** Abre `py main.py` → `admin / admin123` (primera vez pide cambio, ventana queda **al frente y centrada**). Sigue **Pasos para probar** y compara con **Debería pasar**. Marca `✅ Sí / ❌ No / ⚠️ A medias` y escribe en **¿Falta?** si algo no tiene sentido.

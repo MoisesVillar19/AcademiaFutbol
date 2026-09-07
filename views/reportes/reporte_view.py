@@ -183,13 +183,10 @@ class ReporteView(ctk.CTkFrame):
                     exito, msg = False, str(e)
             elif reporte_id == "nuevos_vs_antiguos":
                 try:
-                    from database.connection import fetch_all
+                    from services import reporte_service
                     from openpyxl import Workbook
-                    nuevos = len(fetch_all("SELECT id_estudiante FROM estudiante WHERE fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin)))
-                    # matriculas en periodo
-                    from controllers import matricula_controller
-                    mats = fetch_all("SELECT id_matricula FROM matricula WHERE fecha_inicio BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
-                    total_mats = len(mats)
+                    nuevos = reporte_service.contar_nuevos(fecha_inicio, fecha_fin)
+                    total_mats = reporte_service.contar_matriculas_periodo(fecha_inicio, fecha_fin)
                     antiguos = max(0, total_mats - nuevos)
                     wb = Workbook()
                     ws = wb.active
@@ -198,6 +195,21 @@ class ReporteView(ctk.CTkFrame):
                     ws.append(["Nuevos", nuevos])
                     ws.append(["Antiguos", antiguos])
                     ws.append(["Total matriculas", total_mats])
+                    wb.save(ruta)
+                    exito, msg = True, f"Reporte guardado en {ruta}"
+                except Exception as e:
+                    exito, msg = False, str(e)
+            elif reporte_id == "regalos_matricula":
+                try:
+                    from services import reporte_service
+                    from openpyxl import Workbook
+                    regalos = reporte_service.reporte_regalos_matricula(fecha_inicio, fecha_fin)
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Regalos Matricula"
+                    ws.append(["Fecha","Producto","Cantidad","Estudiante"])
+                    for r in regalos:
+                        ws.append([r.get("fecha",""), r.get("producto",""), r.get("cantidad",0), r.get("estudiante","")])
                     wb.save(ruta)
                     exito, msg = True, f"Reporte guardado en {ruta}"
                 except Exception as e:

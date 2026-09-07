@@ -63,3 +63,8 @@ def obtener_cuotas_pendientes(id_matricula: int) -> list[dict]:
 
 def obtener_cuotas_por_vencer(dias: int = 3) -> list[dict]:
     return cuota_service.obtener_por_vencer(dias)
+
+
+def buscar_por_texto(texto: str) -> list[dict]:
+    from repositories import pago_repository
+    return pago_repository.buscar_por_texto(texto)

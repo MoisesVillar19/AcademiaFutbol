@@ -8,13 +8,14 @@ def insertar(estudiante: Estudiante) -> int:
     now = get_now()
     cursor = conn.execute(
         """INSERT INTO estudiante
-           (id_persona, estado, fecha_ingreso, fecha_retiro, foto_path, comprobante_pago_path, fecha_matricula, activo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           (id_persona, estado, fecha_ingreso, fecha_retiro, es_nuevo, foto_path, comprobante_pago_path, fecha_matricula, activo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             estudiante.id_persona,
             estudiante.estado,
             estudiante.fecha_ingreso,
             estudiante.fecha_retiro,
+            getattr(estudiante, "es_nuevo", 0),
             estudiante.foto_path,
             estudiante.comprobante_pago_path,
             estudiante.fecha_matricula,
@@ -83,6 +84,19 @@ def obtener_por_id_con_persona(id_estudiante: int) -> dict | None:
 
 def contar_nuevos_por_periodo(fecha_inicio: str, fecha_fin: str) -> int:
     row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio, fecha_fin))
+    return row["total"] if row else 0
+
+
+def contar_nuevos_es_nuevo(activo: int = 1) -> int:
+    row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE es_nuevo=1 AND activo=?", (activo,))
+    return row["total"] if row else 0
+
+
+def contar_por_es_nuevo(es_nuevo: int = 1, fecha_inicio: str | None = None, fecha_fin: str | None = None) -> int:
+    if fecha_inicio and fecha_fin:
+        row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE es_nuevo=? AND fecha_ingreso BETWEEN ? AND ? AND activo=1", (es_nuevo, fecha_inicio, fecha_fin))
+    else:
+        row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE es_nuevo=? AND activo=1", (es_nuevo,))
     return row["total"] if row else 0
 
 

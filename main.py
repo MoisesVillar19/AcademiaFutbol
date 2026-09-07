@@ -62,6 +62,13 @@ class App(ctk.CTk):
         self.geometry("1120x720")
         self.minsize(940, 640)
         self.configure(fg_color=COLOR_BG)
+        # Icono / favicon
+        try:
+            icon_path = Path(__file__).parent / "assets" / "icons" / "app.ico"
+            if icon_path.exists():
+                self.iconbitmap(str(icon_path))
+        except Exception:
+            pass
         self.protocol("WM_DELETE_WINDOW", self._on_cerrar)
         self._centrar_ventana()
         self._mostrar_bienvenida()

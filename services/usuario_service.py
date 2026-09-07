@@ -7,6 +7,9 @@ from utils.logger import logger
 
 
 def crear_usuario(persona_data: dict, username: str, rol: str) -> tuple[bool, str, int | None]:
+    from utils.constants import ROLES_VALIDOS
+    if rol not in ROLES_VALIDOS:
+        return False, f"Rol no válido. Solo {', '.join(ROLES_VALIDOS)}", None
     if usuario_repository.existe_username(username):
         return False, "El nombre de usuario ya existe", None
 
@@ -62,6 +65,9 @@ def editar_usuario(id_usuario: int, data: dict) -> tuple[bool, str]:
 
     username = data.get("username", usuario["username"])
     rol = data.get("rol", usuario["rol"])
+    from utils.constants import ROLES_VALIDOS
+    if rol not in ROLES_VALIDOS:
+        return False, f"Rol no válido. Solo {', '.join(ROLES_VALIDOS)}"
 
     if usuario_repository.existe_username(username, exclude_id=id_usuario):
         return False, "El nombre de usuario ya existe"

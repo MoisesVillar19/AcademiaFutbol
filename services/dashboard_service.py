@@ -40,10 +40,14 @@ def obtener_indicadores() -> dict:
         ingresos_ventas_mes = None
         egresos_mes = None
     try:
-        from database.connection import fetch_all
-        # nuevos = primera matrícula en el mes (no solo fecha_ingreso LIKE, que cuenta reingreso mal)
-        rows = fetch_all("SELECT COUNT(DISTINCT m.id_estudiante) as c FROM matricula m WHERE m.fecha_inicio BETWEEN ? AND ? AND m.activo=1 AND m.id_matricula IN (SELECT MIN(id_matricula) FROM matricula GROUP BY id_estudiante)", (fecha_inicio_mes, fecha_fin_mes))
-        nuevos_mes = rows[0]["c"] if rows and rows[0]["c"] is not None else 0
+        # v2.1: nuevos = es_nuevo=1 en el mes (RN-051)
+        try:
+            from repositories import estudiante_repository
+            nuevos_mes = estudiante_repository.contar_por_es_nuevo(1, fecha_inicio_mes, fecha_fin_mes)
+        except Exception:
+            from database.connection import fetch_all
+            rows = fetch_all("SELECT COUNT(*) as c FROM estudiante WHERE es_nuevo=1 AND fecha_ingreso BETWEEN ? AND ? AND activo=1", (fecha_inicio_mes, fecha_fin_mes))
+            nuevos_mes = rows[0]["c"] if rows and rows[0]["c"] is not None else 0
         matriculas_mes = matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
         antiguos_mes = max(0, matriculas_mes - nuevos_mes)
     except Exception as e:

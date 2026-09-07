@@ -114,6 +114,12 @@ class EstudianteView(ctk.CTkFrame):
         self.label_foto_preview = ctk.CTkLabel(foto_frame, text="")
         self.label_foto_preview.pack(side="left", padx=5)
 
+        # RN-051: es_nuevo única vez
+        self.var_es_nuevo = ctk.IntVar(value=0)
+        self.check_es_nuevo = ctk.CTkCheckBox(scroll, text="¿Es estudiante nuevo? (marca solo si es alta nueva real — regala Camiseta S/0 en primera matrícula, luego bloqueado)", variable=self.var_es_nuevo)
+        self.check_es_nuevo.pack(anchor="w", pady=4)
+        ctk.CTkLabel(scroll, text="↳ Si es carga masiva de existentes, dejar desmarcado. Solo marcar para alumnos realmente nuevos.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
+
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
 
@@ -273,6 +279,8 @@ class EstudianteView(ctk.CTkFrame):
             info, text=f"DNI: {est.get('dni', '')}  |  Estado: {estado}",
             font=ctk.CTkFont(size=12), text_color="gray",
         ).pack(anchor="w")
+        if int(est.get("es_nuevo", 0) or 0) == 1:
+            ctk.CTkLabel(info, text="🆕 NUEVO • Regala Camiseta S/0 en 1ª matrícula", font=ctk.CTkFont(size=11, weight="bold"), text_color="#7C3AED").pack(anchor="w")
         # Mostrar foto thumbnail grande si existe (RN-041) — Pillow 12.3 ya en requirements
         foto_path = est.get("foto_path")
         if foto_path and os.path.isfile(foto_path) and Image:
@@ -333,6 +341,11 @@ class EstudianteView(ctk.CTkFrame):
 
     def _nuevo_estudiante(self):
         self._limpiar_formulario()
+        self.var_es_nuevo.set(0)
+        try:
+            self.check_es_nuevo.configure(state="normal")
+        except Exception:
+            pass
         self.tabview.set("Registrar / Editar")
 
     def _editar_estudiante(self, est):
@@ -340,6 +353,13 @@ class EstudianteView(ctk.CTkFrame):
         self._id_estudiante_editando = est["id_estudiante"]
 
         estudiante = estudiante_controller.obtener_estudiante(est["id_estudiante"])
+        # RN-051: es_nuevo bloqueado tras crear
+        try:
+            es_nuevo_val = int(est.get("es_nuevo", 0) or estudiante.get("es_nuevo", 0) if estudiante else 0)
+            self.var_es_nuevo.set(es_nuevo_val)
+            self.check_es_nuevo.configure(state="disabled")
+        except Exception:
+            pass
         if estudiante:
             self.combo_tipo_doc.set(estudiante.get("tipo_documento", "DNI") or "DNI")
             self.entry_dni.insert(0, estudiante.get("dni", ""))
@@ -406,6 +426,7 @@ class EstudianteView(ctk.CTkFrame):
             "telefono": self.entry_telefono.get().strip(),
             "correo": self.entry_correo.get().strip(),
             "tipo_documento": tipo_doc,
+            "es_nuevo": int(self.var_es_nuevo.get()),
         }
 
         # Copiar foto a OneDrive/fotos si se seleccionó
@@ -555,6 +576,11 @@ class EstudianteView(ctk.CTkFrame):
         self._foto_tmp_path = None
         self._foto_actual = None
         self.label_foto.configure(text="Sin foto")
+        try:
+            self.var_es_nuevo.set(0)
+            self.check_es_nuevo.configure(state="normal")
+        except Exception:
+            pass
         self.combo_tipo_doc.set("DNI")
         self.entry_dni.delete(0, "end")
         self.entry_nombres.delete(0, "end")
@@ -671,7 +697,7 @@ class EstudianteView(ctk.CTkFrame):
         estado = None
         if filtro_estado == "Activos":
             activo = 1
-            estado = "ACTIVO"
+            estado = ["ACTIVO", "REINGRESANTE"]
         elif filtro_estado == "Retirados":
             activo = 1
             estado = "RETIRADO"

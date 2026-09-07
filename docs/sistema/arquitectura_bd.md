@@ -306,7 +306,7 @@ Matrícula 15
 
 ---
 
-# Tabla ESTUDIANTE
+# Tabla ESTUDIANTE (v2.1 + RN-051 es_nuevo)
 
 Campos:
 
@@ -315,6 +315,8 @@ Campos:
 - estado
 - fecha_ingreso
 - fecha_retiro
+- es_nuevo INTEGER DEFAULT 0 CHECK(0,1) — RN-051, checkbox en Estudiantes → Nuevo (única vez, luego bloqueado), si 1 primera matrícula genera Camiseta S/0
+- foto_path, comprobante_pago_path, fecha_matricula (v2)
 - activo
 
 Estados:
@@ -480,7 +482,7 @@ Nunca eliminar movimientos.
 
 ---
 
-# Tabla CONFIGURACION
+# Tabla CONFIGURACION (v2.1 fallback para RN-052)
 
 - id_configuracion
 
@@ -503,6 +505,25 @@ Nunca eliminar movimientos.
 - correo_onedrive
 
 - fecha_actualizacion
+
+> v2.1: se mantienen `precio_inscripcion/mensualidad/reingreso/uniforme/tasa_campeonato/arbitraje/pago_profesor` como fallback. Catálogo nuevo `concepto_cobro`+`concepto_item` evita redundancia (ver `desarrollo/plan_dayanna_v2.1.md:1.2` precedencia).
+
+# Tabla CONCEPTO_COBRO (v2.1 RN-052, evita redundancia con configuracion.precio_*)
+
+- id_concepto PK
+- nombre UNIQUE
+- tipo CHECK(INSCRIPCION,MENSUALIDAD,REINGRESO,PROMOCION,CAMPEONATO,OTRO)
+- monto REAL >=0
+- descripcion
+- activo
+
+# Tabla CONCEPTO_ITEM (v2.1)
+
+- id_item PK
+- id_concepto FK → concepto_cobro
+- id_producto FK → producto
+- cantidad INTEGER >0
+- UNIQUE(id_concepto, id_producto)
 
 ---
 
@@ -634,21 +655,19 @@ Funciones:
 
 ---
 
-# Seguridad
+# Seguridad (v2.1 matriz actualizada — ver plan_dayanna_v2.1.md:1.3)
 
 ADMIN:
 
-- Crear usuarios
-- Restaurar backups
-- Modificar configuraciones
-- Eliminar registros
+- Crear usuarios, configurar todo, gestionar conceptos flexibles, restaurar/rotar backups, auditoría solo lectura, egresos críticos
 
-SECRETARIA:
+SECRETARIA (más libertad v2.1):
 
-- Registrar estudiantes
-- Registrar pagos
-- Registrar inventario
-- Exportar Excel
+- Registrar estudiantes (con es_nuevo), apoderados, matrículas, pagos, ventas, inventario
+- Registrar/editar egresos operativos (crear/editar permitido, eliminar solo ADMIN)
+- Ver lista backups y crear backup manual, pero no restaurar/rotar
+- Dashboard, Reportes, Exportar Excel
+- No accede a: Configuración, Usuarios, Auditoría, Restaurar backup, Tipos uniforme CRUD, Conceptos CRUD
 
 
 # Regla de aplicación de becas

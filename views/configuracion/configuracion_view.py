@@ -184,7 +184,8 @@ class ConfiguracionView(ctk.CTkFrame):
     def _cargar_visual(self, clave, defecto):
         try:
             import json, os
-            path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config_visual.json")
+            from utils.constants import CONFIG_VISUAL_PATH
+            path = CONFIG_VISUAL_PATH
             if os.path.isfile(path):
                 import json as js
                 with open(path, "r", encoding="utf-8") as f:
@@ -197,7 +198,8 @@ class ConfiguracionView(ctk.CTkFrame):
     def _guardar_visual(self):
         try:
             import json, os
-            path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config_visual.json")
+            from utils.constants import CONFIG_VISUAL_PATH
+            path = CONFIG_VISUAL_PATH
             data = {}
             if os.path.isfile(path):
                 with open(path, "r", encoding="utf-8") as f:

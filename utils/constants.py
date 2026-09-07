@@ -43,8 +43,55 @@ def detectar_onedrive() -> str | None:
 def _obtener_ruta_backup() -> str:
     ruta_onedrive = detectar_onedrive()
     if ruta_onedrive:
-        return os.path.join(ruta_onedrive, "BackupsAcademia")
+        try:
+            cand = os.path.join(ruta_onedrive, "BackupsAcademia")
+            os.makedirs(cand, exist_ok=True)
+            # test escritura
+            test = os.path.join(cand, ".write_test")
+            with open(test, "w", encoding="utf-8") as f:
+                f.write("ok")
+            try:
+                os.remove(test)
+            except Exception:
+                pass
+            return cand
+        except Exception:
+            pass
+    # fallback LOCALAPPDATA (escribible en Program Files)
+    local = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+    if local:
+        try:
+            cand = os.path.join(local, "AcademiaFutbol", "backups")
+            os.makedirs(cand, exist_ok=True)
+            return cand
+        except Exception:
+            pass
     return os.path.join(APP_DIR, "backups")
+
+
+def _resolver_config_visual_path() -> str:
+    """Ruta escribible para config_visual.json (LOCALAPPDATA -> APP_DIR)."""
+    local = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+    if local:
+        cand_dir = os.path.join(local, "AcademiaFutbol")
+        try:
+            os.makedirs(cand_dir, exist_ok=True)
+            # si existe en APP_DIR y no en LOCALAPPDATA, migrar
+            legacy = os.path.join(APP_DIR, "config_visual.json")
+            cand = os.path.join(cand_dir, "config_visual.json")
+            if os.path.isfile(legacy) and not os.path.isfile(cand):
+                try:
+                    import shutil
+                    shutil.copy2(legacy, cand)
+                except Exception:
+                    pass
+            return cand
+        except Exception:
+            pass
+    return os.path.join(APP_DIR, "config_visual.json")
+
+
+CONFIG_VISUAL_PATH = _resolver_config_visual_path()
 
 
 BACKUP_DIR = _obtener_ruta_backup()
@@ -155,4 +202,4 @@ PIN_EMERGENCIA_DEFECTO = "roncalli2026"
 
 
 # Re-export para imports existentes
-__all__ = ["APP_DIR", "BASE_DIR", "DB_PATH", "DB_NAME", "FOTOS_DIR", "COMPROBANTES_DIR", "BACKUP_DIR"]
+__all__ = ["APP_DIR", "BASE_DIR", "DB_PATH", "DB_NAME", "FOTOS_DIR", "COMPROBANTES_DIR", "BACKUP_DIR", "CONFIG_VISUAL_PATH"]

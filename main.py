@@ -40,7 +40,8 @@ class App(ctk.CTk):
         # Aplicar escala visual guardada (si existe) — letra más grande por defecto
         try:
             import json, pathlib
-            p = pathlib.Path(__file__).parent / "config_visual.json"
+            from utils.constants import CONFIG_VISUAL_PATH
+            p = pathlib.Path(CONFIG_VISUAL_PATH)
             if p.is_file():
                 data = json.loads(p.read_text(encoding="utf-8"))
                 scale_map = {"Pequeña": 0.95, "Mediana (default)": 1.05, "Grande": 1.18, "Extra grande": 1.32}

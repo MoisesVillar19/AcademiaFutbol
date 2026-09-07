@@ -61,15 +61,39 @@ class ActualizarDialog(ctk.CTkToplevel):
             text_color="#6B5B7B",
         ).pack(pady=(0, 2))
 
-        # tamaño si viene del API
         tam = self.info.get("tamano", 0)
         tam_txt = _fmt_bytes(tam) if tam else "tamaño variable"
+        tipo = self.info.get("tipo", "zip")
+        en_pf = self.info.get("en_programfiles", False)
+        if tipo == "setup":
+            tipo_txt = "Instalador (recomendado para Program Files) — pedirá permiso UAC"
+            color_tipo = "#DC6B00"
+        else:
+            tipo_txt = "Portable ZIP — sin permisos especiales"
+            color_tipo = "#6B5B7B"
         ctk.CTkLabel(
             frame,
-            text=f"Tamaño: {tam_txt}  •  Publicado: {self.info.get('fecha','')[:10]}",
+            text=f"Tamaño: {tam_txt}  •  {tipo_txt}",
             font=ctk.CTkFont(size=11),
-            text_color="#9CA3AF",
-        ).pack(pady=(0, 8))
+            text_color=color_tipo,
+            wraplength=410,
+        ).pack(pady=(0, 2))
+        if en_pf and tipo == "setup":
+            ctk.CTkLabel(
+                frame,
+                text="⚠ Esta actualización pedirá permiso de Administrador (UAC) y reiniciará la app.",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color="#DC2626",
+                wraplength=410,
+                justify="center",
+            ).pack(pady=(0, 6))
+        else:
+            ctk.CTkLabel(
+                frame,
+                text=f"Publicado: {self.info.get('fecha','')[:10]}",
+                font=ctk.CTkFont(size=10),
+                text_color="#9CA3AF",
+            ).pack(pady=(0, 6))
 
         desc = self.info.get("descripcion", "Sin descripción")
         if len(desc) > 320:
@@ -178,10 +202,15 @@ class ActualizarDialog(ctk.CTkToplevel):
         self._descargando = True
         self._cancelado = False
         self._inicio_descarga = time.time()
-        self._btn_actualizar.configure(state="disabled", text="Descargando...")
+        tipo = self.info.get("tipo", "zip")
+        texto_btn = "Descargando Setup..." if tipo == "setup" else "Descargando..."
+        self._btn_actualizar.configure(state="disabled", text=texto_btn)
         self._btn_no.configure(state="disabled")
         self._btn_cancelar.pack(side="right", padx=(0, 10))
-        self._label_estado.configure(text="Conectando a GitHub...")
+        if tipo == "setup":
+            self._label_estado.configure(text="Descargando instalador (pedirá UAC al finalizar)...")
+        else:
+            self._label_estado.configure(text="Conectando a GitHub...")
         self._label_detalle.configure(text=self.info.get("url_descarga", "")[:70])
         self._barra_progreso.set(0)
         self._barra_progreso.configure(progress_color="#7C3AED")
@@ -246,9 +275,14 @@ class ActualizarDialog(ctk.CTkToplevel):
         self._label_detalle.configure(text=detalle)
 
     def _on_descarga_completada(self):
+        tipo = self.info.get("tipo", "zip")
         self._label_porcentaje.configure(text="100%")
-        self._label_estado.configure(text="Descarga completada. Aplicando actualización...")
-        self._label_detalle.configure(text="Extrayendo archivos (no se tocará academia.db)...")
+        if tipo == "setup":
+            self._label_estado.configure(text="Instalador listo. Lanzando actualización...")
+            self._label_detalle.configure(text="Se pedirá permiso de Administrador (UAC). La app se cerrará sola.")
+        else:
+            self._label_estado.configure(text="Descarga completada. Aplicando actualización...")
+            self._label_detalle.configure(text="Extrayendo archivos (no se tocará academia.db)...")
         self._barra_progreso.set(1)
         self._barra_progreso.configure(progress_color="#22C55E")
         self._btn_cancelar.pack_forget()
@@ -296,15 +330,34 @@ class ActualizarDialog(ctk.CTkToplevel):
         self.destroy()
 
 
-def verificar_y_mostrar(parent) -> None:
+def verificar_y_mostrar(parent, forzar: bool = False) -> None:
+    """forzar=True ignora FRECUENCIA (botón Configuración)."""
     def _verificar():
+        if forzar:
+            info = update_service.verificar_actualizacion()
+            # si no hay update y fue manual, avisar
+            if not info:
+                err = getattr(update_service, "ultimo_error", "")
+                if err:
+                    parent.after(0, lambda: _mostrar_sin_update(parent, err))
+                else:
+                    parent.after(0, lambda: _mostrar_sin_update(parent, "Ya estás en la última versión."))
+                return
+            parent.after(0, lambda: ActualizarDialog(parent, info))
+            return
         info = update_service.verificar_actualizacion()
         if info:
             parent.after(0, lambda: ActualizarDialog(parent, info))
         else:
-            # mostrar motivo si hubo error de verificación (opcional debug)
-            # no molestar al usuario si solo es "sin actualización"
             update_service.registrar_verificacion()
 
-    if update_service.debe_verificar():
+    if forzar or update_service.debe_verificar():
         threading.Thread(target=_verificar, daemon=True).start()
+    elif forzar:
+        # si debe_verificar es False pero forzar True ya se manejó arriba; fallback
+        threading.Thread(target=_verificar, daemon=True).start()
+
+
+def _mostrar_sin_update(parent, msg: str):
+    import tkinter.messagebox as mb
+    mb.showinfo("Actualizaciones", msg)

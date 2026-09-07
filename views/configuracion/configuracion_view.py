@@ -94,8 +94,28 @@ class ConfiguracionView(ctk.CTkFrame):
             self.becas_switch.select()
         self._nota(sec4, "Beca = PORCENTAJE o MONTO_FIJO; si deshabilitas, solo 1 beca por matrícula.")
 
-        # 5 — Backup / OneDrive + Restore
-        sec5 = self._seccion("Respaldo y OneDrive", "💾", "Dónde y cada cuánto se guarda la BD central. Restaurar requiere PIN.", 5)
+        # 5 — Actualizaciones (nuevo, documenta Setup UAC)
+        sec_upd = self._seccion("Actualizaciones", "🔄", "Instalación única vía Setup; luego el sistema se actualiza solo. En Program Files usará instalador silencioso (pedirá UAC), en portable usará ZIP sin permisos.", 5)
+        try:
+            from utils.constants import __version__
+            from updater import update_service as us
+            ver = __version__
+            en_pf = us.es_instalacion_programfiles()
+            tipo_inst = "Program Files (Setup)" if en_pf else "Portable ZIP"
+            ctk.CTkLabel(sec_upd, text=f"Versión actual: v{ver}  •  Instalación: {tipo_inst}", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=2)
+            if en_pf:
+                ctk.CTkLabel(sec_upd, text="⚠ Actualizar desde Program Files pedirá permiso de Administrador (UAC) — es normal. La app se cerrará y el instalador hará el resto.", font=ctk.CTkFont(size=11), text_color="#DC2626", wraplength=620, justify="left").pack(anchor="w", padx=10, pady=2)
+            else:
+                ctk.CTkLabel(sec_upd, text="Actualización sin permisos: usará ZIP y no pedirá UAC.", font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=620).pack(anchor="w", padx=10, pady=2)
+            from utils.ui_helpers import crear_boton_interactivo as btn_upd
+            btn_upd(sec_upd, text="🔍 Buscar actualizaciones ahora", width=220, command=self._buscar_actualizaciones, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=6)
+            self._nota(sec_upd, "Botón fuerza verificación ignorando 24h. Si hay nueva versión, aparece ventana con progreso MB/s y ETA. En Program Files elegirá Setup silencioso; en portable, ZIP.")
+            self._nota(sec_upd, "Flujo ideal: instalar una vez con Setup y luego solo Actualizar — sin reemplazo manual.")
+        except Exception as e:
+            ctk.CTkLabel(sec_upd, text=f"No se pudo cargar updater: {e}", text_color="gray").pack(anchor="w", padx=10)
+
+        # 6 — Backup / OneDrive + Restore (ahora nro 6)
+        sec5 = self._seccion("Respaldo y OneDrive", "💾", "Dónde y cada cuánto se guarda la BD central. Restaurar requiere PIN.", 6)
         self.backup_switch = ctk.CTkSwitch(sec5, text="Backup automático (cada 6h verifica)")
         self.backup_switch.pack(anchor="w", padx=10, pady=5)
         if config.get("backup_automatico", 1):
@@ -125,24 +145,24 @@ class ConfiguracionView(ctk.CTkFrame):
         except Exception:
             pass
 
-        # 6 — Categorías edad
-        sec6 = self._seccion("Categorías de Edad", "👥", "Rangos que asignan tarifa sugerida por edad.", 6)
+        # 7 — Categorías edad
+        sec6 = self._seccion("Categorías de Edad", "👥", "Rangos que asignan tarifa sugerida por edad.", 7)
         self._cargar_categorias(sec6)
         from utils.ui_helpers import crear_boton_interactivo
         crear_boton_interactivo(sec6, text="+ Nueva Categoría", width=150, command=self._nueva_categoria, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
-        # 7 — Tipos uniforme
-        sec7 = self._seccion("Tipos de Uniforme", "👕", "Amplía tipos sin código. Cada tipo → producto con stock y precio_venta.", 7)
+        # 8 — Tipos uniforme
+        sec7 = self._seccion("Tipos de Uniforme", "👕", "Amplía tipos sin código. Cada tipo → producto con stock y precio_venta.", 8)
         self._cargar_tipos_uniforme(sec7)
         crear_boton_interactivo(sec7, text="+ Nuevo Tipo Uniforme", width=180, command=self._nuevo_tipo_uniforme, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
-        # 7b — Conceptos flexibles (RN-052 sin redundancia)
-        sec7b = self._seccion("Conceptos Flexibles (bundles con ítems)", "🏷", "Crea paquetes con título, precio y productos incluidos. Si eliges concepto en Matrícula, su monto precede a tarifa/monto pactado y descuenta stock de cada ítem. Sin duplicar configuracion.precio_*.", 7)
+        # 8b — Conceptos flexibles (RN-052 sin redundancia)
+        sec7b = self._seccion("Conceptos Flexibles (bundles con ítems)", "🏷", "Crea paquetes con título, precio y productos incluidos. Si eliges concepto en Matrícula, su monto precede a tarifa/monto pactado y descuenta stock de cada ítem. Sin duplicar configuracion.precio_*.", 9)
         self._cargar_conceptos(sec7b)
         crear_boton_interactivo(sec7b, text="+ Nuevo Concepto", width=160, command=self._nuevo_concepto, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=5)
 
-        # 8 — Apariencia Visual (nuevo, ordenado y explicado)
-        sec8 = self._seccion("Apariencia Visual", "🎨", "Ajusta tamaño de letra, colores y fuente. Se guarda local y aplica al reiniciar.", 8)
+        # 10 — Apariencia Visual (nuevo, ordenado y explicado)
+        sec8 = self._seccion("Apariencia Visual", "🎨", "Ajusta tamaño de letra, colores y fuente. Se guarda local y aplica al reiniciar.", 10)
         vis_frame = ctk.CTkFrame(sec8, fg_color="transparent")
         vis_frame.pack(fill="x", padx=10, pady=5)
         ctk.CTkLabel(vis_frame, text="Tamaño de letra:", width=160, anchor="w").pack(side="left")
@@ -526,6 +546,15 @@ class ConfiguracionView(ctk.CTkFrame):
         n = cc.rotar_backups(30)
         messagebox.showinfo("Rotar", f"{n} backups antiguos borrados (>30d)")
         self._cargar_configuracion()
+
+    def _buscar_actualizaciones(self):
+        try:
+            from updater import update_view
+            # forzar check ignorando 24h
+            update_view.verificar_y_mostrar(self.winfo_toplevel(), forzar=True)
+            messagebox.showinfo("Actualizaciones", "Buscando en GitHub...\nSi hay nueva versión aparecerá la ventana de actualización.")
+        except Exception as e:
+            messagebox.showerror("Actualizaciones", f"Error: {e}")
 
     def _desactivar_tipo_uniforme(self, t):
         if messagebox.askyesno("Confirmar", f"¿Desactivar '{t['nombre']}'?"):

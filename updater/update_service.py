@@ -16,6 +16,7 @@ from updater.config import (
     FRECUENCIA_VERIFICACION_HORAS,
     APP_EXE_NAME,
     RECORDAR_RECHAZO,
+    PREFER_SETUP_FOR_PROGRAMFILES,
 )
 from utils.constants import __version__
 
@@ -84,6 +85,14 @@ def debe_verificar() -> bool:
         return True
 
 
+def es_instalacion_programfiles() -> bool:
+    try:
+        ruta = _obtener_ruta_app().lower()
+        return "program files" in ruta or "program files (x86)" in ruta
+    except Exception:
+        return False
+
+
 def verificar_actualizacion() -> dict | None:
     global ultimo_error
     ultimo_error = ""
@@ -113,22 +122,40 @@ def verificar_actualizacion() -> dict | None:
         assets = data.get("assets", [])
         zip_url = None
         zip_size = 0
+        setup_url = None
+        setup_size = 0
         for asset in assets:
             nombre = asset.get("name", "")
             if nombre.endswith(".zip") and "AcademiaFutbol" in nombre:
                 zip_url = asset.get("browser_download_url")
                 zip_size = asset.get("size", 0)
-                break
+            elif nombre.lower().endswith(".exe") and "setup" in nombre.lower():
+                setup_url = asset.get("browser_download_url")
+                setup_size = asset.get("size", 0)
 
         if not zip_url:
             zip_url = f"{GITHUB_DOWNLOAD_URL}/v{tag}/AcademiaFutbol-v{tag}.zip"
+        if not setup_url:
+            setup_url = f"{GITHUB_DOWNLOAD_URL}/v{tag}/AcademiaFutbol-Setup-{tag}.exe"
+
+        en_programfiles = es_instalacion_programfiles()
+        usar_setup = PREFER_SETUP_FOR_PROGRAMFILES and en_programfiles and setup_url
+        tipo = "setup" if usar_setup else "zip"
+        url_principal = setup_url if usar_setup else zip_url
+        tam_principal = setup_size if usar_setup else zip_size
 
         return {
             "version": tag,
             "nombre": data.get("name", f"v{tag}"),
             "descripcion": data.get("body", "Sin descripción"),
-            "url_descarga": zip_url,
-            "tamano": zip_size,
+            "url_descarga": url_principal,
+            "url_zip": zip_url,
+            "url_setup": setup_url,
+            "tipo": tipo,
+            "tamano": tam_principal,
+            "tamano_zip": zip_size,
+            "tamano_setup": setup_size,
+            "en_programfiles": en_programfiles,
             "fecha": data.get("published_at", ""),
         }
 
@@ -166,49 +193,46 @@ def _formatear_bytes(n: int) -> str:
 
 def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
     """
-    Descarga el ZIP de forma streaming (no en RAM) con progreso detallado.
-    callback_progreso: callable(bytes_read, total, velocidad_bps) o legacy (bytes_read, total)
-    Retorna True si OK, False si falla (ver ultimo_error).
+    Descarga ZIP o Setup.exe streaming con progreso.
+    ZIP: extrae sobre ruta_app (preserva db/config)
+    Setup EXE: descarga y lanza instalador silencioso (pide UAC si Program Files)
     """
     global ultimo_error
     ultimo_error = ""
     ruta_temp = None
+    es_setup = url_descarga.lower().endswith(".exe")
     try:
-        # --- descarga streaming a archivo temporal ---
         req = urllib.request.Request(url_descarga, headers=HEADERS_DOWNLOAD)
-        # reintento simple 1 vez si falla por red
         intentos = 2
         last_exc = None
+        ruta_descarga = None
         for intento in range(intentos):
             try:
                 with urllib.request.urlopen(req, timeout=60) as resp:
                     if resp.status not in (200, 206):
                         raise urllib.error.HTTPError(url_descarga, resp.status, resp.reason or "Error", resp.headers, None)
                     total = int(resp.headers.get("Content-Length", 0) or 0)
-                    # si GitHub redirige, urlopen sigue redirect automáticamente
                     ruta_temp = tempfile.mkdtemp(prefix="academia_update_")
-                    ruta_zip = os.path.join(ruta_temp, "update.zip")
+                    nombre_arch = "Setup-Update.exe" if es_setup else "update.zip"
+                    ruta_descarga = os.path.join(ruta_temp, nombre_arch)
 
                     bytes_read = 0
                     inicio = time.time()
                     ultimo_update = inicio
                     ultimo_bytes = 0
 
-                    with open(ruta_zip, "wb") as out:
+                    with open(ruta_descarga, "wb") as out:
                         while True:
-                            chunk = resp.read(8192 * 4)  # 32KB
+                            chunk = resp.read(8192 * 4)
                             if not chunk:
                                 break
                             out.write(chunk)
                             bytes_read += len(chunk)
-
-                            # throttling callback cada 0.15s o cada 256KB
                             ahora = time.time()
-                            if callback_progreso and (ahora - ultimo_update > 0.15 or bytes_read - ultimo_bytes > 256 * 1024 or not chunk):
+                            if callback_progreso and (ahora - ultimo_update > 0.15 or bytes_read - ultimo_bytes > 256 * 1024):
                                 transcurrido = ahora - inicio
                                 velocidad = bytes_read / transcurrido if transcurrido > 0 else 0
                                 try:
-                                    # soporta callbacks legacy de 2 args y nuevos de 3
                                     try:
                                         callback_progreso(bytes_read, total, velocidad)
                                     except TypeError:
@@ -218,7 +242,6 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
                                 ultimo_update = ahora
                                 ultimo_bytes = bytes_read
 
-                    # callback final 100%
                     if callback_progreso:
                         try:
                             callback_progreso(bytes_read, total or bytes_read, 0)
@@ -227,14 +250,15 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
                                 callback_progreso(bytes_read, total or bytes_read)
                             except Exception:
                                 pass
-
-                    # validar ZIP
-                    if not zipfile.is_zipfile(ruta_zip):
-                        raise ValueError("El archivo descargado no es un ZIP válido (descarga incompleta o URL incorrecta)")
+                    if es_setup:
+                        if bytes_read < 1024 * 1024:
+                            raise ValueError("Setup descargado muy pequeño, descarga incompleta")
+                    else:
+                        if not zipfile.is_zipfile(ruta_descarga):
+                            raise ValueError("El archivo descargado no es un ZIP válido (descarga incompleta o URL incorrecta)")
                     if total and bytes_read != total:
-                        # GitHub a veces no envía Content-Length exacto con redirect, advertir pero seguir
                         pass
-                    break  # éxito, salir de reintentos
+                    break
             except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ConnectionError, OSError) as e:
                 last_exc = e
                 if intento < intentos - 1:
@@ -245,9 +269,23 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
             if last_exc:
                 raise last_exc
 
-        # --- extracción ---
+        if es_setup:
+            try:
+                import subprocess
+                _guardar_estado({"setup_pendiente": ruta_descarga, "setup_version": url_descarga})
+                try:
+                    os.startfile(ruta_descarga)  # type: ignore[attr-defined]
+                except Exception:
+                    subprocess.Popen([ruta_descarga, "/SILENT", "/SUPPRESSMSGBOXES", "/NOCANCEL", "/CLOSEAPPLICATIONS"], shell=False)
+                return True
+            except Exception as e:
+                ultimo_error = f"No se pudo lanzar instalador: {e} (ejecute manualmente {ruta_descarga})"
+                return False
+
+        # --- extracción ZIP ---
         ruta_app = _obtener_ruta_app()
         archivos_bloqueados: list[str] = []
+        ruta_zip = ruta_descarga
 
         with zipfile.ZipFile(ruta_zip, "r") as zf:
             nombres = zf.namelist()
@@ -330,7 +368,28 @@ def descargar_y_actualizar(url_descarga: str, callback_progreso=None) -> bool:
                 pass
 
 
+def descargar_setup_y_ejecutar(url_setup: str, callback_progreso=None) -> bool:
+    return descargar_y_actualizar(url_setup, callback_progreso=callback_progreso)
+
+
 def reiniciar_app() -> None:
+    try:
+        estado = _cargar_estado()
+        setup = estado.get("setup_pendiente")
+        if setup and os.path.isfile(setup):
+            try:
+                import subprocess
+                subprocess.Popen([setup, "/SILENT", "/SUPPRESSMSGBOXES", "/NOCANCEL", "/CLOSEAPPLICATIONS"], shell=False)
+            except Exception:
+                try:
+                    os.startfile(setup)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+            estado.pop("setup_pendiente", None)
+            _guardar_estado(estado)
+            sys.exit(0)
+    except Exception:
+        pass
     ruta_app = _obtener_ruta_app()
     exe_path = os.path.join(ruta_app, APP_EXE_NAME)
     if os.path.exists(exe_path):
@@ -340,3 +399,7 @@ def reiniciar_app() -> None:
             import subprocess
             subprocess.Popen([exe_path], cwd=ruta_app)
     sys.exit(0)
+
+
+def verificar_manual() -> dict | None:
+    return verificar_actualizacion()

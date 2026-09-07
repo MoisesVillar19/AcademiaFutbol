@@ -252,11 +252,16 @@ xcopy "C:\Users\%USERNAME%\OneDrive\BackupsAcademia\fotos_TEST_20260906_210703" 
 
 ---
 
-## 8. Actualizaciones automáticas
+## 8. Actualizaciones automáticas — instalar una vez, luego acopla solo
 
-- `.exe` nuevo **no borra** `OneDrive\Academia\academia.db` / `fotos/` / `comprobantes/` / `config.ini` (`constants.py:9` `APP_DIR` vs `_internal`, `updater/update_service.py` excluye `database/`)
-- BD migra con `create_db.py:379` `_migrar_columnas_faltantes` `ALTER ADD COLUMN IF NOT EXISTS` (ej `1.0.0→1.1.0` `egreso.activo`)
-- Rollback: desinstalar y reinstalar `Setup-X.Y.Z.exe` anterior; BD intacta
+> **Flujo ideal:** Instalar **una vez** con `AcademiaFutbol-Setup-1.0.2.exe` (superior, sin errores manuales) → luego `Configuración → Buscar actualizaciones` o auto-check 24h `main.py:445` lo acopla sin reemplazo manual.
+
+- **Si instalaste con Setup en `Program Files`:** el updater detecta `es_instalacion_programfiles()` → descarga **`Setup-*.exe`** y lo lanza **silencioso `/SILENT`** (`updater/update_service.py:197` `es_setup`). **Pedira UAC** (permiso Administrador, es normal) → `setup.iss:145` `CloseApplications=yes` cierra la app, actualiza `_internal` y vuelve a abrir. Documentado y con alerta en la ventana de actualización.
+- **Si instalaste portable ZIP en `C:\AcademiaFutbol\`:** usa **ZIP** sin UAC → streaming 32KB con `MB/s` y `ETA` (`update_view.py:192`), extrae preservando `config.ini/db/logs` (`update_service.py:160`), reinicia.
+- `.exe` nuevo **no borra** `OneDrive\Academia\academia.db` / `fotos/` / `comprobantes/` / `config.ini` (`constants.py:9` `APP_DIR` vs `_internal`, `updater` excluye `database/`).
+- Botón manual: `Configuración → Actualizaciones → Buscar actualizaciones ahora` (`configuracion_view.py:185` `verificar_y_mostrar(forzar=True)`) ignora las 24h.
+- BD migra con `create_db.py:379` `_migrar_columnas_faltantes` `ALTER ADD COLUMN IF NOT EXISTS` (ej `1.0.2→1.0.3` `egreso.activo`)
+- Rollback: re-ejecutar `Setup-X.Y.Z.exe` anterior; BD intacta (nunca se toca).
 
 ---
 
@@ -289,4 +294,4 @@ Eliminar carpeta `C:\AcademiaFutbol\` + acceso directo
 
 ---
 
-*PDF generado desde este markdown (v1.0.1). Artefactos: `installer/Output/AcademiaFutbol-Setup-1.0.1.exe` + `AcademiaFutbol-v1.0.1.zip` + `README_BLOQUEO.txt` + hashes SHA256 en Release notes.*
+*PDF v1.0.2 con Setup UAC + ZIP dual. Artefactos: `installer/Output/AcademiaFutbol-Setup-1.0.2.exe` + `AcademiaFutbol-v1.0.2.zip` + `README_BLOQUEO.txt` + `SHA256` + alerta UAC documentada.*

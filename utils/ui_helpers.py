@@ -47,24 +47,18 @@ def crear_boton_interactivo(parent, text, command, fg_color="#7C3AED", width=120
 
 
 def crear_card_interactiva(parent, hover_bg="#F3E8FF", border_hover="#DDD6E5"):
-    """Frame que resalta al pasar el mouse (para distinguir estático vs interactivo)."""
-    frame = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#E5E7EB")
+    """Card blanca estilo Configuración.
+
+    NOTA: sin cambio de color en hover a propósito — reconfigurar fg_color
+    en cada <Enter>/<Leave> (y propagado a hijos) causa parpadeo/tintineo
+    constante al mover el mouse sobre listas largas. Solo cursor mano.
+    Se mantiene la firma por compatibilidad.
+    """
+    frame = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#E5E7EB",
+                         corner_radius=8)
     try:
-        orig = frame.cget("fg_color")
-        orig_border = frame.cget("border_color")
-        frame.bind("<Enter>", lambda e: frame.configure(fg_color=hover_bg, border_color=border_hover, cursor="hand2"))
-        frame.bind("<Leave>", lambda e: frame.configure(fg_color=orig, border_color=orig_border, cursor=""))
-        # propagar a hijos para que no pierda hover al pasar sobre labels internos
-        def _bind_children(w):
-            for ch in w.winfo_children():
-                try:
-                    ch.bind("<Enter>", lambda e: frame.configure(fg_color=hover_bg, border_color=border_hover, cursor="hand2"))
-                    ch.bind("<Leave>", lambda e: frame.configure(fg_color=orig, border_color=orig_border, cursor=""))
-                except Exception:
-                    pass
-                _bind_children(ch)
-        # se bindea lazy tras pack
-        frame.after(100, lambda: _bind_children(frame))
+        frame.bind("<Enter>", lambda e: frame.configure(cursor="hand2"))
+        frame.bind("<Leave>", lambda e: frame.configure(cursor=""))
     except Exception:
         pass
     return frame
@@ -143,9 +137,17 @@ def agregar_detalle_expandible(card, detalle_fn, texto_abrir="▾ Ver detalle", 
                     ctk.CTkLabel(detalle_frame, text=f"No se pudo cargar detalle: {e}",
                                  text_color="gray", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10, pady=4)
                 estado["cargado"] = True
-            detalle_frame.pack(fill="x", padx=10, pady=(0, 8))
+            try:
+                # el detalle va ENCIMA del botón para que quede visible al abrir
+                detalle_frame.pack(fill="x", padx=10, pady=(0, 4), before=toggle_btn)
+            except Exception:
+                detalle_frame.pack(fill="x", padx=10, pady=(0, 8))
             toggle_btn.configure(text=texto_cerrar)
             estado["abierto"] = True
+            try:
+                card.update_idletasks()
+            except Exception:
+                pass
 
     toggle_btn = ctk.CTkButton(card, text=texto_abrir, width=110, height=26,
                                fg_color="#E5E7EB", text_color="#1F0A33",

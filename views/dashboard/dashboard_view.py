@@ -11,6 +11,16 @@ except ImportError:
     MATPLOTLIB_DISPONIBLE = False
 
 
+def _num(v, default=0.0):
+    """Número seguro para formateo: None/texto inválido → default (BD real trae NULLs)."""
+    try:
+        if v is None or v == "":
+            return default
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
 class DashboardView(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
@@ -71,19 +81,19 @@ class DashboardView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5)
 
-        self._crear_card(row2, "Pagos Hoy", str(data["pagos_hoy"]), "#22C55E",
+        self._crear_card(row2, "Pagos Hoy", str(data.get("pagos_hoy", 0) or 0), "#22C55E",
                          lambda: self._mostrar_detalle("pagos_hoy"))
-        self._crear_card(row2, "Ingresos Hoy", f"S/{data['ingresos_hoy']:.2f}", "#22C55E",
+        self._crear_card(row2, "Ingresos Hoy", f"S/{_num(data.get('ingresos_hoy')):.2f}", "#22C55E",
                          lambda: self._mostrar_detalle("ingresos_hoy"))
-        self._crear_card(row2, "Ingresos Mes", f"S/{data['ingresos_mes']:.2f}", "#6B21A8",
+        self._crear_card(row2, "Ingresos Mes", f"S/{_num(data.get('ingresos_mes')):.2f}", "#6B21A8",
                          lambda: self._mostrar_detalle("ingresos_mes"))
 
         row3 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row3.pack(fill="x", pady=5)
 
-        self._crear_card(row3, "Monto Vencido", f"S/{data['monto_vencido']:.2f}", "#DC2626",
+        self._crear_card(row3, "Monto Vencido", f"S/{_num(data.get('monto_vencido')):.2f}", "#DC2626",
                          lambda: self._mostrar_detalle("monto_vencido"))
-        self._crear_card(row3, "Monto por Vencer", f"S/{data['monto_por_vencer']:.2f}", "#F59E0B",
+        self._crear_card(row3, "Monto por Vencer", f"S/{_num(data.get('monto_por_vencer')):.2f}", "#F59E0B",
                          lambda: self._mostrar_detalle("monto_por_vencer"))
         self._crear_card(row3, "Stock Bajo", str(data["stock_bajo"]), "#F59E0B",
                          lambda: self._mostrar_detalle("stock"))
@@ -203,36 +213,46 @@ class DashboardView(ctk.CTkFrame):
         }
         self.titulo_label.configure(text=titulos.get(tipo, "Detalle"))
 
-        if tipo == "alumnos":
-            self._detalle_alumnos()
-        elif tipo == "vencidas":
-            self._detalle_cuotas(dashboard_controller.listar_cuotas_vencidas(), "vencida")
-        elif tipo == "por_vencer":
-            self._detalle_cuotas(dashboard_controller.listar_cuotas_por_vencer(), "por vencer")
-        elif tipo == "pagos_hoy":
-            self._detalle_pagos(dashboard_controller.listar_pagos_hoy())
-        elif tipo == "ingresos_hoy":
-            self._detalle_ingresos_hoy()
-        elif tipo == "ingresos_mes":
-            self._detalle_ingresos_mes()
-        elif tipo == "monto_vencido":
-            self._detalle_monto(dashboard_controller.listar_monto_vencido(), "vencido")
-        elif tipo == "monto_por_vencer":
-            self._detalle_monto(dashboard_controller.listar_monto_por_vencer(), "por vencer")
-        elif tipo == "stock":
-            self._detalle_stock()
-        elif tipo == "ventas_mes":
-            self._detalle_ventas_mes()
-        elif tipo == "egresos_mes":
-            self._detalle_egresos_mes()
-        elif tipo == "neto_mes":
-            self._detalle_neto_mes()
-        elif tipo == "nuevos_mes":
-            self._detalle_nuevos_mes()
-        elif tipo == "antiguos_mes":
-            self._detalle_antiguos_mes()
-        elif tipo == "matriculas_mes":
-            self._detalle_matriculas_mes()
+        try:
+            if tipo == "alumnos":
+                self._detalle_alumnos()
+            elif tipo == "vencidas":
+                self._detalle_cuotas(dashboard_controller.listar_cuotas_vencidas(), "vencida")
+            elif tipo == "por_vencer":
+                self._detalle_cuotas(dashboard_controller.listar_cuotas_por_vencer(), "por vencer")
+            elif tipo == "pagos_hoy":
+                self._detalle_pagos(dashboard_controller.listar_pagos_hoy())
+            elif tipo == "ingresos_hoy":
+                self._detalle_ingresos_hoy()
+            elif tipo == "ingresos_mes":
+                self._detalle_ingresos_mes()
+            elif tipo == "monto_vencido":
+                self._detalle_monto(dashboard_controller.listar_monto_vencido(), "vencido")
+            elif tipo == "monto_por_vencer":
+                self._detalle_monto(dashboard_controller.listar_monto_por_vencer(), "por vencer")
+            elif tipo == "stock":
+                self._detalle_stock()
+            elif tipo == "ventas_mes":
+                self._detalle_ventas_mes()
+            elif tipo == "egresos_mes":
+                self._detalle_egresos_mes()
+            elif tipo == "neto_mes":
+                self._detalle_neto_mes()
+            elif tipo == "nuevos_mes":
+                self._detalle_nuevos_mes()
+            elif tipo == "antiguos_mes":
+                self._detalle_antiguos_mes()
+            elif tipo == "matriculas_mes":
+                self._detalle_matriculas_mes()
+        except Exception as e:
+            from utils.logger import logger
+            logger.error(f"Dashboard detalle '{tipo}' fallo: {e}", exc_info=True)
+            ctk.CTkLabel(
+                self.detalle_frame,
+                text=f"⚠ No se pudo cargar el detalle: {e}",
+                font=ctk.CTkFont(size=13), text_color="red",
+                wraplength=600, justify="left",
+            ).pack(pady=20)
 
     def _mostrar_cards(self):
         self._cargar_indicadores()
@@ -316,7 +336,7 @@ class DashboardView(ctk.CTkFrame):
                          font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
             ctk.CTkLabel(row, text=str(cuota.get("periodo", "")), width=80,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{cuota.get('saldo', 0):.2f}", width=80,
+            ctk.CTkLabel(row, text=f"S/{_num(cuota.get('saldo')):.2f}", width=80,
                          font=ctk.CTkFont(size=11), text_color="red").grid(row=0, column=3, padx=5, pady=3)
             ctk.CTkLabel(row, text=str(cuota.get("fecha_vencimiento", "")), width=100,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=4, padx=5, pady=3)
@@ -356,7 +376,7 @@ class DashboardView(ctk.CTkFrame):
 
             ctk.CTkLabel(row, text=str(pago.get("numero_recibo", "")), width=120,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{pago.get('monto_total', 0):.2f}", width=80,
+            ctk.CTkLabel(row, text=f"S/{_num(pago.get('monto_total')):.2f}", width=80,
                          font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
             ctk.CTkLabel(row, text=str(pago.get("metodo_pago", "")), width=100,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
@@ -365,7 +385,7 @@ class DashboardView(ctk.CTkFrame):
 
     def _detalle_ingresos_hoy(self):
         pagos = dashboard_controller.listar_pagos_hoy()
-        total = sum(p.get("monto_total", 0) for p in pagos)
+        total = sum(_num(p.get("monto_total")) for p in pagos)
 
         ctk.CTkLabel(
             self.detalle_frame,
@@ -380,7 +400,7 @@ class DashboardView(ctk.CTkFrame):
         if MATPLOTLIB_DISPONIBLE:
             self._crear_grafico_barras_simple(
                 [f"Pago {i+1}" for i in range(len(pagos))],
-                [p.get("monto_total", 0) for p in pagos],
+                [_num(p.get("monto_total")) for p in pagos],
                 "Ingresos por Transacción",
             )
 
@@ -397,7 +417,7 @@ class DashboardView(ctk.CTkFrame):
             row.pack(fill="x", padx=5, pady=1)
             ctk.CTkLabel(row, text=str(pago.get("numero_recibo", "")), width=120,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{pago.get('monto_total', 0):.2f}", width=100,
+            ctk.CTkLabel(row, text=f"S/{_num(pago.get('monto_total')):.2f}", width=100,
                          font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
             ctk.CTkLabel(row, text=str(pago.get("metodo_pago", "")), width=120,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
@@ -407,7 +427,7 @@ class DashboardView(ctk.CTkFrame):
 
     def _detalle_ingresos_mes(self):
         datos = dashboard_controller.obtener_ingresos_por_dia_mes()
-        total = sum(d.get("monto", 0) for d in datos)
+        total = sum(_num(d.get("monto")) for d in datos)
 
         ctk.CTkLabel(
             self.detalle_frame,
@@ -422,7 +442,7 @@ class DashboardView(ctk.CTkFrame):
         if MATPLOTLIB_DISPONIBLE:
             self._crear_grafico_barras_simple(
                 [d.get("dia", "")[-5:] for d in datos],
-                [d.get("monto", 0) for d in datos],
+                [_num(d.get("monto")) for d in datos],
                 "Ingresos por Día del Mes",
             )
 
@@ -440,11 +460,11 @@ class DashboardView(ctk.CTkFrame):
 
             ctk.CTkLabel(row, text=str(d.get("dia", "")), width=120,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{d.get('monto', 0):.2f}", width=100,
+            ctk.CTkLabel(row, text=f"S/{_num(d.get('monto')):.2f}", width=100,
                          font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
 
     def _detalle_monto(self, cuotas, tipo):
-        total = sum(c.get("saldo", 0) for c in cuotas)
+        total = sum(_num(c.get("saldo")) for c in cuotas)
 
         ctk.CTkLabel(
             self.detalle_frame,
@@ -458,7 +478,7 @@ class DashboardView(ctk.CTkFrame):
 
         if MATPLOTLIB_DISPONIBLE and len(cuotas) > 0:
             nombres = [f"{c.get('nombres', '')[:10]} {c.get('apellidos', '')[:10]}" for c in cuotas[:10]]
-            saldos = [c.get("saldo", 0) for c in cuotas[:10]]
+            saldos = [_num(c.get("saldo")) for c in cuotas[:10]]
             self._crear_grafico_barras_simple(nombres, saldos, f"Saldo {tipo} por Estudiante")
 
         header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
@@ -481,7 +501,7 @@ class DashboardView(ctk.CTkFrame):
                          font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
             ctk.CTkLabel(row, text=str(c.get("dni", "")), width=80,
                          font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{c.get('saldo', 0):.2f}", width=100,
+            ctk.CTkLabel(row, text=f"S/{_num(c.get('saldo')):.2f}", width=100,
                          font=ctk.CTkFont(size=11), text_color="red").grid(row=0, column=2, padx=5, pady=3)
 
         if len(cuotas) > 20:
@@ -498,12 +518,12 @@ class DashboardView(ctk.CTkFrame):
         try:
             from controllers import venta_controller
             ventas = venta_controller.listar_ventas(ini, hoy.isoformat())
-            total = sum(v.get("monto_total",0) for v in ventas)
+            total = sum(_num(v.get("monto_total")) for v in ventas)
             ctk.CTkLabel(self.detalle_frame, text=f"Ventas mes: S/{total:.2f} en {len(ventas)} ventas", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
             for v in ventas[:20]:
                 row = ctk.CTkFrame(self.detalle_frame)
                 row.pack(fill="x", padx=5, pady=1)
-                ctk.CTkLabel(row, text=f"{v.get('tipo_venta','')} {v.get('numero_recibo','')} S/{v.get('monto_total',0):.2f}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+                ctk.CTkLabel(row, text=f"{v.get('tipo_venta','')} {v.get('numero_recibo','')} S/{_num(v.get('monto_total')):.2f}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
@@ -514,12 +534,12 @@ class DashboardView(ctk.CTkFrame):
         try:
             from controllers import egreso_controller
             egresos = egreso_controller.listar_egresos(ini, hoy.isoformat())
-            total = sum(e.get("monto",0) for e in egresos)
+            total = sum(_num(e.get("monto")) for e in egresos)
             ctk.CTkLabel(self.detalle_frame, text=f"Egresos mes: S/{total:.2f} en {len(egresos)}", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
             for e in egresos[:20]:
                 row = ctk.CTkFrame(self.detalle_frame)
                 row.pack(fill="x", padx=5, pady=1)
-                ctk.CTkLabel(row, text=f"{e.get('concepto','')} S/{e.get('monto',0):.2f} {e.get('fecha','')}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+                ctk.CTkLabel(row, text=f"{e.get('concepto','')} S/{_num(e.get('monto')):.2f} {e.get('fecha','')}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
@@ -531,7 +551,7 @@ class DashboardView(ctk.CTkFrame):
         try:
             from controllers import egreso_controller
             rep = egreso_controller.reporte_ingresos_vs_egresos(ini, fin)
-            txt = f"Ingresos: S/{rep.get('total_ingresos',0):.2f} (pagos {rep.get('ingresos_pagos',0):.2f} + ventas {rep.get('ingresos_ventas',0):.2f})\nEgresos: S/{rep.get('egresos',0):.2f}\nNeto: S/{rep.get('neto',0):.2f}"
+            txt = f"Ingresos: S/{_num(rep.get('total_ingresos')):.2f} (pagos {_num(rep.get('ingresos_pagos')):.2f} + ventas {_num(rep.get('ingresos_ventas')):.2f})\nEgresos: S/{_num(rep.get('egresos')):.2f}\nNeto: S/{_num(rep.get('neto')):.2f}"
             ctk.CTkLabel(self.detalle_frame, text=txt, font=ctk.CTkFont(size=14), justify="left").pack(anchor="w", pady=10)
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()

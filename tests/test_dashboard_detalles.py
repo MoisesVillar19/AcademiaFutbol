@@ -87,6 +87,44 @@ def test_click_en_interior_de_card_abre_detalle(crear_vista, usuario_admin, ctk_
     assert len(vista.detalle_frame.winfo_children()) > 0
 
 
+def test_detalles_toleran_nulls(crear_vista, usuario_admin, ctk_root):
+    """BD real trae NULLs: ningun detalle debe romper el formateo."""
+    vista = crear_vista(DashboardView)
+    vista._detalle_cuotas([{"nombres": "A", "apellidos": "B", "dni": "1",
+                            "periodo": "2026-01", "saldo": None, "fecha_vencimiento": None}], "vencida")
+    vista._detalle_pagos([{"numero_recibo": "R-1", "monto_total": None,
+                           "metodo_pago": None, "fecha_pago": None}])
+    vista._detalle_monto([{"nombres": "A", "apellidos": "B", "dni": "1", "saldo": None}], "vencido")
+    ctk_root.update_idletasks()
+    assert len(vista.detalle_frame.winfo_children()) > 0
+
+
+def test_ingresos_hoy_sin_matplotlib_muestra_tabla(crear_vista, usuario_admin, ctk_root, monkeypatch):
+    """Sin matplotlib (Python sistema sin mpl) igual debe verse la tabla."""
+    import views.dashboard.dashboard_view as dv
+    monkeypatch.setattr(dv, "MATPLOTLIB_DISPONIBLE", False)
+    import controllers.dashboard_controller as dc
+    monkeypatch.setattr(dc, "listar_pagos_hoy", lambda: [
+        {"numero_recibo": "R-9", "monto_total": 75.5, "metodo_pago": "YAPE"}])
+    vista = crear_vista(DashboardView)
+    vista._mostrar_detalle("ingresos_hoy")
+    ctk_root.update_idletasks()
+    textos = []
+
+    def _rec(w):
+        try:
+            t = w.cget("text")
+            if t:
+                textos.append(str(t))
+        except Exception:
+            pass
+        for ch in w.winfo_children():
+            _rec(ch)
+
+    _rec(vista.detalle_frame)
+    assert any("R-9" in t for t in textos), "la tabla no muestra el recibo sin matplotlib"
+
+
 def test_detalle_nuevos_mes_con_dato(crear_vista, usuario_admin, ctk_root, crear_persona):
     from models.estudiante import Estudiante
     from repositories import estudiante_repository

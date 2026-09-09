@@ -36,22 +36,22 @@ class InventarioView(ctk.CTkFrame):
         self._crear_tab_historial()
 
     def _crear_tab_productos(self):
-        header = ctk.CTkFrame(self.tab_productos, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec_titulo = crear_seccion(
+            self.tab_productos, titulo="Inventario de Productos", icono="📦",
+            descripcion="Stock, precios y movimientos. Clic en ▾ Ver detalle para valorizado, categoría y tallas.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec_titulo, text="+ Nuevo", width=110, command=self._nuevo_producto,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(
-            header, text="Inventario de Productos",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            header, text="+ Nuevo", width=100,
-            command=self._nuevo_producto,
-        ).pack(side="right")
-
-        busqueda_frame = ctk.CTkFrame(self.tab_productos, fg_color="transparent")
-        busqueda_frame.pack(fill="x", padx=5, pady=(0, 5))
-
+        sec_busq = crear_seccion(
+            self.tab_productos, titulo="Búsqueda", icono="🔍",
+            descripcion="Busca por nombre o código de producto.",
+            nro=2,
+        )
+        busqueda_frame = ctk.CTkFrame(sec_busq, fg_color="transparent")
+        busqueda_frame.pack(fill="x", padx=10, pady=(0, 8))
         self.entry_busqueda = ctk.CTkEntry(
             busqueda_frame, placeholder_text="Buscar por nombre o código...",
             width=250,
@@ -59,6 +59,7 @@ class InventarioView(ctk.CTkFrame):
         self.entry_busqueda.pack(side="left", padx=5)
         self._debouncer = Debouncer(self, 300)
         self.entry_busqueda.bind("<KeyRelease>", lambda e: self._debouncer.call(self._on_busqueda_cambiar))
+        crear_nota(sec_busq, "Tip: clic en ▾ Ver detalle de cada tarjeta para precios, valorizado y tallas.")
 
         self.scroll_productos = ctk.CTkScrollableFrame(self.tab_productos)
         self.scroll_productos.pack(fill="both", expand=True, padx=5, pady=5)
@@ -66,7 +67,7 @@ class InventarioView(ctk.CTkFrame):
         self.pagination = PaginationBar(self.tab_productos, on_page_change=self._on_page, per_page=50)
         self.pagination.pack(fill="x", padx=5, pady=4)
 
-        self.label_status = ctk.CTkLabel(self.tab_productos, text="", font=ctk.CTkFont(size=11))
+        self.label_status = ctk.CTkLabel(self.tab_productos, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status.pack(pady=3)
 
     def _crear_tab_categorias(self):
@@ -354,11 +355,15 @@ class InventarioView(ctk.CTkFrame):
         self.label_status.configure(text=f"Total: {self._total} producto(s) • Página {self._pagina}/{total_paginas} • 50 por página")
 
     def _crear_card_producto(self, prod):
-        card = ctk.CTkFrame(self.scroll_productos)
-        card.pack(fill="x", padx=5, pady=3)
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle
+        card = crear_card_interactiva(self.scroll_productos)
+        card.pack(fill="x", padx=6, pady=4)
 
-        info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+        top = ctk.CTkFrame(card, fg_color="transparent")
+        top.pack(fill="x", padx=10, pady=8)
+
+        info = ctk.CTkFrame(top, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True)
 
         stock_bajo = prod.get("stock_actual", 0) <= prod.get("stock_minimo", 0)
         stock_color = "red" if stock_bajo and prod.get("stock_minimo", 0) > 0 else "gray"
@@ -366,7 +371,7 @@ class InventarioView(ctk.CTkFrame):
         ctk.CTkLabel(
             info,
             text=f"{prod.get('codigo', '')} - {prod.get('nombre', '')}",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"), text_color="#1F0A33",
         ).pack(anchor="w")
 
         compra = prod.get('precio_compra', 0) or prod.get('precio', 0)
@@ -389,7 +394,7 @@ class InventarioView(ctk.CTkFrame):
             font=ctk.CTkFont(size=12), text_color=stock_color,
         ).pack(anchor="w")
 
-        botones = ctk.CTkFrame(card, fg_color="transparent")
+        botones = ctk.CTkFrame(top, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
 
         ctk.CTkButton(
@@ -402,6 +407,28 @@ class InventarioView(ctk.CTkFrame):
             fg_color="#7C3AED", hover_color="#6D28D9",  # Morado
             command=lambda p=prod: self._ir_movimiento(p),
         ).pack(side="left", padx=2)
+
+        # ── Detalle expandible inline ──
+        def _poblar(frame, _p=prod):
+            compra = _p.get("precio_compra", 0) or _p.get("precio", 0)
+            venta = _p.get("precio_venta", 0) or _p.get("precio", 0)
+            try:
+                gan = (venta - compra) if venta and compra else 0
+                val = (_p.get("stock_actual", 0) or 0) * (venta or 0)
+                linea_detalle(frame, "Compra / Venta", f"S/{compra:.2f} / S/{venta:.2f}")
+                linea_detalle(frame, "Ganancia / Valorizado", f"S/{gan:.2f} / S/{val:.2f}")
+            except Exception:
+                linea_detalle(frame, "Precios", f"{compra} / {venta}")
+            linea_detalle(frame, "ID producto", _p.get("id_producto"))
+            linea_detalle(frame, "Categoría", _p.get("categoria_nombre"))
+            linea_detalle(frame, "Tipo uso", _p.get("tipo_uso"))
+            linea_detalle(frame, "Uniforme", _p.get("tipo_uniforme_nombre") or _p.get("nombre_tipo_uniforme"))
+            linea_detalle(frame, "Stock mín.", _p.get("stock_minimo"))
+            _bajo = ((_p.get('stock_actual', 0) or 0) <= (_p.get('stock_minimo', 0) or 0)) and ((_p.get('stock_minimo', 0) or 0) > 0)
+            linea_detalle(frame, "Estado", "⚠ BAJO STOCK" if _bajo else "OK")
+
+        toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar)
+        toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _nuevo_producto(self):
         self._limpiar_formulario()

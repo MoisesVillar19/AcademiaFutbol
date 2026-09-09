@@ -3,6 +3,9 @@ import customtkinter as ctk
 from controllers import pago_controller, login_controller
 from controllers import estudiante_controller, matricula_controller
 from widgets.date_picker import DatePicker
+from utils.debounce import Debouncer
+from utils import event_bus
+from widgets.pagination import PaginationBar
 try:
     from PIL import Image
 except ImportError:
@@ -14,8 +17,13 @@ class PagoView(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent")
         self._matriculas_map = {}
         self._cuotas_map = {}
+        self._pagina = 1
+        self._per_page = 50
+        self._total = 0
+        self._q_actual = ""
         self._crear_widgets()
         self._cargar_pagos()
+        event_bus.subscribe("pago_registrado", lambda *a, **k: self.after(200, lambda: self._recargar_actual()))
 
     def _crear_widgets(self):
         self.tabview = ctk.CTkTabview(self)
@@ -53,10 +61,14 @@ class PagoView(ctk.CTkFrame):
         ctk.CTkLabel(filtros, text="|", text_color="#E5E7EB").pack(side="left", padx=8)
         self.entry_busqueda = ctk.CTkEntry(filtros, placeholder_text="🔍 Buscar por DNI, recibo o método...", width=260, border_color="#DDD6E5")
         self.entry_busqueda.pack(side="left", padx=5)
-        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
+        self._debouncer = Debouncer(self, 300)
+        self.entry_busqueda.bind("<KeyRelease>", lambda e: self._debouncer.call(self._on_busqueda_cambiar))
 
         self.scroll_pagos = ctk.CTkScrollableFrame(self.tab_lista, fg_color="#F8F5FA")
         self.scroll_pagos.pack(fill="both", expand=True, padx=8, pady=6)
+
+        self.pagination = PaginationBar(self.tab_lista, on_page_change=self._on_page, per_page=50)
+        self.pagination.pack(fill="x", padx=8, pady=4)
 
         self.label_status = ctk.CTkLabel(self.tab_lista, text="⏳ Cargando pagos...", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status.pack(pady=4)
@@ -149,32 +161,64 @@ class PagoView(ctk.CTkFrame):
         self.label_status_morosos = ctk.CTkLabel(self.tab_morosos, text="", font=ctk.CTkFont(size=11))
         self.label_status_morosos.pack(pady=3)
 
-    def _cargar_pagos(self, pagos=None):
-        self._pagos_actuales = pagos if pagos is not None else pago_controller.listar_pagos()
-        self._renderizar_pagos(self._pagos_actuales)
+    def _recargar_actual(self):
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_pagos()
 
-    def _on_busqueda_cambiar(self, event=None):
-        texto = self.entry_busqueda.get().strip()
-        if not texto:
-            pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
+    def _on_page(self, page, per_page):
+        self._pagina = page
+        self._cargar_paginado()
+
+    def _cargar_pagos(self, pagos=None):
+        # compatibilidad: si se pasa lista, usa modo legacy (para compatibilidad con llamadas existentes)
+        if pagos is not None:
+            self._pagos_actuales = pagos
             self._renderizar_pagos(pagos)
             return
-        # buscador avanzado por DNI/Nombre/Recibo vía backend join
+        self._cargar_paginado()
+
+    def _cargar_paginado(self):
+        for widget in self.scroll_pagos.winfo_children():
+            widget.destroy()
+
+        q = self._q_actual
+        estado_val = "TODOS"  # filtros por fecha se mantienen en date pickers
         try:
-            pagos = pago_controller.buscar_por_texto(texto)
-            self._renderizar_pagos(pagos)
+            from repositories import pago_repository
+            offset = (self._pagina - 1) * self._per_page
+            rows, total = pago_repository.buscar_paginado(q=q, limit=self._per_page, offset=offset)
+            self._total = total
+            if hasattr(self, 'pagination'):
+                self.pagination.set_total(total)
         except Exception:
-            texto_l = texto.lower()
-            pagos = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
-            filtrados = []
-            for p in pagos:
-                recibo = str(p.get('numero_recibo', '')).lower()
-                metodo = str(p.get('metodo_pago', '')).lower()
-                dni = str(p.get('dni','')).lower()
-                nom = (str(p.get('nombres',''))+ " " + str(p.get('apellidos',''))).lower()
-                if texto_l in recibo or texto_l in metodo or texto_l in dni or texto_l in nom:
-                    filtrados.append(p)
-            self._renderizar_pagos(filtrados)
+            rows = self._pagos_actuales if hasattr(self, '_pagos_actuales') else pago_controller.listar_pagos()
+            if q:
+                ql = q.lower()
+                rows = [p for p in rows if ql in str(p.get('numero_recibo','')).lower() or ql in str(p.get('metodo_pago','')).lower() or ql in str(p.get('dni','')).lower() or ql in (str(p.get('nombres','')) + " " + str(p.get('apellidos',''))).lower()]
+            total = len(rows)
+            rows = rows[(self._pagina - 1) * self._per_page : self._pagina * self._per_page]
+            self._total = total
+
+        if not rows:
+            ctk.CTkLabel(self.scroll_pagos, text="📭 No se encontraron pagos", font=ctk.CTkFont(size=14), text_color="gray").pack(pady=30)
+            ctk.CTkLabel(self.scroll_pagos, text="Registra tu primer pago con + Nuevo Pago", font=ctk.CTkFont(size=12), text_color="#9CA3AF").pack()
+            self.label_status.configure(text=f"Total: {self._total} • Página {self._pagina}")
+            return
+
+        for pago in rows:
+            self._crear_card_pago(pago)
+
+        total_paginas = max(1, (self._total + self._per_page - 1) // self._per_page)
+        self.label_status.configure(text=f"✅ Total: {self._total} pago(s) • Página {self._pagina}/{total_paginas} • 50 por página")
+
+    def _on_busqueda_cambiar(self, event=None):
+        self._q_actual = self.entry_busqueda.get().strip()
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_paginado()
 
     def _renderizar_pagos(self, pagos):
         for widget in self.scroll_pagos.winfo_children():
@@ -190,12 +234,15 @@ class PagoView(ctk.CTkFrame):
         self.label_status.configure(text=f"✅ Total: {len(pagos)} pago(s) • {sum(p.get('monto_total',0) for p in pagos):.2f} S/ en total")
 
     def _crear_card_pago(self, pago):
-        from utils.ui_helpers import crear_card_interactiva
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle
         card = crear_card_interactiva(self.scroll_pagos)
         card.pack(fill="x", padx=6, pady=4)
 
-        info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="x", expand=True, padx=12, pady=10)
+        top = ctk.CTkFrame(card, fg_color="transparent")
+        top.pack(fill="x", padx=12, pady=10)
+
+        info = ctk.CTkFrame(top, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True)
 
         ctk.CTkLabel(info, text=f"🧾 Recibo: {pago.get('numero_recibo', '')}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#1F0A33").pack(anchor="w")
         ctk.CTkLabel(info, text=f"💵 S/{pago.get('monto_total', 0):.2f}  •  {pago.get('metodo_pago', '')}  •  📅 {pago.get('fecha_pago', '')}", font=ctk.CTkFont(size=13), text_color="#374151").pack(anchor="w", pady=2)
@@ -220,9 +267,22 @@ class PagoView(ctk.CTkFrame):
         elif comp_path:
             ctk.CTkLabel(info, text=f"📎 {os.path.basename(comp_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
         # badge monto
-        badge = ctk.CTkFrame(card, fg_color="#F3E8FF", corner_radius=8)
+        badge = ctk.CTkFrame(top, fg_color="#F3E8FF", corner_radius=8)
         badge.pack(side="right", padx=10)
         ctk.CTkLabel(badge, text=f"S/{pago.get('monto_total',0):.2f}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#7C3AED").pack(padx=10, pady=6)
+
+        # ── Detalle expandible inline ──
+        def _poblar_detalle(frame, _p=pago):
+            linea_detalle(frame, "ID pago", _p.get("id_pago"))
+            linea_detalle(frame, "Estudiante", f"{_p.get('nombres','')} {_p.get('apellidos','')} • DNI {_p.get('dni','')}")
+            linea_detalle(frame, "Cuota / Periodo", f"{_p.get('id_cuota','')} • {_p.get('periodo','')}")
+            linea_detalle(frame, "Observación", _p.get("observacion"))
+            linea_detalle(frame, "Comprobante", _p.get("comprobante_path") or _p.get("comprobante"))
+            linea_detalle(frame, "Registrado por", _p.get("username"))
+            linea_detalle(frame, "Fecha pago", _p.get("fecha_pago"))
+
+        toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar_detalle)
+        toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _buscar_por_fecha(self):
         fecha_inicio = self.date_picker_inicio.get()
@@ -236,13 +296,21 @@ class PagoView(ctk.CTkFrame):
             self.label_status.configure(text="La fecha de inicio debe ser anterior a la fecha fin", text_color="red")
             return
 
-        pagos = pago_controller.listar_por_fecha(fecha_inicio, fecha_fin)
-        self._cargar_pagos(pagos)
+        # Usar paginación también para búsqueda por fecha
+        self._q_actual = f"fecha:{fecha_inicio}..{fecha_fin}"
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_paginado()
 
     def _limpiar_fechas(self):
         self.date_picker_inicio.delete()
         self.date_picker_fin.delete()
-        self.label_status.configure(text="")
+        self._q_actual = ""
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_paginado()
 
     def _limpiar_form_pago(self):
         try:

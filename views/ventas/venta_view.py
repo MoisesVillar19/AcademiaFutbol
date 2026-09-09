@@ -24,12 +24,19 @@ class VentaView(ctk.CTkFrame):
         self._crear_tab_form()
 
     def _crear_tab_lista(self):
-        header = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
-        ctk.CTkLabel(header, text="Ventas (Uniformes / Tienda / Campeonato / Inscripción)", font=ctk.CTkFont(size=16, weight="bold")).pack(side="left")
-        ctk.CTkButton(header, text="Actualizar", width=100, command=self._cargar_ventas).pack(side="right")
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec = crear_seccion(
+            self.tab_lista, titulo="Ventas", icono="🛒",
+            descripcion="Uniformes / Tienda / Campeonato / Inscripción. Clic en ▾ Ver detalle para producto, cantidades y comprobante.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec, text="Actualizar", width=110, command=self._cargar_ventas,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
+        crear_nota(sec, "Tip: cada tarjeta se expande inline con el detalle completo.")
         self.scroll = ctk.CTkScrollableFrame(self.tab_lista)
         self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        self.label_lista_status = ctk.CTkLabel(self.tab_lista, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
+        self.label_lista_status.pack(pady=3)
 
     def _crear_tab_form(self):
         scroll = ctk.CTkScrollableFrame(self.tab_form)
@@ -68,17 +75,53 @@ class VentaView(ctk.CTkFrame):
         self._productos_map = {n: p for n,p in zip(nombres, prods)}
 
     def _cargar_ventas(self):
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle, crear_lista_vacia
         for w in self.scroll.winfo_children():
             w.destroy()
         ventas = venta_controller.listar_ventas()
+        if hasattr(self, "label_lista_status"):
+            try:
+                total = sum(v.get("monto_total", 0) for v in ventas)
+                self.label_lista_status.configure(text=f"Total: {len(ventas)} venta(s) • S/{total:.2f}")
+            except Exception:
+                self.label_lista_status.configure(text=f"Total: {len(ventas)} venta(s)")
         if not ventas:
-            ctk.CTkLabel(self.scroll, text="No hay ventas", text_color="gray").pack(pady=20)
+            crear_lista_vacia(self.scroll, "No hay ventas", "Registra la primera en la pestaña Registrar Venta")
             return
         for v in ventas:
-            card = ctk.CTkFrame(self.scroll)
-            card.pack(fill="x", padx=5, pady=3)
-            ctk.CTkLabel(card, text=f"{v['tipo_venta']} - {v['numero_recibo']} - S/{v['monto_total']:.2f} - {v['metodo_pago']}", font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=10, pady=5)
-            ctk.CTkLabel(card, text=f"Fecha: {v['fecha_venta']} | Comp: {v.get('comprobante_path','')}", text_color="gray").pack(anchor="w", padx=10)
+            card = crear_card_interactiva(self.scroll)
+            card.pack(fill="x", padx=6, pady=4)
+            top = ctk.CTkFrame(card, fg_color="transparent")
+            top.pack(fill="x", padx=10, pady=8)
+            info = ctk.CTkFrame(top, fg_color="transparent")
+            info.pack(side="left", fill="x", expand=True)
+            try:
+                titulo = f"{v['tipo_venta']} - {v['numero_recibo']} - S/{v['monto_total']:.2f} - {v['metodo_pago']}"
+            except Exception:
+                titulo = f"{v.get('tipo_venta','')} - {v.get('numero_recibo','')} - S/{v.get('monto_total',0)} - {v.get('metodo_pago','')}"
+            ctk.CTkLabel(info, text=titulo, font=ctk.CTkFont(size=13, weight="bold"), text_color="#1F0A33").pack(anchor="w")
+            ctk.CTkLabel(info, text=f"Fecha: {v.get('fecha_venta','')} | Comp: {v.get('comprobante_path','')}", text_color="#6B5B7B", font=ctk.CTkFont(size=12)).pack(anchor="w")
+            badge = ctk.CTkFrame(top, fg_color="#F3E8FF", corner_radius=8)
+            badge.pack(side="right", padx=10)
+            try:
+                ctk.CTkLabel(badge, text=f"S/{v.get('monto_total',0):.2f}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#7C3AED").pack(padx=10, pady=6)
+            except Exception:
+                pass
+
+            def _poblar(frame, _v=v):
+                linea_detalle(frame, "ID venta", _v.get("id_venta"))
+                linea_detalle(frame, "Recibo", _v.get("numero_recibo"))
+                linea_detalle(frame, "Tipo", _v.get("tipo_venta"))
+                linea_detalle(frame, "Producto", _v.get("producto_nombre") or _v.get("nombre_producto"))
+                linea_detalle(frame, "Cantidad", _v.get("cantidad"))
+                linea_detalle(frame, "Precio unit.", _v.get("precio_unitario") or _v.get("precio"))
+                linea_detalle(frame, "Método pago", _v.get("metodo_pago"))
+                linea_detalle(frame, "Estudiante", _v.get("id_estudiante") or _v.get("estudiante"))
+                linea_detalle(frame, "Comprobante", _v.get("comprobante_path"))
+                linea_detalle(frame, "Fecha", _v.get("fecha_venta"))
+
+            toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar)
+            toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _elegir_comprobante(self):
         path = filedialog.askopenfilename(filetypes=[("Imagen","*.jpg *.jpeg *.png"),("Todos","*.*")])

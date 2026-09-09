@@ -68,3 +68,98 @@ def crear_card_interactiva(parent, hover_bg="#F3E8FF", border_hover="#DDD6E5"):
     except Exception:
         pass
     return frame
+
+
+# ── Estándar estilo Configuración (todas las vistas lista) ──
+TITULO_COLOR = "#3D1559"
+DESC_COLOR = "#6B5B7B"
+
+def crear_header_vista(parent, titulo, padx=15, pady_top=15, pady_bottom=5):
+    """Header transparente estilo Configuración: título 24 bold."""
+    header = ctk.CTkFrame(parent, fg_color="transparent")
+    header.pack(fill="x", padx=padx, pady=(pady_top, pady_bottom))
+    ctk.CTkLabel(header, text=titulo, font=ctk.CTkFont(size=24, weight="bold")).pack(side="left")
+    return header
+
+
+def crear_seccion(parent, titulo, icono="", descripcion="", nro=None, badge=None):
+    """Sección blanca estilo Configuración: head con nro+icono+título + badge + descripción."""
+    sec = ctk.CTkFrame(parent, fg_color="white", corner_radius=8)
+    sec.pack(fill="x", padx=5, pady=5)
+    head = ctk.CTkFrame(sec, fg_color="transparent")
+    head.pack(fill="x", padx=10, pady=(8, 4))
+    pref = f"{nro}. " if nro is not None else ""
+    ctk.CTkLabel(head, text=f"{pref}{icono}  {titulo}" if icono else f"{pref}{titulo}",
+                 font=ctk.CTkFont(size=14, weight="bold"), text_color=TITULO_COLOR).pack(side="left")
+    if badge:
+        ctk.CTkLabel(head, text=badge, font=ctk.CTkFont(size=10), text_color="white",
+                     fg_color="#7C3AED", corner_radius=6, width=50).pack(side="right")
+    if descripcion:
+        ctk.CTkLabel(sec, text=descripcion, font=ctk.CTkFont(size=11), text_color=DESC_COLOR,
+                     justify="left", wraplength=650).pack(anchor="w", padx=10, pady=(0, 6))
+    return sec
+
+
+def crear_nota(parent, texto):
+    """Nota ℹ gris estilo Configuración."""
+    lbl = ctk.CTkLabel(parent, text=f"ℹ {texto}", font=ctk.CTkFont(size=11),
+                       text_color=DESC_COLOR, justify="left", wraplength=620)
+    lbl.pack(anchor="w", padx=10, pady=2)
+    return lbl
+
+
+def crear_lista_vacia(parent, texto, subtexto=""):
+    """Estado vacío estándar."""
+    ctk.CTkLabel(parent, text=texto, text_color="gray",
+                 font=ctk.CTkFont(size=13)).pack(pady=(20, 2))
+    if subtexto:
+        ctk.CTkLabel(parent, text=subtexto, text_color="#9CA3AF",
+                     font=ctk.CTkFont(size=11)).pack(pady=(0, 10))
+
+
+def agregar_detalle_expandible(card, detalle_fn, texto_abrir="▾ Ver detalle", texto_cerrar="▴ Ocultar"):
+    """Agrega a una card un bloque detalle colapsable estilo Configuración.
+
+    detalle_fn(frame): puebla el frame detalle (se llama lazy la primera vez que se abre).
+    Retorna (toggle_btn, detalle_frame).
+    """
+    detalle_frame = ctk.CTkFrame(card, fg_color="#F8F5FA", corner_radius=6)
+    # no se empaqueta hasta abrir
+    estado = {"abierto": False, "cargado": False}
+
+    def _toggle():
+        if estado["abierto"]:
+            try:
+                detalle_frame.pack_forget()
+            except Exception:
+                pass
+            toggle_btn.configure(text=texto_abrir)
+            estado["abierto"] = False
+        else:
+            if not estado["cargado"]:
+                try:
+                    detalle_fn(detalle_frame)
+                except Exception as e:
+                    ctk.CTkLabel(detalle_frame, text=f"No se pudo cargar detalle: {e}",
+                                 text_color="gray", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10, pady=4)
+                estado["cargado"] = True
+            detalle_frame.pack(fill="x", padx=10, pady=(0, 8))
+            toggle_btn.configure(text=texto_cerrar)
+            estado["abierto"] = True
+
+    toggle_btn = ctk.CTkButton(card, text=texto_abrir, width=110, height=26,
+                               fg_color="#E5E7EB", text_color="#1F0A33",
+                               hover_color="#DDD6E5", command=_toggle)
+    return toggle_btn, detalle_frame, _toggle
+
+
+def linea_detalle(parent, etiqueta, valor):
+    """Fila etiqueta: valor estilo Configuración."""
+    row = ctk.CTkFrame(parent, fg_color="transparent")
+    row.pack(fill="x", padx=10, pady=1)
+    ctk.CTkLabel(row, text=f"{etiqueta}:", font=ctk.CTkFont(size=11, weight="bold"),
+                 text_color=TITULO_COLOR).pack(side="left")
+    ctk.CTkLabel(row, text=str(valor) if valor not in (None, "") else "—",
+                 font=ctk.CTkFont(size=11), text_color=DESC_COLOR,
+                 justify="left", wraplength=500).pack(side="left", padx=8)
+    return row

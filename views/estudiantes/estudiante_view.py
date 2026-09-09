@@ -33,21 +33,24 @@ class EstudianteView(ctk.CTkFrame):
         self._crear_tab_apoderados()
 
     def _crear_tab_lista(self):
-        header = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        # ── Sección 1: título estilo Configuración ──
+        sec_titulo = crear_seccion(
+            self.tab_lista, titulo="Lista de Estudiantes", icono="👥",
+            descripcion="Todos los alumnos con su estado. Clic en ▾ Ver detalle para contacto, edad y apoderados.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec_titulo, text="+ Nuevo", width=110, command=self._nuevo_estudiante,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(
-            header, text="Lista de Estudiantes",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            header, text="+ Nuevo", width=100,
-            command=self._nuevo_estudiante,
-        ).pack(side="right")
-
-        filtros = ctk.CTkFrame(self.tab_lista, fg_color="transparent")
-        filtros.pack(fill="x", padx=5, pady=5)
+        # ── Sección 2: filtros ──
+        sec_filtros = crear_seccion(
+            self.tab_lista, titulo="Filtros y búsqueda", icono="🔍",
+            descripcion="Filtra por estado o busca por nombre, DNI o Carnet.",
+            nro=2,
+        )
+        filtros = ctk.CTkFrame(sec_filtros, fg_color="transparent")
+        filtros.pack(fill="x", padx=10, pady=(0, 8))
 
         self.filtro_estado = ctk.CTkSegmentedButton(
             filtros, values=["Todos", "Activos", "Retirados", "Reingresantes"],
@@ -62,11 +65,12 @@ class EstudianteView(ctk.CTkFrame):
         )
         self.entry_busqueda.pack(side="left", padx=5)
         self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
+        crear_nota(sec_filtros, "Tip: clic en ▾ Ver detalle de cada tarjeta para ver contacto y apoderados sin abrir el formulario.")
 
         self.scroll_estudiantes = ctk.CTkScrollableFrame(self.tab_lista)
         self.scroll_estudiantes.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.label_status = ctk.CTkLabel(self.tab_lista, text="", font=ctk.CTkFont(size=11))
+        self.label_status = ctk.CTkLabel(self.tab_lista, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status.pack(pady=3)
 
     def _crear_tab_formulario(self):
@@ -260,24 +264,28 @@ class EstudianteView(ctk.CTkFrame):
         self.label_status.configure(text=f"Total: {len(estudiantes)} estudiante(s)")
 
     def _crear_card_estudiante(self, est):
-        card = ctk.CTkFrame(self.scroll_estudiantes)
-        card.pack(fill="x", padx=5, pady=3)
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle
+        card = crear_card_interactiva(self.scroll_estudiantes)
+        card.pack(fill="x", padx=6, pady=4)
 
         estado = est.get("estado", "ACTIVO")
         color_estado = "green" if estado == "ACTIVO" else ("orange" if estado == "REINGRESANTE" else "red")
 
-        info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+        top = ctk.CTkFrame(card, fg_color="transparent")
+        top.pack(fill="x", padx=10, pady=8)
+
+        info = ctk.CTkFrame(top, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True)
 
         nombre = f"{est.get('nombres', '')} {est.get('apellidos', '')}"
         ctk.CTkLabel(
             info, text=nombre,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"), text_color="#1F0A33",
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             info, text=f"DNI: {est.get('dni', '')}  |  Estado: {estado}",
-            font=ctk.CTkFont(size=12), text_color="gray",
+            font=ctk.CTkFont(size=12), text_color="#6B5B7B",
         ).pack(anchor="w")
         if int(est.get("es_nuevo", 0) or 0) == 1:
             ctk.CTkLabel(info, text="🆕 NUEVO • Regala Camiseta S/0 en 1ª matrícula", font=ctk.CTkFont(size=11, weight="bold"), text_color="#7C3AED").pack(anchor="w")
@@ -310,7 +318,7 @@ class EstudianteView(ctk.CTkFrame):
         elif foto_path:
             ctk.CTkLabel(info, text=f"📷 Foto: {os.path.basename(foto_path)}", font=ctk.CTkFont(size=11), text_color="#7C3AED").pack(anchor="w")
 
-        botones = ctk.CTkFrame(card, fg_color="transparent")
+        botones = ctk.CTkFrame(top, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
 
         ctk.CTkButton(
@@ -338,6 +346,32 @@ class EstudianteView(ctk.CTkFrame):
                 fg_color="#6c757d", hover_color="#5a6268",
                 command=lambda e=est: self._desactivar(e),
             ).pack(side="left", padx=2)
+
+        # ── Detalle expandible inline (contacto + apoderados, lazy) ──
+        def _poblar_detalle(frame, _est=est):
+            linea_detalle(frame, "Dirección", _est.get("direccion"))
+            linea_detalle(frame, "Teléfono", _est.get("telefono"))
+            linea_detalle(frame, "Correo", _est.get("correo"))
+            linea_detalle(frame, "F. nacimiento", _est.get("fecha_nacimiento"))
+            linea_detalle(frame, "Edad", _est.get("edad"))
+            linea_detalle(frame, "Sexo", _est.get("sexo"))
+            linea_detalle(frame, "Carnet", _est.get("carnet"))
+            try:
+                apods = estudiante_controller.obtener_apoderados_por_estudiante(_est.get("id_estudiante"))
+            except Exception:
+                apods = []
+            if apods:
+                for a in apods[:3]:
+                    tag = "principal" if a.get("es_principal") else "secundario"
+                    linea_detalle(frame, f"Apoderado ({tag})",
+                                  f"{a.get('nombres','')} {a.get('apellidos','')} • {a.get('parentesco','')} • {a.get('telefono','')}")
+                if len(apods) > 3:
+                    linea_detalle(frame, "Apoderados", f"+ {len(apods)-3} más (ver pestaña Apoderados)")
+            else:
+                linea_detalle(frame, "Apoderados", "Sin apoderados registrados")
+
+        toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar_detalle)
+        toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _nuevo_estudiante(self):
         self._limpiar_formulario()

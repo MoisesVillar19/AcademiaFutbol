@@ -195,9 +195,7 @@ class App(ctk.CTk):
             try:
                 w.bind("<Button-1>", lambda e: self._mostrar_usuarios())
                 w.configure(cursor="hand2")
-                # hover sutil
-                w.bind("<Enter>", lambda e, f=user_frame: f.configure(border_color="#7C3AED", cursor="hand2"))
-                w.bind("<Leave>", lambda e, f=user_frame: f.configure(border_color="#4E1D70", cursor=""))
+                # solo cursor (sin cambio de borde: evita repintados/parpadeo)
             except Exception:
                 pass
 

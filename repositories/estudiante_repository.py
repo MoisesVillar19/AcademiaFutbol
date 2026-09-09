@@ -92,6 +92,19 @@ def contar_nuevos_es_nuevo(activo: int = 1) -> int:
     return row["total"] if row else 0
 
 
+def listar_nuevos_por_periodo(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    return fetch_all(
+        """SELECT e.*, p.dni, p.nombres, p.apellidos, p.fecha_nacimiento,
+                  p.sexo, p.telefono, p.correo
+           FROM estudiante e
+           JOIN persona p ON e.id_persona = p.id_persona
+           WHERE e.es_nuevo = 1 AND e.fecha_ingreso BETWEEN ? AND ?
+                 AND e.activo = 1
+           ORDER BY e.fecha_ingreso DESC""",
+        (fecha_inicio, fecha_fin),
+    )
+
+
 def contar_por_es_nuevo(es_nuevo: int = 1, fecha_inicio: str | None = None, fecha_fin: str | None = None) -> int:
     if fecha_inicio and fecha_fin:
         row = fetch_one("SELECT COUNT(*) as total FROM estudiante WHERE es_nuevo=? AND fecha_ingreso BETWEEN ? AND ? AND activo=1", (es_nuevo, fecha_inicio, fecha_fin))
@@ -136,3 +149,29 @@ def soft_delete(id_estudiante: int) -> None:
         (id_estudiante,),
     )
     conn.commit()
+
+
+def buscar_paginado(q: str = "", activo: int | None = 1, estado=None, limit: int = 50, offset: int = 0) -> tuple[list[dict], int]:
+    where = []
+    params = []
+    if activo is not None:
+        where.append("e.activo = ?")
+        params.append(activo)
+    if estado is not None:
+        if isinstance(estado, (list, tuple)):
+            placeholders = ",".join("?" * len(estado))
+            where.append(f"e.estado IN ({placeholders})")
+            params.extend(estado)
+        else:
+            where.append("e.estado = ?")
+            params.append(estado)
+    if q:
+        like = f"%{q}%"
+        where.append("(p.dni LIKE ? OR p.nombres LIKE ? OR p.apellidos LIKE ?)")
+        params.extend([like, like, like])
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+    base = f"FROM estudiante e JOIN persona p ON e.id_persona=p.id_persona{where_sql}"
+    cnt = fetch_one(f"SELECT COUNT(*) as c {base}", tuple(params))
+    total = cnt["c"] if cnt else 0
+    rows = fetch_all(f"SELECT e.*, p.dni, p.nombres, p.apellidos, p.fecha_nacimiento, p.sexo, p.telefono, p.correo {base} ORDER BY p.apellidos, p.nombres LIMIT ? OFFSET ?", tuple(params + [limit, offset]))
+    return rows, total

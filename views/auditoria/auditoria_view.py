@@ -84,10 +84,10 @@ class AuditoriaView(ctk.CTkFrame):
         for log in logs:
             row = ctk.CTkFrame(self.tabla_frame, fg_color="white", border_width=1, border_color="#E5E7EB", corner_radius=6)
             row.pack(fill="x", padx=2, pady=2)
-            # hover para distinguir interactivo
+            # solo cursor (sin cambio de borde: evita repintados/parpadeo)
             try:
-                row.bind("<Enter>", lambda e, r=row: r.configure(border_color="#7C3AED", cursor="hand2"))
-                row.bind("<Leave>", lambda e, r=row: r.configure(border_color="#E5E7EB", cursor=""))
+                row.bind("<Enter>", lambda e, r=row: r.configure(cursor="hand2"))
+                row.bind("<Leave>", lambda e, r=row: r.configure(cursor=""))
             except Exception:
                 pass
             ctk.CTkLabel(row, text=log.get("fecha", "")[:19], width=125, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)

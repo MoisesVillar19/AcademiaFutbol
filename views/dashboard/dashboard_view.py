@@ -144,10 +144,11 @@ class DashboardView(ctk.CTkFrame):
         )
         card.pack(side="left", padx=6, pady=6, fill="x", expand=True)
         card.pack_propagate(False)
-        # hover mano
+        # solo cursor (sin cambio de borde: el repintado en cada Enter/Leave
+        # produce parpadeo al mover el mouse sobre listas de cards)
         try:
-            card.bind("<Enter>", lambda e: card.configure(cursor="hand2", border_color="#7C3AED"))
-            card.bind("<Leave>", lambda e: card.configure(cursor="", border_color="#E5E7EB"))
+            card.bind("<Enter>", lambda e: card.configure(cursor="hand2"))
+            card.bind("<Leave>", lambda e: card.configure(cursor=""))
         except Exception:
             pass
 
@@ -368,6 +369,27 @@ class DashboardView(ctk.CTkFrame):
                 "Ingresos por Transacción",
             )
 
+        # tabla siempre (aunque haya gráfico): recibo / monto / método
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
+        header.pack(fill="x", padx=5, pady=2)
+        for col, (texto, ancho) in enumerate([
+            ("N° Recibo", 120), ("Monto", 100), ("Método", 120)
+        ]):
+            ctk.CTkLabel(header, text=texto, width=ancho,
+                         font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=col, padx=5, pady=5)
+        for pago in pagos[:30]:
+            row = ctk.CTkFrame(self.detalle_frame)
+            row.pack(fill="x", padx=5, pady=1)
+            ctk.CTkLabel(row, text=str(pago.get("numero_recibo", "")), width=120,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
+            ctk.CTkLabel(row, text=f"S/{pago.get('monto_total', 0):.2f}", width=100,
+                         font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(pago.get("metodo_pago", "")), width=120,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
+        if len(pagos) > 30:
+            ctk.CTkLabel(self.detalle_frame, text=f"Mostrando 30 de {len(pagos)} pagos",
+                         text_color="gray").pack(pady=5)
+
     def _detalle_ingresos_mes(self):
         datos = dashboard_controller.obtener_ingresos_por_dia_mes()
         total = sum(d.get("monto", 0) for d in datos)
@@ -500,13 +522,111 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
     def _detalle_nuevos_mes(self):
-        ctk.CTkLabel(self.detalle_frame, text="Nuevos vs Antiguos: ver Reportes > Nuevos vs Antiguos", font=ctk.CTkFont(size=12)).pack(pady=20)
+        alumnos = dashboard_controller.listar_nuevos_mes()
+
+        ctk.CTkLabel(
+            self.detalle_frame,
+            text=f"Total: {len(alumnos)} alumnos nuevos este mes",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", pady=(10, 5))
+
+        if not alumnos:
+            ctk.CTkLabel(self.detalle_frame, text="No hay alumnos nuevos este mes").pack(pady=10)
+            return
+
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
+        header.pack(fill="x", padx=5, pady=2)
+
+        for col, (texto, ancho) in enumerate([
+            ("DNI", 80), ("Nombre", 220), ("Ingreso", 100), ("Teléfono", 110)
+        ]):
+            ctk.CTkLabel(
+                header, text=texto, width=ancho,
+                font=ctk.CTkFont(size=12, weight="bold"),
+            ).grid(row=0, column=col, padx=5, pady=5)
+
+        for alumno in alumnos[:50]:
+            row = ctk.CTkFrame(self.detalle_frame)
+            row.pack(fill="x", padx=5, pady=1)
+
+            ctk.CTkLabel(row, text=str(alumno.get("dni", "")), width=80,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
+            ctk.CTkLabel(row, text=f"{alumno.get('nombres', '')} {alumno.get('apellidos', '')}",
+                         width=220, font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(alumno.get("fecha_ingreso", "")), width=100,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(alumno.get("telefono", "")), width=110,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
+
+        if len(alumnos) > 50:
+            ctk.CTkLabel(
+                self.detalle_frame,
+                text=f"Mostrando 50 de {len(alumnos)} alumnos",
+                text_color="gray",
+            ).pack(pady=5)
 
     def _detalle_antiguos_mes(self):
-        self._detalle_nuevos_mes()
+        matriculas = dashboard_controller.listar_antiguos_mes()
+
+        ctk.CTkLabel(
+            self.detalle_frame,
+            text=f"Total: {len(matriculas)} matrículas de antiguos este mes",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", pady=(10, 5))
+
+        if not matriculas:
+            ctk.CTkLabel(self.detalle_frame, text="No hay matrículas de antiguos este mes").pack(pady=10)
+            return
+
+        self._tabla_matriculas_mes(matriculas)
 
     def _detalle_matriculas_mes(self):
-        ctk.CTkLabel(self.detalle_frame, text="Matrículas mes: ver listado detallado en Reportes", font=ctk.CTkFont(size=12)).pack(pady=20)
+        matriculas = dashboard_controller.listar_matriculas_mes()
+
+        ctk.CTkLabel(
+            self.detalle_frame,
+            text=f"Total: {len(matriculas)} matrículas este mes",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", pady=(10, 5))
+
+        if not matriculas:
+            ctk.CTkLabel(self.detalle_frame, text="No hay matrículas este mes").pack(pady=10)
+            return
+
+        self._tabla_matriculas_mes(matriculas)
+
+    def _tabla_matriculas_mes(self, matriculas):
+        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
+        header.pack(fill="x", padx=5, pady=2)
+
+        for col, (texto, ancho) in enumerate([
+            ("Estudiante", 200), ("DNI", 80), ("Tarifa", 150), ("Inicio", 100)
+        ]):
+            ctk.CTkLabel(
+                header, text=texto, width=ancho,
+                font=ctk.CTkFont(size=12, weight="bold"),
+            ).grid(row=0, column=col, padx=5, pady=5)
+
+        for mat in matriculas[:50]:
+            row = ctk.CTkFrame(self.detalle_frame)
+            row.pack(fill="x", padx=5, pady=1)
+
+            nombre = f"{mat.get('nombres', '')} {mat.get('apellidos', '')}"
+            ctk.CTkLabel(row, text=nombre, width=200,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(mat.get("dni", "")), width=80,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(mat.get("tarifa_nombre", "")), width=150,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
+            ctk.CTkLabel(row, text=str(mat.get("fecha_inicio", "")), width=100,
+                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
+
+        if len(matriculas) > 50:
+            ctk.CTkLabel(
+                self.detalle_frame,
+                text=f"Mostrando 50 de {len(matriculas)} matrículas",
+                text_color="gray",
+            ).pack(pady=5)
 
     def _detalle_stock(self):
         productos = dashboard_controller.listar_stock_bajo()

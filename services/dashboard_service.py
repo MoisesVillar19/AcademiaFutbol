@@ -174,11 +174,30 @@ def obtener_ingresos_por_dia_mes() -> list[dict]:
 
 
 def contar_matriculas_mes() -> int:
+    ini, fin = _rango_mes_actual()
+    return matricula_repository.contar_por_mes(ini, fin)
+
+
+def _rango_mes_actual() -> tuple:
     today = get_today()
     fecha_inicio_mes = today[:7] + "-01"
     ultimo_dia = _ultimo_dia_mes(today)
-    fecha_fin_mes = f"{today[:7]}-{ultimo_dia:02d}"
-    return matricula_repository.contar_por_mes(fecha_inicio_mes, fecha_fin_mes)
+    return fecha_inicio_mes, f"{today[:7]}-{ultimo_dia:02d}"
+
+
+def listar_nuevos_mes() -> list[dict]:
+    ini, fin = _rango_mes_actual()
+    return estudiante_repository.listar_nuevos_por_periodo(ini, fin)
+
+
+def listar_antiguos_mes() -> list[dict]:
+    ini, fin = _rango_mes_actual()
+    return matricula_repository.listar_antiguos_por_mes(ini, fin)
+
+
+def listar_matriculas_mes() -> list[dict]:
+    ini, fin = _rango_mes_actual()
+    return matricula_repository.listar_por_mes(ini, fin)
 
 
 def _obtener_configuracion():

@@ -39,3 +39,15 @@ def obtener_ingresos_por_dia_mes() -> list[dict]:
 
 def contar_matriculas_mes() -> int:
     return dashboard_service.contar_matriculas_mes()
+
+
+def listar_nuevos_mes() -> list[dict]:
+    return dashboard_service.listar_nuevos_mes()
+
+
+def listar_antiguos_mes() -> list[dict]:
+    return dashboard_service.listar_antiguos_mes()
+
+
+def listar_matriculas_mes() -> list[dict]:
+    return dashboard_service.listar_matriculas_mes()

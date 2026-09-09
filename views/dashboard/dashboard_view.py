@@ -219,6 +219,11 @@ class DashboardView(ctk.CTkFrame):
         self.titulo_label.configure(text=titulos.get(tipo, "Detalle"))
 
         try:
+            from utils.logger import logger as _diag_log
+            _diag_log.info(f"Dashboard detalle solicitado: {tipo}")
+        except Exception:
+            pass
+        try:
             if tipo == "alumnos":
                 self._detalle_alumnos()
             elif tipo == "vencidas":
@@ -260,6 +265,13 @@ class DashboardView(ctk.CTkFrame):
             ).pack(pady=20)
         try:
             self.detalle_frame.update_idletasks()
+        except Exception:
+            pass
+        try:
+            from utils.logger import logger as _diag_log2
+            n = len(self.detalle_frame.winfo_children())
+            _diag_log2.info(f"Dashboard detalle '{tipo}' renderizado: {n} widgets "
+                            f"(mpl={'SI' if MATPLOTLIB_DISPONIBLE else 'NO'})")
         except Exception:
             pass
 

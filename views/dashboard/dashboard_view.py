@@ -134,23 +134,18 @@ class DashboardView(ctk.CTkFrame):
         ).pack(expand=True)
 
     def _crear_card(self, parent, titulo, valor, color, comando):
-        # Card más llena, tipografía grande, borde y hover marcado
-        card = ctk.CTkButton(
-            parent, width=220, height=110,
-            fg_color="white", hover_color="#F3E8FF",
+        # Card clickeable estilo Configuración (frame blanco, sin hover que
+        # repinte). NOTA: antes era CTkButton, pero en CustomTkinter 6 el
+        # botón es un compuesto (frame+canvas+label internos) que se traga
+        # los clics: solo el borde respondía. Con frame + clic propagado a
+        # TODO el interior, cualquier punto abre el detalle (sin doble
+        # disparo: los frames/labels no tienen comando nativo).
+        card = ctk.CTkFrame(
+            parent, fg_color="white",
             border_width=1, border_color="#E5E7EB",
             corner_radius=12,
-            command=comando,
         )
         card.pack(side="left", padx=6, pady=6, fill="x", expand=True)
-        card.pack_propagate(False)
-        # solo cursor (sin cambio de borde: el repintado en cada Enter/Leave
-        # produce parpadeo al mover el mouse sobre listas de cards)
-        try:
-            card.bind("<Enter>", lambda e: card.configure(cursor="hand2"))
-            card.bind("<Leave>", lambda e: card.configure(cursor=""))
-        except Exception:
-            pass
 
         frame_interno = ctk.CTkFrame(card, fg_color="transparent")
         frame_interno.pack(expand=True, fill="both", padx=8, pady=8)
@@ -159,6 +154,26 @@ class DashboardView(ctk.CTkFrame):
         ctk.CTkLabel(frame_interno, text=valor, font=ctk.CTkFont(size=26, weight="bold"), text_color=color).pack(pady=(2, 6))
         # sutil línea color
         ctk.CTkFrame(frame_interno, fg_color=color, height=3, corner_radius=2).pack(fill="x", padx=20, pady=(0,4))
+
+        try:
+            def _hacer_clickeable(w):
+                try:
+                    w.bind("<Button-1>", lambda e: comando(), add="+")
+                except Exception:
+                    pass
+                try:
+                    w.configure(cursor="hand2")
+                except Exception:
+                    pass
+                try:
+                    hijos = w.winfo_children()
+                except Exception:
+                    return
+                for ch in hijos:
+                    _hacer_clickeable(ch)
+            _hacer_clickeable(card)
+        except Exception:
+            pass
 
     def _mostrar_detalle(self, tipo):
         for widget in self.cards_frame.winfo_children():

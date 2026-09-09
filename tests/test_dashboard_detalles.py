@@ -54,6 +54,39 @@ def test_detalles_mes_con_datos(crear_vista, usuario_admin, ctk_root, crear_matr
     assert len(vista.detalle_frame.winfo_children()) >= 3
 
 
+def test_click_en_interior_de_card_abre_detalle(crear_vista, usuario_admin, ctk_root):
+    """Toda la card responde al clic, no solo el borde (el frame interno
+    tapaba el boton y los clics sobre labels no hacian nada)."""
+    vista = crear_vista(DashboardView)
+    vista.pack(fill="both", expand=True)
+    ctk_root.update_idletasks()
+    ctk_root.update()
+    rows = vista.cards_frame.winfo_children()
+    assert rows, "no hay filas de cards"
+    btn = rows[0].winfo_children()[0]
+
+    # En CTk 6 los widgets son compuestos: el bind vive en el widget
+    # interno visible. Se dispara el evento donde hay binding real.
+    con_bind = []
+
+    def _buscar(w):
+        try:
+            if w.bind("<Button-1>"):
+                con_bind.append(w)
+        except Exception:
+            pass
+        for ch in w.winfo_children():
+            _buscar(ch)
+
+    _buscar(btn)
+    assert con_bind, "ningun widget interior de la card tiene clic"
+    con_bind[0].event_generate("<Button-1>")
+    ctk_root.update()
+    assert vista.titulo_label.cget("text") == "Alumnos Activos", \
+        f"el clic interior no abrio el detalle: {vista.titulo_label.cget('text')}"
+    assert len(vista.detalle_frame.winfo_children()) > 0
+
+
 def test_detalle_nuevos_mes_con_dato(crear_vista, usuario_admin, ctk_root, crear_persona):
     from models.estudiante import Estudiante
     from repositories import estudiante_repository

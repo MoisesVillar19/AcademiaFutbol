@@ -1,5 +1,8 @@
 import customtkinter as ctk
 from controllers import inventario_controller, login_controller
+from utils.debounce import Debouncer
+from utils import event_bus
+from widgets.pagination import PaginationBar
 
 
 class InventarioView(ctk.CTkFrame):
@@ -7,9 +10,14 @@ class InventarioView(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent")
         self._categorias_map = {}
         self._productos_map = {}
+        self._pagina = 1
+        self._per_page = 50
+        self._total = 0
+        self._q_actual = ""
         self._crear_widgets()
         self._cargar_combo_categorias()
         self._cargar_productos()
+        event_bus.subscribe("producto_actualizado", lambda *a, **kw: self.after(200, lambda: self._recargar_actual()))
 
     def _crear_widgets(self):
         self.tabview = ctk.CTkTabview(self)
@@ -49,10 +57,14 @@ class InventarioView(ctk.CTkFrame):
             width=250,
         )
         self.entry_busqueda.pack(side="left", padx=5)
-        self.entry_busqueda.bind("<KeyRelease>", self._on_busqueda_cambiar)
+        self._debouncer = Debouncer(self, 300)
+        self.entry_busqueda.bind("<KeyRelease>", lambda e: self._debouncer.call(self._on_busqueda_cambiar))
 
         self.scroll_productos = ctk.CTkScrollableFrame(self.tab_productos)
         self.scroll_productos.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.pagination = PaginationBar(self.tab_productos, on_page_change=self._on_page, per_page=50)
+        self.pagination.pack(fill="x", padx=5, pady=4)
 
         self.label_status = ctk.CTkLabel(self.tab_productos, text="", font=ctk.CTkFont(size=11))
         self.label_status.pack(pady=3)
@@ -283,40 +295,63 @@ class InventarioView(ctk.CTkFrame):
         self.label_status_hist = ctk.CTkLabel(self.tab_historial, text="", font=ctk.CTkFont(size=11))
         self.label_status_hist.pack(pady=3)
 
+    def _recargar_actual(self):
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_productos()
+
+    def _on_page(self, page, per_page):
+        self._pagina = page
+        self._cargar_paginado()
+
     def _cargar_productos(self):
-        self._on_busqueda_cambiar()
+        self._q_actual = self.entry_busqueda.get().strip()
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_paginado()
 
     def _on_busqueda_cambiar(self, event=None):
-        texto = self.entry_busqueda.get().strip().lower()
-        todos = inventario_controller.listar_productos()
+        self._q_actual = self.entry_busqueda.get().strip()
+        self._pagina = 1
+        if hasattr(self, 'pagination'):
+            self.pagination.reset()
+        self._cargar_paginado()
 
-        if texto:
-            filtrados = []
-            for p in todos:
-                nombre = str(p.get('nombre', '')).lower()
-                codigo = str(p.get('codigo', '')).lower()
-                if texto in nombre or texto in codigo:
-                    filtrados.append(p)
-            self._renderizar_productos(filtrados)
-        else:
-            self._renderizar_productos(todos)
-
-    def _renderizar_productos(self, productos):
+    def _cargar_paginado(self):
         for widget in self.scroll_productos.winfo_children():
             widget.destroy()
 
-        if not productos:
-            ctk.CTkLabel(
-                self.scroll_productos, text="No se encontraron productos",
-                text_color="gray",
-            ).pack(pady=20)
-            self.label_status.configure(text="Total: 0")
+        try:
+            from repositories import producto_repository
+            offset = (self._pagina - 1) * self._per_page
+            rows, total = producto_repository.buscar_paginado(q=self._q_actual, limit=self._per_page, offset=offset)
+            self._total = total
+            if hasattr(self, 'pagination'):
+                self.pagination.set_total(total)
+        except Exception:
+            todos = inventario_controller.listar_productos()
+            if self._q_actual:
+                ql = self._q_actual.lower()
+                rows = [p for p in todos if ql in str(p.get('nombre', '')).lower() or ql in str(p.get('codigo', '')).lower()]
+                total = len(rows)
+                rows = rows[(self._pagina - 1) * self._per_page : self._pagina * self._per_page]
+            else:
+                total = len(todos)
+                rows = todos[:self._per_page]
+            self._total = total
+
+        if not rows:
+            ctk.CTkLabel(self.scroll_productos, text="No se encontraron productos", text_color="gray").pack(pady=20)
+            self.label_status.configure(text=f"Total: {self._total} • Página {self._pagina}")
             return
 
-        for prod in productos:
+        for prod in rows:
             self._crear_card_producto(prod)
 
-        self.label_status.configure(text=f"Total: {len(productos)} producto(s)")
+        total_paginas = max(1, (self._total + self._per_page - 1) // self._per_page)
+        self.label_status.configure(text=f"Total: {self._total} producto(s) • Página {self._pagina}/{total_paginas} • 50 por página")
 
     def _crear_card_producto(self, prod):
         card = ctk.CTkFrame(self.scroll_productos)

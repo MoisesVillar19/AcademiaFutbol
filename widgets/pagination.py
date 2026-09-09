@@ -6,6 +6,7 @@ class PaginationBar(ctk.CTkFrame):
         self.on_page_change = on_page_change
         self.per_page = per_page
         self._total = 0
+        self._page = 1
         self._create_widgets()
 
     def set_total(self, total):

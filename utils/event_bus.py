@@ -7,9 +7,38 @@ class EventBus:
             self._handlers[event_name] = []
         self._handlers[event_name].append(handler)
 
+    def unsubscribe(self, event_name: str, handler=None):
+        if event_name not in self._handlers:
+            return
+        if handler is None:
+            self._handlers[event_name] = []
+        else:
+            try:
+                self._handlers[event_name].remove(handler)
+            except ValueError:
+                pass
+
     def publish(self, event_name: str, *args, **kwargs):
-        for handler in self._handlers.get(event_name, []):
-            handler(*args, **kwargs)
+        for handler in list(self._handlers.get(event_name, [])):
+            try:
+                handler(*args, **kwargs)
+            except Exception:
+                pass
 
 
-event_bus = EventBus()
+# Singleton por defecto. Las vistas hacen `from utils import event_bus`
+# lo que importa este MÓDULO, por eso se exponen funciones a nivel módulo.
+_default_bus = EventBus()
+event_bus = _default_bus
+
+
+def subscribe(event_name: str, handler):
+    return _default_bus.subscribe(event_name, handler)
+
+
+def unsubscribe(event_name: str, handler=None):
+    return _default_bus.unsubscribe(event_name, handler)
+
+
+def publish(event_name: str, *args, **kwargs):
+    return _default_bus.publish(event_name, *args, **kwargs)

@@ -41,8 +41,10 @@ def obtener_indicadores() -> dict:
         egresos_mes = None
     try:
         # v2.1: nuevos = es_nuevo=1 en el mes (RN-051)
+        # NOTA: no re-importar estudiante_repository aquí (UnboundLocalError:
+        # el import lo convierte en variable local y rompe el uso de línea 10).
+        # Se usa el import top-level del módulo.
         try:
-            from repositories import estudiante_repository
             nuevos_mes = estudiante_repository.contar_por_es_nuevo(1, fecha_inicio_mes, fecha_fin_mes)
         except Exception:
             from database.connection import fetch_all

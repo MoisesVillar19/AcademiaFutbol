@@ -107,6 +107,7 @@ class DashboardView(ctk.CTkFrame):
             except Exception:
                 return str(v)
 
+        # 3 cards por fila: con 4 la última se corta (overflow horizontal)
         row4 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row4.pack(fill="x", pady=5)
 
@@ -117,21 +118,25 @@ class DashboardView(ctk.CTkFrame):
         neto = data.get('neto_mes')
         self._crear_card(row4, "Neto Mes", _fmt(neto), "#22C55E" if (neto or 0) >=0 else "#DC2626",
                          lambda: self._mostrar_detalle("neto_mes"))
-        # MoM si existe
-        mom = data.get('mom_ingresos')
-        if mom is not None:
-            mom_txt = f"{mom:+.1f}% vs mes anterior"
-            mom_color = "#22C55E" if mom >=0 else "#DC2626"
-            self._crear_card(row4, "MoM Ingresos", mom_txt, mom_color, lambda: self._mostrar_detalle("ingresos_mes"))
 
         row5 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
         row5.pack(fill="x", pady=5)
 
+        # MoM si existe (en fila propia para no cortar)
+        mom = data.get('mom_ingresos')
+        if mom is not None:
+            mom_txt = f"{mom:+.1f}% vs mes anterior"
+            mom_color = "#22C55E" if mom >=0 else "#DC2626"
+            self._crear_card(row5, "MoM Ingresos", mom_txt, mom_color, lambda: self._mostrar_detalle("ingresos_mes"))
         self._crear_card(row5, "Nuevos Mes", str(data.get("nuevos_mes",0)), "#22C55E",
                          lambda: self._mostrar_detalle("nuevos_mes"))
         self._crear_card(row5, "Antiguos Mes", str(data.get("antiguos_mes",0)), "#6B21A8",
                          lambda: self._mostrar_detalle("antiguos_mes"))
-        self._crear_card(row5, "Total Matrículas Mes", str(data.get("matriculas_mes",0)), "#3D1559",
+
+        row6 = ctk.CTkFrame(self.cards_frame, fg_color="transparent")
+        row6.pack(fill="x", pady=5)
+
+        self._crear_card(row6, "Total Matrículas Mes", str(data.get("matriculas_mes",0)), "#3D1559",
                          lambda: self._mostrar_detalle("matriculas_mes"))
 
         for widget in self.detalle_frame.winfo_children():
@@ -253,6 +258,10 @@ class DashboardView(ctk.CTkFrame):
                 font=ctk.CTkFont(size=13), text_color="red",
                 wraplength=600, justify="left",
             ).pack(pady=20)
+        try:
+            self.detalle_frame.update_idletasks()
+        except Exception:
+            pass
 
     def _mostrar_cards(self):
         self._cargar_indicadores()

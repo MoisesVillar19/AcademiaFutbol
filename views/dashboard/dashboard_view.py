@@ -50,17 +50,39 @@ class DashboardView(ctk.CTkFrame):
         )
         self.btn_actualizar.pack(side="right")
 
-        self.cards_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.cards_frame.pack(fill="x", padx=15, pady=5)
+        # NOTA geometría: antes cards_frame (fijo, ~800px por 6 filas) y
+        # detalle_frame (scrollable con expand) competían por la altura de la
+        # ventana. Como lo pedido (>1000px) excedía la ventana (~750px), el
+        # packer dejaba al detalle con 1x1 px: existía pero invisible.
+        # Ahora TODO va en un único scroll; el detalle es un frame plano
+        # (sin canvas anidado que pueda colapsar) y siempre se ve completo.
+        self.scroll = ctk.CTkScrollableFrame(self)
+        self.scroll.pack(fill="both", expand=True, padx=15, pady=5)
 
-        self.detalle_frame = ctk.CTkScrollableFrame(self)
-        self.detalle_frame.pack(fill="both", expand=True, padx=15, pady=5)
+        self.cards_frame = None
+        self.detalle_frame = None
+        self._reset_contenedores()
+
+    def _reset_contenedores(self):
+        # Quirk CTk 6.0: vaciar hijos NO encoge el frame (conserva altura
+        # vieja y empuja el resto fuera de pantalla). Se recrean los
+        # contenedores para geometría siempre correcta.
+        for attr in ("cards_frame", "detalle_frame"):
+            try:
+                viejo = getattr(self, attr, None)
+                if viejo is not None and viejo.winfo_exists():
+                    viejo.destroy()
+            except Exception:
+                pass
+        # height=1: CTk 6 deja los frames vacíos en 200px; con 1 el
+        # contenedor vacío es invisible y crece normal con contenido.
+        self.cards_frame = ctk.CTkFrame(self.scroll, fg_color="transparent", height=1)
+        self.cards_frame.pack(fill="x", pady=5)
+        self.detalle_frame = ctk.CTkFrame(self.scroll, fg_color="transparent", height=1)
+        self.detalle_frame.pack(fill="x", pady=5)
 
     def _cargar_indicadores(self):
-        for widget in self.cards_frame.winfo_children():
-            widget.destroy()
-        for widget in self.detalle_frame.winfo_children():
-            widget.destroy()
+        self._reset_contenedores()
 
         data = dashboard_controller.obtener_indicadores()
 
@@ -191,10 +213,7 @@ class DashboardView(ctk.CTkFrame):
             pass
 
     def _mostrar_detalle(self, tipo):
-        for widget in self.cards_frame.winfo_children():
-            widget.destroy()
-        for widget in self.detalle_frame.winfo_children():
-            widget.destroy()
+        self._reset_contenedores()
 
         self.btn_actualizar.pack_forget()
         self.btn_volver.pack(side="right")

@@ -165,3 +165,62 @@ def linea_detalle(parent, etiqueta, valor):
                  font=ctk.CTkFont(size=11), text_color=DESC_COLOR,
                  justify="left", wraplength=500).pack(side="left", padx=8)
     return row
+
+
+def crear_tabla_cards(parent, columnas, filas, cap=50, nota_mas=""):
+    """Tabla con filas como tarjetas blancas (estilo listas unificadas).
+
+    columnas: [(titulo, ancho)]; filas: [[celda, ...]] donde celda es
+    str o (str, {"text_color":..., "weight":...}).
+    """
+    header = ctk.CTkFrame(parent, fg_color="#DDD6E5", corner_radius=6)
+    header.pack(fill="x", padx=5, pady=2)
+    for col, (texto, ancho) in enumerate(columnas):
+        ctk.CTkLabel(header, text=texto, width=ancho,
+                     font=ctk.CTkFont(size=12, weight="bold"),
+                     text_color=TITULO_COLOR).grid(row=0, column=col, padx=5, pady=5)
+    mostrar = filas[:cap] if cap else list(filas)
+    for fila in mostrar:
+        row = crear_card_interactiva(parent)
+        row.pack(fill="x", padx=5, pady=2)
+        for col, celda in enumerate(fila):
+            if isinstance(celda, tuple):
+                texto, opts = celda
+            else:
+                texto, opts = celda, {}
+            ancho = columnas[col][1] if col < len(columnas) else 100
+            ctk.CTkLabel(row, text=str(texto), width=ancho,
+                         font=ctk.CTkFont(size=11, weight=opts.get("weight", "normal")),
+                         text_color=opts.get("text_color", "#1F0A33")).grid(row=0, column=col, padx=5, pady=6)
+    if cap and len(filas) > cap:
+        ctk.CTkLabel(parent, text=nota_mas or f"Mostrando {cap} de {len(filas)}",
+                     text_color="gray", font=ctk.CTkFont(size=11)).pack(pady=5)
+
+
+def crear_bloque_grafico_tabla(parent, modo_inicial="Ambos"):
+    """Segmentado Tabla/Gráfico/Ambos + 2 contenedores. Retorna (frame_grafico, frame_tabla).
+
+    El llamador puebla ambos frames; el toggle muestra/oculta sin re-consultar.
+    """
+    frame_g = ctk.CTkFrame(parent, fg_color="transparent")
+    frame_t = ctk.CTkFrame(parent, fg_color="transparent")
+
+    def _mostrar(modo):
+        for f in (frame_g, frame_t):
+            try:
+                f.pack_forget()
+            except Exception:
+                pass
+        if modo in ("Gráfico", "Ambos"):
+            frame_g.pack(fill="x", padx=5, pady=2)
+        if modo in ("Tabla", "Ambos"):
+            frame_t.pack(fill="x", padx=5, pady=2)
+
+    seg = ctk.CTkSegmentedButton(parent, values=["Tabla", "Gráfico", "Ambos"], command=_mostrar)
+    try:
+        seg.set(modo_inicial)
+    except Exception:
+        pass
+    seg.pack(anchor="e", padx=8, pady=4)
+    _mostrar(modo_inicial)
+    return frame_g, frame_t

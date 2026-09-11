@@ -51,3 +51,7 @@ def listar_antiguos_mes() -> list[dict]:
 
 def listar_matriculas_mes() -> list[dict]:
     return dashboard_service.listar_matriculas_mes()
+
+
+def comparativa_mensual() -> dict:
+    return dashboard_service.comparativa_mensual()

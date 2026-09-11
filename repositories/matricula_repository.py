@@ -124,7 +124,7 @@ def contar_por_mes(fecha_inicio: str, fecha_fin: str) -> int:
 def listar_antiguos_por_mes(fecha_inicio: str, fecha_fin: str) -> list[dict]:
     return fetch_all(
         """SELECT m.*, t.nombre as tarifa_nombre, t.monto as tarifa_monto,
-                  c.nombre as categoria_nombre,
+                  c.nombre as categoria_nombre, e.es_nuevo as es_nuevo,
                   p.nombres, p.apellidos, p.dni
            FROM matricula m
            JOIN tarifa t ON m.id_tarifa = t.id_tarifa
@@ -141,7 +141,7 @@ def listar_antiguos_por_mes(fecha_inicio: str, fecha_fin: str) -> list[dict]:
 def listar_por_mes(fecha_inicio: str, fecha_fin: str) -> list[dict]:
     return fetch_all(
         """SELECT m.*, t.nombre as tarifa_nombre, t.monto as tarifa_monto,
-                  c.nombre as categoria_nombre,
+                  c.nombre as categoria_nombre, e.es_nuevo as es_nuevo,
                   p.nombres, p.apellidos, p.dni
            FROM matricula m
            JOIN tarifa t ON m.id_tarifa = t.id_tarifa

@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from controllers import dashboard_controller
+from utils.ui_helpers import crear_tabla_cards, crear_bloque_grafico_tabla
 
 try:
     import matplotlib
@@ -149,7 +150,7 @@ class DashboardView(ctk.CTkFrame):
         if mom is not None:
             mom_txt = f"{mom:+.1f}% vs mes anterior"
             mom_color = "#22C55E" if mom >=0 else "#DC2626"
-            self._crear_card(row5, "MoM Ingresos", mom_txt, mom_color, lambda: self._mostrar_detalle("ingresos_mes"))
+            self._crear_card(row5, "MoM Ingresos", mom_txt, mom_color, lambda: self._mostrar_detalle("mom"))
         self._crear_card(row5, "Nuevos Mes", str(data.get("nuevos_mes",0)), "#22C55E",
                          lambda: self._mostrar_detalle("nuevos_mes"))
         self._crear_card(row5, "Antiguos Mes", str(data.get("antiguos_mes",0)), "#6B21A8",
@@ -234,6 +235,7 @@ class DashboardView(ctk.CTkFrame):
             "nuevos_mes": "Alumnos Nuevos del Mes",
             "antiguos_mes": "Alumnos Antiguos (Matrículas)",
             "matriculas_mes": "Matrículas del Mes",
+            "mom": "Comparativa Mensual (vs mes anterior)",
         }
         self.titulo_label.configure(text=titulos.get(tipo, "Detalle"))
 
@@ -273,6 +275,8 @@ class DashboardView(ctk.CTkFrame):
                 self._detalle_antiguos_mes()
             elif tipo == "matriculas_mes":
                 self._detalle_matriculas_mes()
+            elif tipo == "mom":
+                self._detalle_mom()
         except Exception as e:
             from utils.logger import logger
             logger.error(f"Dashboard detalle '{tipo}' fallo: {e}", exc_info=True)
@@ -310,37 +314,16 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay alumnos activos").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Borde morado claro
-        header.pack(fill="x", padx=5, pady=2)
-
-        for col, (texto, ancho) in enumerate([
-            ("DNI", 80), ("Nombre", 200), ("Edad", 60), ("Teléfono", 100)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-                text_color="#3D1559",  # Morado oscuro
-            ).grid(row=0, column=col, padx=5, pady=5)
-
-        for i, alumno in enumerate(alumnos[:50]):
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            ctk.CTkLabel(row, text=str(alumno.get("dni", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"{alumno.get('nombres', '')} {alumno.get('apellidos', '')}",
-                         width=200, font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(alumno.get("edad", "")), width=60,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(alumno.get("telefono", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
-
-        if len(alumnos) > 50:
-            ctk.CTkLabel(
-                self.detalle_frame,
-                text=f"Mostrando 50 de {len(alumnos)} alumnos",
-                text_color="gray",
-            ).pack(pady=5)
+        crear_tabla_cards(
+            self.detalle_frame,
+            [("DNI", 80), ("Nombre", 200), ("Edad", 60), ("Teléfono", 100)],
+            [[str(a.get("dni", "")),
+              f"{a.get('nombres', '')} {a.get('apellidos', '')}",
+              str(a.get("edad", "") or "—"),
+              str(a.get("telefono", "") or "—")] for a in alumnos],
+            cap=50,
+            nota_mas=f"Mostrando 50 de {len(alumnos)} alumnos",
+        )
 
     def _detalle_cuotas(self, cuotas, tipo):
         ctk.CTkLabel(
@@ -353,40 +336,17 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text=f"No hay cuotas {tipo}").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
-        header.pack(fill="x", padx=5, pady=2)
-
-        for col, (texto, ancho) in enumerate([
-            ("Estudiante", 200), ("DNI", 80), ("Período", 80),
-            ("Saldo", 80), ("Vencimiento", 100)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
-
-        for i, cuota in enumerate(cuotas[:30]):
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            nombre = f"{cuota.get('nombres', '')} {cuota.get('apellidos', '')}"
-            ctk.CTkLabel(row, text=nombre, width=200,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(cuota.get("dni", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(cuota.get("periodo", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{_num(cuota.get('saldo')):.2f}", width=80,
-                         font=ctk.CTkFont(size=11), text_color="red").grid(row=0, column=3, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(cuota.get("fecha_vencimiento", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=4, padx=5, pady=3)
-
-        if len(cuotas) > 30:
-            ctk.CTkLabel(
-                self.detalle_frame,
-                text=f"Mostrando 30 de {len(cuotas)} cuotas",
-                text_color="gray",
-            ).pack(pady=5)
+        crear_tabla_cards(
+            self.detalle_frame,
+            [("Estudiante", 200), ("DNI", 80), ("Período", 80), ("Saldo", 80), ("Vencimiento", 100)],
+            [[f"{c.get('nombres', '')} {c.get('apellidos', '')}",
+              str(c.get("dni", "")),
+              str(c.get("periodo", "")),
+              (f"S/{_num(c.get('saldo')):.2f}", {"text_color": "red", "weight": "bold"}),
+              str(c.get("fecha_vencimiento", ""))] for c in cuotas],
+            cap=30,
+            nota_mas=f"Mostrando 30 de {len(cuotas)} cuotas",
+        )
 
     def _detalle_pagos(self, pagos):
         ctk.CTkLabel(
@@ -399,29 +359,16 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay pagos registrados hoy").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
-        header.pack(fill="x", padx=5, pady=2)
-
-        for col, (texto, ancho) in enumerate([
-            ("N° Recibo", 120), ("Monto", 80), ("Método", 100), ("Fecha", 100)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
-
-        for pago in pagos:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            ctk.CTkLabel(row, text=str(pago.get("numero_recibo", "")), width=120,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{_num(pago.get('monto_total')):.2f}", width=80,
-                         font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(pago.get("metodo_pago", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(pago.get("fecha_pago", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
+        crear_tabla_cards(
+            self.detalle_frame,
+            [("N° Recibo", 120), ("Monto", 80), ("Método", 100), ("Fecha", 100)],
+            [[str(p.get("numero_recibo", "")),
+              (f"S/{_num(p.get('monto_total')):.2f}", {"text_color": "green", "weight": "bold"}),
+              str(p.get("metodo_pago", "")),
+              str(p.get("fecha_pago", ""))] for p in pagos],
+            cap=30,
+            nota_mas=f"Mostrando 30 de {len(pagos)} pagos",
+        )
 
     def _detalle_ingresos_hoy(self):
         pagos = dashboard_controller.listar_pagos_hoy()
@@ -437,33 +384,28 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay ingresos hoy").pack(pady=10)
             return
 
-        if MATPLOTLIB_DISPONIBLE:
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE and pagos)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
             self._crear_grafico_barras_simple(
                 [f"Pago {i+1}" for i in range(len(pagos))],
                 [_num(p.get("monto_total")) for p in pagos],
                 "Ingresos por Transacción",
+                contenedor=frame_g,
             )
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
 
-        # tabla siempre (aunque haya gráfico): recibo / monto / método
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
-        header.pack(fill="x", padx=5, pady=2)
-        for col, (texto, ancho) in enumerate([
-            ("N° Recibo", 120), ("Monto", 100), ("Método", 120)
-        ]):
-            ctk.CTkLabel(header, text=texto, width=ancho,
-                         font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=col, padx=5, pady=5)
-        for pago in pagos[:30]:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-            ctk.CTkLabel(row, text=str(pago.get("numero_recibo", "")), width=120,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{_num(pago.get('monto_total')):.2f}", width=100,
-                         font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(pago.get("metodo_pago", "")), width=120,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-        if len(pagos) > 30:
-            ctk.CTkLabel(self.detalle_frame, text=f"Mostrando 30 de {len(pagos)} pagos",
-                         text_color="gray").pack(pady=5)
+        crear_tabla_cards(
+            padre_tabla,
+            [("N° Recibo", 120), ("Monto", 100), ("Método", 120)],
+            [[str(p.get("numero_recibo", "")),
+              (f"S/{_num(p.get('monto_total')):.2f}", {"text_color": "green", "weight": "bold"}),
+              str(p.get("metodo_pago", ""))] for p in pagos],
+            cap=30,
+            nota_mas=f"Mostrando 30 de {len(pagos)} pagos",
+        )
 
     def _detalle_ingresos_mes(self):
         datos = dashboard_controller.obtener_ingresos_por_dia_mes()
@@ -479,29 +421,26 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay ingresos este mes").pack(pady=10)
             return
 
-        if MATPLOTLIB_DISPONIBLE:
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE and datos)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
             self._crear_grafico_barras_simple(
                 [d.get("dia", "")[-5:] for d in datos],
                 [_num(d.get("monto")) for d in datos],
                 "Ingresos por Día del Mes",
+                contenedor=frame_g,
             )
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
-        header.pack(fill="x", padx=5, pady=2)
-
-        ctk.CTkLabel(header, text="Fecha", width=120,
-                     font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, padx=5, pady=5)
-        ctk.CTkLabel(header, text="Monto", width=100,
-                     font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=1, padx=5, pady=5)
-
-        for d in datos:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            ctk.CTkLabel(row, text=str(d.get("dia", "")), width=120,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{_num(d.get('monto')):.2f}", width=100,
-                         font=ctk.CTkFont(size=11), text_color="green").grid(row=0, column=1, padx=5, pady=3)
+        crear_tabla_cards(
+            padre_tabla,
+            [("Fecha", 120), ("Monto", 100)],
+            [[str(d.get("dia", "")),
+              (f"S/{_num(d.get('monto')):.2f}", {"text_color": "green", "weight": "bold"})] for d in datos],
+            cap=31,
+        )
 
     def _detalle_monto(self, cuotas, tipo):
         total = sum(_num(c.get("saldo")) for c in cuotas)
@@ -516,40 +455,44 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text=f"No hay cuotas {tipo}").pack(pady=10)
             return
 
-        if MATPLOTLIB_DISPONIBLE and len(cuotas) > 0:
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE and cuotas)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
             nombres = [f"{c.get('nombres', '')[:10]} {c.get('apellidos', '')[:10]}" for c in cuotas[:10]]
             saldos = [_num(c.get("saldo")) for c in cuotas[:10]]
-            self._crear_grafico_barras_simple(nombres, saldos, f"Saldo {tipo} por Estudiante")
+            self._crear_grafico_barras_simple(nombres, saldos, f"Saldo {tipo} por Estudiante", contenedor=frame_g)
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
-        header.pack(fill="x", padx=5, pady=2)
+        crear_tabla_cards(
+            padre_tabla,
+            [("Estudiante", 200), ("DNI", 80), ("Saldo", 100)],
+            [[f"{c.get('nombres', '')} {c.get('apellidos', '')}",
+              str(c.get("dni", "")),
+              (f"S/{_num(c.get('saldo')):.2f}", {"text_color": "red", "weight": "bold"})] for c in cuotas],
+            cap=20,
+            nota_mas=f"Mostrando 20 de {len(cuotas)} cuotas",
+        )
 
-        for col, (texto, ancho) in enumerate([
-            ("Estudiante", 200), ("DNI", 80), ("Saldo", 100)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
+    @staticmethod
+    def _agrupar_por_dia(filas, campo_fecha, campo_monto):
+        agg: dict = {}
+        for f in filas:
+            dia = str(f.get(campo_fecha, "") or "")[:10]
+            if dia:
+                agg[dia] = agg.get(dia, 0) + _num(f.get(campo_monto))
+        dias = sorted(agg)
+        return [d[-5:] for d in dias], [round(agg[d], 2) for d in dias]
 
-        for c in cuotas[:20]:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            nombre = f"{c.get('nombres', '')} {c.get('apellidos', '')}"
-            ctk.CTkLabel(row, text=nombre, width=200,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(c.get("dni", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"S/{_num(c.get('saldo')):.2f}", width=100,
-                         font=ctk.CTkFont(size=11), text_color="red").grid(row=0, column=2, padx=5, pady=3)
-
-        if len(cuotas) > 20:
-            ctk.CTkLabel(
-                self.detalle_frame,
-                text=f"Mostrando 20 de {len(cuotas)} cuotas",
-                text_color="gray",
-            ).pack(pady=5)
+    @staticmethod
+    def _agrupar_por_campo(filas, campo, campo_monto):
+        agg: dict = {}
+        for f in filas:
+            clave = str(f.get(campo, "") or "—")
+            agg[clave] = agg.get(clave, 0) + _num(f.get(campo_monto))
+        claves = sorted(agg)
+        return claves, [round(agg[c], 2) for c in claves]
 
     def _detalle_ventas_mes(self):
         from datetime import date
@@ -560,10 +503,29 @@ class DashboardView(ctk.CTkFrame):
             ventas = venta_controller.listar_ventas(ini, hoy.isoformat())
             total = sum(_num(v.get("monto_total")) for v in ventas)
             ctk.CTkLabel(self.detalle_frame, text=f"Ventas mes: S/{total:.2f} en {len(ventas)} ventas", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
-            for v in ventas[:20]:
-                row = ctk.CTkFrame(self.detalle_frame)
-                row.pack(fill="x", padx=5, pady=1)
-                ctk.CTkLabel(row, text=f"{v.get('tipo_venta','')} {v.get('numero_recibo','')} S/{_num(v.get('monto_total')):.2f}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+            if not ventas:
+                ctk.CTkLabel(self.detalle_frame, text="No hay ventas este mes").pack(pady=10)
+                return
+            hay_grafico = bool(MATPLOTLIB_DISPONIBLE)
+            if hay_grafico:
+                frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
+                dias, montos = self._agrupar_por_dia(ventas, "fecha_venta", "monto_total")
+                self._crear_grafico_barras_simple(dias, montos, "Ventas por Día del Mes", contenedor=frame_g)
+                tipos, montos_t = self._agrupar_por_campo(ventas, "tipo_venta", "monto_total")
+                self._crear_grafico_barras_simple(tipos, montos_t, "Ventas por Tipo", contenedor=frame_g)
+                padre_tabla = frame_t
+            else:
+                padre_tabla = self.detalle_frame
+            crear_tabla_cards(
+                padre_tabla,
+                [("Recibo", 150), ("Tipo", 100), ("Monto", 90), ("Fecha", 100)],
+                [[str(v.get("numero_recibo", "")),
+                  str(v.get("tipo_venta", "")),
+                  (f"S/{_num(v.get('monto_total')):.2f}", {"text_color": "green", "weight": "bold"}),
+                  str(v.get("fecha_venta", ""))] for v in ventas],
+                cap=20,
+                nota_mas=f"Mostrando 20 de {len(ventas)} ventas",
+            )
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
@@ -576,10 +538,29 @@ class DashboardView(ctk.CTkFrame):
             egresos = egreso_controller.listar_egresos(ini, hoy.isoformat())
             total = sum(_num(e.get("monto")) for e in egresos)
             ctk.CTkLabel(self.detalle_frame, text=f"Egresos mes: S/{total:.2f} en {len(egresos)}", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", pady=(10,5))
-            for e in egresos[:20]:
-                row = ctk.CTkFrame(self.detalle_frame)
-                row.pack(fill="x", padx=5, pady=1)
-                ctk.CTkLabel(row, text=f"{e.get('concepto','')} S/{_num(e.get('monto')):.2f} {e.get('fecha','')}", font=ctk.CTkFont(size=11)).pack(side="left", padx=5)
+            if not egresos:
+                ctk.CTkLabel(self.detalle_frame, text="No hay egresos este mes").pack(pady=10)
+                return
+            hay_grafico = bool(MATPLOTLIB_DISPONIBLE)
+            if hay_grafico:
+                frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
+                dias, montos = self._agrupar_por_dia(egresos, "fecha", "monto")
+                self._crear_grafico_barras_simple(dias, montos, "Egresos por Día del Mes", contenedor=frame_g)
+                conceptos, montos_c = self._agrupar_por_campo(egresos, "concepto", "monto")
+                self._crear_grafico_barras_simple(conceptos, montos_c, "Egresos por Concepto", contenedor=frame_g)
+                padre_tabla = frame_t
+            else:
+                padre_tabla = self.detalle_frame
+            crear_tabla_cards(
+                padre_tabla,
+                [("Concepto", 130), ("Monto", 90), ("Fecha", 100), ("Responsable", 150)],
+                [[str(e.get("concepto", "")),
+                  (f"S/{_num(e.get('monto')):.2f}", {"text_color": "red", "weight": "bold"}),
+                  str(e.get("fecha", "")),
+                  str(e.get("responsable", "") or "—")] for e in egresos],
+                cap=20,
+                nota_mas=f"Mostrando 20 de {len(egresos)} egresos",
+            )
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
@@ -596,6 +577,52 @@ class DashboardView(ctk.CTkFrame):
         except Exception as e:
             ctk.CTkLabel(self.detalle_frame, text=f"Error: {e}").pack()
 
+    def _detalle_mom(self):
+        comp = dashboard_controller.comparativa_mensual()
+
+        delta = comp.get("delta_pct", 0)
+        color = "#22C55E" if delta >= 0 else "#DC2626"
+        ctk.CTkLabel(
+            self.detalle_frame,
+            text=f"Ingresos {comp.get('mes_actual','')} S/{comp.get('total_actual',0):.2f}  vs  "
+                 f"{comp.get('mes_anterior','')} S/{comp.get('total_anterior',0):.2f}  →  "
+                 f"{delta:+.1f}%",
+            font=ctk.CTkFont(size=14, weight="bold"), text_color=color,
+            justify="left", wraplength=700,
+        ).pack(anchor="w", pady=(10, 5))
+
+        etiquetas = comp.get("etiquetas", [])
+        if not etiquetas:
+            ctk.CTkLabel(self.detalle_frame, text="Sin datos para comparar").pack(pady=10)
+            return
+
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
+            self._crear_grafico_comparativo(
+                etiquetas, comp.get("actual", []), comp.get("anterior", []),
+                comp.get("mes_actual", "Actual"), comp.get("mes_anterior", "Anterior"),
+                "Ingresos por Día: Actual vs Anterior", contenedor=frame_g)
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
+
+        filas = []
+        for i, et in enumerate(etiquetas):
+            a = comp["actual"][i] if i < len(comp.get("actual", [])) else 0
+            p = comp["anterior"][i] if i < len(comp.get("anterior", [])) else 0
+            d = round(a - p, 2)
+            filas.append([et,
+                          f"S/{a:.2f}",
+                          f"S/{p:.2f}",
+                          (f"S/{d:+.2f}", {"text_color": "#22C55E" if d >= 0 else "#DC2626"})])
+        crear_tabla_cards(
+            padre_tabla,
+            [("Día", 60), (comp.get("mes_actual", "Actual"), 110), (comp.get("mes_anterior", "Anterior"), 110), ("Diferencia", 110)],
+            filas,
+            cap=31,
+        )
+
     def _detalle_nuevos_mes(self):
         alumnos = dashboard_controller.listar_nuevos_mes()
 
@@ -609,36 +636,44 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay alumnos nuevos este mes").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
-        header.pack(fill="x", padx=5, pady=2)
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
+            dias, conteos = self._agrupar_conteos_por_dia(alumnos, "fecha_ingreso")
+            self._crear_grafico_barras_simple(dias, conteos, "Nuevos por Día del Mes", contenedor=frame_g, ylabel="Alumnos", color_fijo="#22C55E")
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
 
-        for col, (texto, ancho) in enumerate([
-            ("DNI", 80), ("Nombre", 220), ("Ingreso", 100), ("Teléfono", 110)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
+        crear_tabla_cards(
+            padre_tabla,
+            [("DNI", 80), ("Nombre", 220), ("Ingreso", 100), ("Teléfono", 110)],
+            [[str(a.get("dni", "")),
+              f"{a.get('nombres', '')} {a.get('apellidos', '')}",
+              str(a.get("fecha_ingreso", "")),
+              str(a.get("telefono", "") or "—")] for a in alumnos],
+            cap=50,
+            nota_mas=f"Mostrando 50 de {len(alumnos)} alumnos",
+        )
 
-        for alumno in alumnos[:50]:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
+    @staticmethod
+    def _agrupar_conteos_por_dia(filas, campo_fecha):
+        agg: dict = {}
+        for f in filas:
+            dia = str(f.get(campo_fecha, "") or "")[:10]
+            if dia:
+                agg[dia] = agg.get(dia, 0) + 1
+        dias = sorted(agg)
+        return [d[-5:] for d in dias], [agg[d] for d in dias]
 
-            ctk.CTkLabel(row, text=str(alumno.get("dni", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=f"{alumno.get('nombres', '')} {alumno.get('apellidos', '')}",
-                         width=220, font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(alumno.get("fecha_ingreso", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(alumno.get("telefono", "")), width=110,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
-
-        if len(alumnos) > 50:
-            ctk.CTkLabel(
-                self.detalle_frame,
-                text=f"Mostrando 50 de {len(alumnos)} alumnos",
-                text_color="gray",
-            ).pack(pady=5)
+    @staticmethod
+    def _agrupar_conteos_por_campo(filas, campo):
+        agg: dict = {}
+        for f in filas:
+            clave = str(f.get(campo, "") or "—")
+            agg[clave] = agg.get(clave, 0) + 1
+        claves = sorted(agg)
+        return claves, [agg[c] for c in claves]
 
     def _detalle_antiguos_mes(self):
         matriculas = dashboard_controller.listar_antiguos_mes()
@@ -670,38 +705,34 @@ class DashboardView(ctk.CTkFrame):
 
         self._tabla_matriculas_mes(matriculas)
 
+    @staticmethod
+    def _condicion_matricula(mat):
+        return ("🆕 Nuevo", {"text_color": "#22C55E", "weight": "bold"}) if int(mat.get("es_nuevo", 0) or 0) == 1 else ("Antiguo", {"text_color": "#6B21A8"})
+
     def _tabla_matriculas_mes(self, matriculas):
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")
-        header.pack(fill="x", padx=5, pady=2)
+        hay_grafico = bool(MATPLOTLIB_DISPONIBLE)
+        if hay_grafico:
+            frame_g, frame_t = crear_bloque_grafico_tabla(self.detalle_frame)
+            dias, conteos = self._agrupar_conteos_por_dia(matriculas, "fecha_inicio")
+            self._crear_grafico_barras_simple(dias, conteos, "Matrículas por Día del Mes", contenedor=frame_g, ylabel="Matrículas", color_fijo="#7C3AED")
+            tarifas, conteos_t = self._agrupar_conteos_por_campo(matriculas, "tarifa_nombre")
+            if tarifas:
+                self._crear_grafico_barras_simple(tarifas, conteos_t, "Matrículas por Tarifa", contenedor=frame_g, ylabel="Matrículas", color_fijo="#6B21A8")
+            padre_tabla = frame_t
+        else:
+            padre_tabla = self.detalle_frame
 
-        for col, (texto, ancho) in enumerate([
-            ("Estudiante", 200), ("DNI", 80), ("Tarifa", 150), ("Inicio", 100)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
-
-        for mat in matriculas[:50]:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            nombre = f"{mat.get('nombres', '')} {mat.get('apellidos', '')}"
-            ctk.CTkLabel(row, text=nombre, width=200,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(mat.get("dni", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(mat.get("tarifa_nombre", "")), width=150,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(mat.get("fecha_inicio", "")), width=100,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=3, padx=5, pady=3)
-
-        if len(matriculas) > 50:
-            ctk.CTkLabel(
-                self.detalle_frame,
-                text=f"Mostrando 50 de {len(matriculas)} matrículas",
-                text_color="gray",
-            ).pack(pady=5)
+        crear_tabla_cards(
+            padre_tabla,
+            [("Estudiante", 180), ("DNI", 80), ("Tarifa", 140), ("Condición", 90), ("Inicio", 90)],
+            [[f"{m.get('nombres', '')} {m.get('apellidos', '')}",
+              str(m.get("dni", "")),
+              str(m.get("tarifa_nombre", "")),
+              self._condicion_matricula(m),
+              str(m.get("fecha_inicio", ""))] for m in matriculas],
+            cap=50,
+            nota_mas=f"Mostrando 50 de {len(matriculas)} matrículas",
+        )
 
     def _detalle_stock(self):
         productos = dashboard_controller.listar_stock_bajo()
@@ -716,49 +747,38 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(self.detalle_frame, text="No hay productos con stock bajo").pack(pady=10)
             return
 
-        header = ctk.CTkFrame(self.detalle_frame, fg_color="#DDD6E5")  # Morado claro
-        header.pack(fill="x", padx=5, pady=2)
+        crear_tabla_cards(
+            self.detalle_frame,
+            [("Código", 80), ("Nombre", 150), ("Categoría", 120), ("Stock Actual", 90), ("Stock Mínimo", 90)],
+            [[str(p.get("codigo", "")),
+              str(p.get("nombre", "")),
+              str(p.get("categoria_nombre", "")),
+              (str(p.get("stock_actual", 0)), {"text_color": "red", "weight": "bold"}),
+              str(p.get("stock_minimo", 0))] for p in productos],
+            cap=50,
+            nota_mas=f"Mostrando 50 de {len(productos)} productos",
+        )
 
-        for col, (texto, ancho) in enumerate([
-            ("Código", 80), ("Nombre", 150), ("Categoría", 120),
-            ("Stock Actual", 80), ("Stock Mínimo", 80)
-        ]):
-            ctk.CTkLabel(
-                header, text=texto, width=ancho,
-                font=ctk.CTkFont(size=12, weight="bold"),
-            ).grid(row=0, column=col, padx=5, pady=5)
-
-        for prod in productos:
-            row = ctk.CTkFrame(self.detalle_frame)
-            row.pack(fill="x", padx=5, pady=1)
-
-            ctk.CTkLabel(row, text=str(prod.get("codigo", "")), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=0, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(prod.get("nombre", "")), width=150,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=1, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(prod.get("categoria_nombre", "")), width=120,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=2, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(prod.get("stock_actual", 0)), width=80,
-                         font=ctk.CTkFont(size=11), text_color="red").grid(row=0, column=3, padx=5, pady=3)
-            ctk.CTkLabel(row, text=str(prod.get("stock_minimo", 0)), width=80,
-                         font=ctk.CTkFont(size=11)).grid(row=0, column=4, padx=5, pady=3)
-
-    def _crear_grafico_barras_simple(self, etiquetas, valores, titulo):
+    def _crear_grafico_barras_simple(self, etiquetas, valores, titulo, contenedor=None, ylabel="Monto (S/)", color_fijo=None):
         if not MATPLOTLIB_DISPONIBLE or not valores:
-            return
+            return False
 
-        frame_grafico = ctk.CTkFrame(self.detalle_frame)
+        padre = contenedor if contenedor is not None else self.detalle_frame
+        frame_grafico = ctk.CTkFrame(padre)
         frame_grafico.pack(fill="x", padx=5, pady=10)
 
         fig = Figure(figsize=(8, 4), dpi=100)
         ax = fig.add_subplot(111)
 
-        colores = ["#4CAF50" if v >= 0 else "#F44336" for v in valores]
+        if color_fijo:
+            colores = [color_fijo] * len(valores)
+        else:
+            colores = ["#4CAF50" if v >= 0 else "#F44336" for v in valores]
         ax.bar(range(len(valores)), valores, color=colores, alpha=0.7)
         ax.set_xticks(range(len(etiquetas)))
         ax.set_xticklabels(etiquetas, rotation=45, ha="right", fontsize=8)
         ax.set_title(titulo, fontsize=12, fontweight="bold")
-        ax.set_ylabel("Monto (S/)")
+        ax.set_ylabel(ylabel)
         ax.grid(axis="y", alpha=0.3)
 
         fig.tight_layout()
@@ -766,3 +786,38 @@ class DashboardView(ctk.CTkFrame):
         canvas = FigureCanvasTkAgg(fig, master=frame_grafico)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+        return True
+
+    def _crear_grafico_comparativo(self, etiquetas, serie_a, serie_b, nombre_a, nombre_b, titulo, contenedor=None):
+        """Barras agrupadas A vs B (ej. mes actual vs anterior)."""
+        if not MATPLOTLIB_DISPONIBLE or not etiquetas:
+            return False
+
+        padre = contenedor if contenedor is not None else self.detalle_frame
+        frame_grafico = ctk.CTkFrame(padre)
+        frame_grafico.pack(fill="x", padx=5, pady=10)
+
+        try:
+            import numpy as np
+            x = list(np.arange(len(etiquetas)))
+        except ImportError:
+            x = list(range(len(etiquetas)))
+        fig = Figure(figsize=(9, 4), dpi=100)
+        ax = fig.add_subplot(111)
+
+        ancho = 0.38
+        ax.bar([i - ancho / 2 for i in x], serie_a, ancho, label=nombre_a, color="#7C3AED", alpha=0.85)
+        ax.bar([i + ancho / 2 for i in x], serie_b, ancho, label=nombre_b, color="#9CA3AF", alpha=0.85)
+        ax.set_xticks(x)
+        ax.set_xticklabels(etiquetas, rotation=45, ha="right", fontsize=8)
+        ax.set_title(titulo, fontsize=12, fontweight="bold")
+        ax.set_ylabel("Monto (S/)")
+        ax.legend(fontsize=9)
+        ax.grid(axis="y", alpha=0.3)
+
+        fig.tight_layout()
+
+        canvas = FigureCanvasTkAgg(fig, master=frame_grafico)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        return True

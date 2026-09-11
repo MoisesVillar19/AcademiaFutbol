@@ -9,7 +9,7 @@ from views.dashboard.dashboard_view import DashboardView
 TIPOS = ["alumnos", "vencidas", "por_vencer", "pagos_hoy", "ingresos_hoy",
          "ingresos_mes", "monto_vencido", "monto_por_vencer", "stock",
          "ventas_mes", "egresos_mes", "neto_mes", "nuevos_mes",
-         "antiguos_mes", "matriculas_mes"]
+         "antiguos_mes", "matriculas_mes", "mom"]
 
 
 @pytest.mark.parametrize("tipo", TIPOS)
@@ -123,6 +123,52 @@ def test_ingresos_hoy_sin_matplotlib_muestra_tabla(crear_vista, usuario_admin, c
 
     _rec(vista.detalle_frame)
     assert any("R-9" in t for t in textos), "la tabla no muestra el recibo sin matplotlib"
+
+
+def test_matriculas_mes_muestra_condicion_nuevo(crear_vista, usuario_admin, ctk_root, crear_persona):
+    from models.estudiante import Estudiante
+    from repositories import estudiante_repository, matricula_repository
+    from controllers import matricula_controller
+    from utils.dates import get_today
+    id_persona = crear_persona()
+    id_est = estudiante_repository.insertar(Estudiante(
+        id_persona=id_persona, estado="ACTIVO", fecha_ingreso=get_today(), es_nuevo=1))
+    from controllers import tarifa_controller
+    tarifas = tarifa_controller.listar_tarifas_activas()
+    assert tarifas
+    exito, msg, _ = matricula_controller.crear_matricula({
+        "id_estudiante": id_est, "id_tarifa": tarifas[0]["id_tarifa"], "dia_vencimiento": "5",
+    })
+    vista = crear_vista(DashboardView)
+    vista._mostrar_detalle("matriculas_mes")
+    ctk_root.update_idletasks()
+    textos = []
+
+    def _rec(w):
+        try:
+            t = w.cget("text")
+            if t:
+                textos.append(str(t))
+        except Exception:
+            pass
+        for ch in w.winfo_children():
+            _rec(ch)
+
+    _rec(vista.detalle_frame)
+    if exito:
+        assert any("Nuevo" in t for t in textos), "falta columna Condición 🆕 Nuevo"
+
+
+def test_mom_comparativa_con_datos(crear_vista, usuario_admin, ctk_root, crear_matricula):
+    from controllers import dashboard_controller
+    crear_matricula()
+    comp = dashboard_controller.comparativa_mensual()
+    assert comp["etiquetas"]
+    assert len(comp["actual"]) == len(comp["etiquetas"]) == len(comp["anterior"])
+    vista = crear_vista(DashboardView)
+    vista._mostrar_detalle("mom")
+    ctk_root.update_idletasks()
+    assert len(vista.detalle_frame.winfo_children()) > 0
 
 
 def test_detalle_nuevos_mes_con_dato(crear_vista, usuario_admin, ctk_root, crear_persona):

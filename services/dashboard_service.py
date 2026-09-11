@@ -200,6 +200,65 @@ def listar_matriculas_mes() -> list[dict]:
     return matricula_repository.listar_por_mes(ini, fin)
 
 
+def comparativa_mensual() -> dict:
+    """Actual vs anterior día por día (pagos + ventas). Para la vista MoM real."""
+    from datetime import datetime
+    import calendar
+    from repositories import venta_repository
+    ini_a, fin_a = _rango_mes_actual()
+    dt = datetime.strptime(ini_a, "%Y-%m-%d")
+    if dt.month == 1:
+        prev_dt = dt.replace(year=dt.year - 1, month=12, day=1)
+    else:
+        prev_dt = dt.replace(month=dt.month - 1, day=1)
+    prev_ini = prev_dt.strftime("%Y-%m-%d")
+    prev_fin = f"{prev_dt.strftime('%Y-%m')}-{calendar.monthrange(prev_dt.year, prev_dt.month)[1]:02d}"
+
+    def _por_dia(pagos, ventas):
+        agg: dict = {}
+        for p in pagos:
+            dia = (p.get("fecha_pago", "") or "")[:10]
+            if dia:
+                agg[dia] = agg.get(dia, 0) + (p.get("monto_total", 0) or 0)
+        for v in ventas:
+            dia = (v.get("fecha_venta", "") or "")[:10]
+            if dia:
+                agg[dia] = agg.get(dia, 0) + (v.get("monto_total", 0) or 0)
+        return agg
+
+    pagos_a = pago_service.listar_por_fecha(ini_a, fin_a)
+    pagos_p = pago_service.listar_por_fecha(prev_ini, prev_fin)
+    try:
+        ventas_a = venta_repository.obtener_todos(ini_a, fin_a)
+    except Exception:
+        ventas_a = []
+    try:
+        ventas_p = venta_repository.obtener_todos(prev_ini, prev_fin)
+    except Exception:
+        ventas_p = []
+    agg_a, agg_p = _por_dia(pagos_a, ventas_a), _por_dia(pagos_p, ventas_p)
+    n_dias = max(calendar.monthrange(dt.year, dt.month)[1],
+                 calendar.monthrange(prev_dt.year, prev_dt.month)[1])
+    etiquetas, serie_a, serie_p = [], [], []
+    for d in range(1, n_dias + 1):
+        etiquetas.append(f"{d:02d}")
+        serie_a.append(round(agg_a.get(f"{ini_a[:7]}-{d:02d}", 0), 2))
+        serie_p.append(round(agg_p.get(f"{prev_ini[:7]}-{d:02d}", 0), 2))
+    total_a = round(sum(serie_a), 2)
+    total_p = round(sum(serie_p), 2)
+    delta = round((total_a - total_p) / total_p * 100, 1) if total_p else 0
+    return {
+        "etiquetas": etiquetas,
+        "actual": serie_a,
+        "anterior": serie_p,
+        "mes_actual": ini_a[:7],
+        "mes_anterior": prev_ini[:7],
+        "total_actual": total_a,
+        "total_anterior": total_p,
+        "delta_pct": delta,
+    }
+
+
 def _obtener_configuracion():
     from repositories import configuracion_repository
     return configuracion_repository.obtener_configuracion()

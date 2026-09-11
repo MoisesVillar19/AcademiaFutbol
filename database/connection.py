@@ -69,6 +69,36 @@ def close_connection() -> None:
     _nivel_transaccion = 0
 
 
+def estado_bd(path: str | None = None) -> dict:
+    """Diagnóstico para UI: ruta, si es red, accesible, journal y tamaño."""
+    crudo = path or DB_PATH
+    if crudo == ":memory:":
+        return {"ruta": ":memory:", "es_red": False, "existe": True,
+                "accesible": True, "journal": "memory", "bytes": 0}
+    ruta = os.path.abspath(crudo)
+    info: dict = {"ruta": ruta, "es_red": es_ruta_red(ruta),
+                  "existe": os.path.isfile(ruta), "accesible": False,
+                  "journal": "?", "bytes": 0}
+    try:
+        info["bytes"] = os.path.getsize(ruta)
+    except Exception:
+        pass
+    if info["es_red"] and not os.path.isdir(os.path.dirname(ruta)):
+        return info
+    try:
+        conn = sqlite3.connect(ruta, timeout=5)
+        try:
+            conn.execute("SELECT 1")
+            jm = conn.execute("PRAGMA journal_mode").fetchone()
+            info["journal"] = jm[0] if jm else "?"
+            info["accesible"] = True
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return info
+
+
 def cerrar_limpio(checkpoint: bool = True) -> None:
     """Apagado seguro: vacía el WAL local al .db y cierra. Evita -wal
     huérfanos y locks que impiden reabrir (local y red)."""

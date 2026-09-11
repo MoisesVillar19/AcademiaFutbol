@@ -140,6 +140,14 @@ class ConfiguracionView(ctk.CTkFrame):
         _btn_path(_btns_bd, text="💾 Guardar ruta", width=130, command=self._guardar_ruta_bd, fg_color="#22C55E", hover_color="#16A34A", text_color="white").pack(side="left", padx=5)
         self.label_bd_status = ctk.CTkLabel(sec5, text="", font=ctk.CTkFont(size=11), justify="left", wraplength=600)
         self.label_bd_status.pack(anchor="w", padx=10, pady=2)
+        try:
+            from database.connection import estado_bd
+            _st = estado_bd()
+            _tam = f"{_st['bytes']/1048576:.1f}MB" if _st["bytes"] else "—"
+            _modo = "RED compartida" if _st["es_red"] else "local"
+            self._nota(sec5, f"Estado actual: {_modo} • accesible: {'SÍ' if _st['accesible'] else 'NO'} • journal: {_st['journal']} • tamaño: {_tam}")
+        except Exception:
+            pass
         self._nota(sec5, "Botón Respaldo en sidebar crea backup manual en OneDrive inmediatamente.")
         self._nota(sec5, "Restaurar sobreescribe academia.db actual — requiere reiniciar la app. Hora muestra (UTC-5).")
         # Lista backups + restaurar/verificar/rotar

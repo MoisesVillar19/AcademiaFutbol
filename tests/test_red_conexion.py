@@ -28,6 +28,17 @@ def test_cerrar_limpio_cierra_conexion():
     assert conn.get_connection() is not None
 
 
+def test_estado_bd_local():
+    st = conn.estado_bd(":memory:")
+    assert st["es_red"] is False
+    assert st["accesible"] is True  # :memory: siempre abre
+
+
+def test_estado_bd_carpeta_inaccesible(tmp_path):
+    st = conn.estado_bd(str(tmp_path / "no" / "x.db"))
+    assert st["accesible"] is False
+
+
 def test_transaccion_commit_y_rollback():
     with conn.transaccion():
         conn.execute_query("CREATE TABLE IF NOT EXISTS _t_red (id INTEGER PRIMARY KEY, v TEXT)")

@@ -228,6 +228,24 @@ inventario · becas activas. El archivo se genera con openpyxl y se confirma la 
 | 8. Tipos de Uniforme | Catálogo que genera productos con stock |
 | 9. Conceptos Flexibles | Bundles (ver F8) |
 
+## F13b. Red LAN: 4 PCs con BD única (Modelo A+C)
+
+- **Topología:** PC1 comparte `\\PC1\Academia\` (`academia.db`, fotos,
+  comprobantes, backups). PC2–PC4 abren el **mismo archivo** (ver
+  `docs/despliegue/despliegue_red.md`). Prohibido copiar la BD entre PCs.
+- **Instalación:** `setup_red "\\PC1\Academia"` en cada PC (verifica
+  lectura/escritura, escribe `config.ini`); primera apertura siembra **una**
+  sola vez. En ZIP bloqueado funciona igual (sin admin).
+- **Configuración → Respaldo:** campo Ruta BD + Examinar… + Probar conexión
+  (muestra latencia y journal); línea de Estado (modo red/local, accesible,
+  tamaño). Cambiar ruta exige reiniciar.
+- **Cobros simultáneos:** el segundo espera (hasta 20s), no da error.
+- **Servidor apagado:** la app avisa y no crea datos locales. Plan:
+  encender servidor → Probar conexión → seguir; si se atendió manual,
+  re-digitar con folios para no duplicar. Sin auto-merge a propósito.
+- **Cierre:** siempre con X (apagado limpio); si no reabre, terminar
+  `AcademiaFutbol.exe` en Administrador de tareas.
+
 ## F14. Respaldo (FINANZAS → Respaldo + Configuración)
 
 - **Manual:** sidebar Respaldo → copia inmediata a la ruta (OneDrive ideal).

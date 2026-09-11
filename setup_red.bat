@@ -8,9 +8,10 @@ echo.
 cd /d "%~dp0"
 
 if "%~1"=="" (
-    echo Uso: setup_red "\\SERVIDOR\Academia"
+    echo Uso: setup_red "\\SERVIDOR\AcademiaDatos"
     echo.
-    echo Ejemplo: setup_red "\\PC1\Academia"
+    echo Ejemplo: setup_red "\\PC1\AcademiaDatos"
+    echo (si ya existe una compartida con academia.db, use ESA, no cree otra)
     echo.
     set /p "SHARE=Escriba la ruta UNC del recurso compartido: "
 ) else (

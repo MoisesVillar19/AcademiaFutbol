@@ -46,26 +46,60 @@ o los recibes por USB del encargado.
 4. Doble clic en `AcademiaFutbol.exe`. Opcional: clic derecho →
    **Crear acceso directo** → Escritorio.
 
-## 4. Conectar las 4 PCs (una sola base de datos)
+## 4. Conectar las 4 PCs (una sola base de datos) — LEER CON CALMA
 
-La PC principal (servidor) comparte una carpeta; las demás se conectan a ella.
+Hay **dos carpetas distintas**, no las confundas:
+
+| | Carpeta del PROGRAMA | Carpeta de DATOS (la que se comparte) |
+|---|---|---|
+| Qué es | Donde vive `AcademiaFutbol.exe` | Donde vive `academia.db` + fotos + comprobantes + backups |
+| Dónde está | Cada PC la suya: `C:\Program Files\AcademiaFutbol\` (Setup) o `C:\AcademiaFutbol\` (ZIP) | **Solo en la principal**: ej. `C:\AcademiaDatos\`, compartida como `\\PC1\AcademiaDatos` |
+| ¿Se comparte? | **NO, jamás** | **SÍ, una sola vez** |
+| Nombre sugerido | `AcademiaFutbol` (ya viene así) | `AcademiaDatos` (distinto a propósito, para no confundir) |
+
 **Nunca copies el archivo `academia.db` entre PCs** (se pierden datos).
+La BD **apunta** a la carpeta compartida mediante un `config.ini` en cada PC.
 
-**En la PC principal (una sola vez):**
-1. Crea `C:\Academia` → clic derecho → **Compartir** (permiso total para
-   las demás PCs). Anota la dirección, ej. `\\PC1\Academia`.
+### 4.1 Si YA existe una carpeta compartida con la base de datos
+
+No crees otra. Úsala tal cual:
+1. Verifica que dentro esté `academia.db` (y carpetas `fotos`, `comprobantes`).
+2. Anota su dirección (ej. `\\PC1\Academia`) y úsala en el paso 4.3.
+3. `setup_red.bat` **conserva** la BD existente: solo escribe el `config.ini`
+   que apunta hacia ella. Jamás la borra ni la reemplaza.
+4. Si hay **dos** compartidas: quédate con la que tenga los datos reales
+   (la más reciente/grande), apunta todas las PCs a esa y deja de compartir
+   la otra.
+
+### 4.2 Si NO existe: crearla en la PC principal (una sola vez)
+
+1. Crea `C:\AcademiaDatos` → clic derecho → **Compartir** (permiso total para
+   las demás PCs). Anota la dirección, ej. `\\PC1\AcademiaDatos`.
 2. Permite SMB en el firewall (el técnico: TCP/445 entrante, red privada).
+3. La primera vez que abras la app apuntando ahí, ella sola crea `academia.db`
+   con los datos iniciales (una sola vez para las 4 PCs).
 
-**En cada PC (incluida la principal):**
+> ¿Y si antes compartiste la carpeta del **programa** (la del .exe)?
+> Quítale el compartido: clic derecho → Compartir → Quitar/Dejar de compartir.
+> Esa carpeta es por PC y no debe verse en red (permisos, bloqueos y
+> actualizaciones fallan si se comparte). Comparte **solo** la de datos.
+
+### 4.3 En cada PC (incluida la principal): apuntar a la compartida
+
 1. Doble clic en `setup_red.bat` (viene en el ZIP y en Program Files).
-2. Escribe la dirección: `\\PC1\Academia` (o la IP, ej. `\\192.168.1.50\Academia`).
-3. El script verifica lectura y escritura y deja todo apuntando al mismo lugar.
+2. Escribe la dirección de datos: `\\PC1\AcademiaDatos`
+   (o la IP, ej. `\\192.168.1.50\AcademiaDatos`, o tu carpeta existente del §4.1).
+3. Debes ver **OK lectura** y **OK escritura**. El script deja todo apuntando
+   al mismo lugar. ¿Qué escribió? un `config.ini` al lado del `.exe` con:
+   `[database] path=\\PC1\AcademiaDatos\academia.db` (+ backup y fotos).
 4. Si dice que no accede: revisa que la principal esté **encendida**,
-   conectada a la red y con la carpeta compartida (§7).
+   conectada a la red y con la carpeta compartida (§7). **No sigas**: sin
+   acceso, la app no debe crear datos locales.
 
 **Alternativa manual:** Configuración (ADMIN) → Respaldo → campo
-*Base de datos en uso* → 📁 Examinar… → elige `academia.db` → 💾 Guardar ruta
-→ **Probar conexión** (debe decir OK) → reinicia la app.
+*Base de datos en uso* → 📁 Examinar… → elige `academia.db` **de la carpeta
+compartida** → 💾 Guardar ruta → **Probar conexión** (debe decir OK) →
+reinicia la app.
 
 ## 5. Primer arranque
 

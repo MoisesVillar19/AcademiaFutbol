@@ -32,7 +32,8 @@ def validate_sex(sex: str) -> bool:
 
 
 def validate_rol(rol: str) -> bool:
-    return rol in ("ADMIN", "SECRETARIA", "CAJA", "INVENTARIO")
+    # Solo 2 roles (RN-002 v2.1): CAJA/INVENTARIO legacy se migran a SECRETARIA al arrancar
+    return rol in ("ADMIN", "SECRETARIA")
 
 
 def validate_estado_estudiante(estado: str) -> bool:

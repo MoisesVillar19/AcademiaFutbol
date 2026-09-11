@@ -67,6 +67,32 @@ def test_auditoria_visible_para_admin(usuario_admin, crear_persona):
     assert len(logs) >= 1  # al menos el LOGIN del admin
 
 
+def test_roles_legacy_rechazados(usuario_admin):
+    for rol in ("CAJA", "INVENTARIO", "USER"):
+        exito, msg, _ = usuario_controller.crear_usuario(
+            {"dni": "11223344", "nombres": "Legacy", "apellidos": "Test"},
+            f"legacy_{rol}", rol,
+        )
+        assert exito is False, rol
+        assert "ADMIN o SECRETARIA" in msg
+    exito, _, _ = usuario_controller.crear_usuario(
+        {"dni": "11223344", "nombres": "Legacy", "apellidos": "Test"},
+        "legacy_vacio", "",
+    )
+    assert exito is False
+
+
+def test_editar_a_rol_legacy_rechazado(usuario_admin):
+    exito, msg, id_usuario = usuario_controller.crear_usuario(
+        {"dni": "44332211", "nombres": "Edit", "apellidos": "Rol"},
+        "edit_rol_test", "SECRETARIA",
+    )
+    assert exito is True, msg
+    exito, msg = usuario_controller.editar_usuario(id_usuario, {"rol": "CAJA"})
+    assert exito is False
+    assert "ADMIN o SECRETARIA" in msg
+
+
 def test_sin_sesion_no_accede_a_gestion_usuarios():
     from services import auth_service
     auth_service.logout()

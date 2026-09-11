@@ -41,9 +41,9 @@ class CrearUsuarioDialog(ctk.CTkToplevel):
         self.entry_username.pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(frame, text="Rol:", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        ctk.CTkLabel(frame, text="ADMIN: todo | SECRETARIA: Academia/Finanzas | CAJA: solo Pagos/Ventas | INVENTARIO: solo Inventario", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
+        ctk.CTkLabel(frame, text="ADMIN: acceso total | SECRETARIA: academia, finanzas e inventario (sin Usuarios, Tarifas, Auditoría ni Configuración)", font=ctk.CTkFont(size=10), text_color="gray", wraplength=380, justify="left").pack(anchor="w")
         self.combo_rol = ctk.CTkComboBox(
-            frame, values=["ADMIN", "SECRETARIA", "CAJA", "INVENTARIO"], width=390, height=38,
+            frame, values=["ADMIN", "SECRETARIA"], width=390, height=38,
         )
         self.combo_rol.set("SECRETARIA")
         self.combo_rol.pack(anchor="w", pady=(0, 15))
@@ -139,9 +139,9 @@ class EditarUsuarioDialog(ctk.CTkToplevel):
         self.entry_username.pack(anchor="w", pady=(0, 10))
 
         ctk.CTkLabel(frame, text="Rol:", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        ctk.CTkLabel(frame, text="ADMIN: todo | SECRETARIA: Academia/Finanzas | CAJA: Pagos/Ventas | INVENTARIO: Inventario", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
+        ctk.CTkLabel(frame, text="ADMIN: acceso total | SECRETARIA: academia, finanzas e inventario (sin Usuarios, Tarifas, Auditoría ni Configuración)", font=ctk.CTkFont(size=10), text_color="gray", wraplength=330, justify="left").pack(anchor="w")
         self.combo_rol = ctk.CTkComboBox(
-            frame, values=["ADMIN", "SECRETARIA", "CAJA", "INVENTARIO"], width=340, height=38,
+            frame, values=["ADMIN", "SECRETARIA"], width=340, height=38,
         )
         self.combo_rol.set(self.usuario.get("rol", "SECRETARIA"))
         self.combo_rol.pack(anchor="w", pady=(0, 15))

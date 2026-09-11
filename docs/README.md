@@ -33,9 +33,9 @@ docs/
 │   ├── actualizacion.md
 │   └── publicacion_release.md         # VERSION → tag → Release ZIP
 │
-└── manuales/             # Uso
-    ├── manual_sistema.md              # Config, flujos, uso diario ADMIN/SECRETARIA
-    └── manual_flujos.md               # Paso a paso + casuísticas + matriz de pruebas por release
+└── manuales/             # Uso (md + pdf listos para imprimir/entregar)
+    ├── manual_sistema.md/.pdf         # Uso diario ADMIN/SECRETARIA
+    └── manual_flujos.md/.pdf          # Paso a paso + casuísticas + matriz de pruebas por release
 ```
 
 ### Cómo navegar

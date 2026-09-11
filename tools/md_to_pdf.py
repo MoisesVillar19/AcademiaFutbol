@@ -7,8 +7,11 @@ from reportlab.lib.colors import HexColor, white, black
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable, Preformatted, ListFlowable, ListItem
 from reportlab.lib import colors
 
-SRC = r"D:\Hp\Desktop\AcademiaFutbol\docs\despliegue\instalacion.md"
-DST = r"D:\Hp\Desktop\AcademiaFutbol\docs\despliegue\instalacion.pdf"
+import argparse
+
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC_DEFAULT = os.path.join(BASE, "docs", "despliegue", "instalacion.md")
+DST_DEFAULT = os.path.join(BASE, "docs", "despliegue", "instalacion.pdf")
 
 COLORS = {
     "primary": HexColor("#1B3A5C"),
@@ -123,9 +126,20 @@ def parse_md(text):
         i+=1
     return blocks
 
+EMOJI_MAP = {
+    "\u2192": "->", "\u2190": "<-", "\u2014": "-", "\u2013": "-",
+    "\u2714": "OK", "\u2705": "[OK]", "\u274c": "[X]", "\u26a0": "[!]",
+    "\u2139": "[i]", "\u25be": "v", "\u25b4": "^", "\u2022": "-",
+    "\U0001f504": "[sync]", "\U0001f4c1": "[dir]", "\U0001f50c": "[link]",
+    "\U0001f4be": "[save]", "\U0001f4cb": "[list]", "\U0001f4ca": "[chart]",
+}
+
+
 def md_inline(text):
-    # sanitize unicode no soportado por Helvetica
-    text = text.replace("\u2192", "->").replace("\u2014", "-").replace("\u2013", "-").replace("\u2714", "OK").replace("\u2705", "[OK]").replace("\u274c", "[X]").replace("\u2192", "->")
+    # sanitize unicode no soportado por Helvetica (latin-1)
+    for src, dst in EMOJI_MAP.items():
+        text = text.replace(src, dst)
+    text = re.sub(r"[^\x00-\xFF]", "", text)
     # escape for reportlab
     # handle `code` -> <font face="Courier" color="#7D3C98">code</font>
     # handle **bold** -> <b>
@@ -143,12 +157,12 @@ def md_inline(text):
     # keep simple
     return t
 
-def build_pdf():
-    with open(SRC, encoding="utf-8") as f:
+def build_pdf(src=SRC_DEFAULT, dst=DST_DEFAULT, titulo="Documento — AcademiaFutbol", pie="AcademiaFutbol"):
+    with open(src, encoding="utf-8") as f:
         text = f.read()
     blocks = parse_md(text)
 
-    doc = SimpleDocTemplate(DST, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=15*mm, bottomMargin=15*mm, title="Guía de Instalación — AcademiaFutbol v1.0.0", author="Academia Deportiva")
+    doc = SimpleDocTemplate(dst, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=15*mm, bottomMargin=15*mm, title=titulo, author="Academia Deportiva")
     
     story=[]
     # Header
@@ -255,7 +269,7 @@ def build_pdf():
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(COLORS["gray"])
-        canvas.drawString(18*mm, 12*mm, "AcademiaFutbol v1.0.0 — Guía de Instalación — BD OneDrive virgen")
+        canvas.drawString(18*mm, 12*mm, pie)
         canvas.drawRightString(A4[0]-18*mm, 12*mm, f"Página {doc.page}")
         # line
         canvas.setStrokeColor(COLORS["accent"])
@@ -263,7 +277,13 @@ def build_pdf():
         canvas.line(18*mm, 14*mm, A4[0]-18*mm, 14*mm)
         canvas.restoreState()
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
-    print(f"PDF generado: {DST} ({os.path.getsize(DST)} bytes)")
+    print(f"PDF generado: {dst} ({os.path.getsize(dst)} bytes)")
 
 if __name__=="__main__":
-    build_pdf()
+    ap = argparse.ArgumentParser(description="Convierte markdown a PDF (estilo Academia).")
+    ap.add_argument("src", nargs="?", default=SRC_DEFAULT)
+    ap.add_argument("dst", nargs="?", default=DST_DEFAULT)
+    ap.add_argument("--titulo", default="Documento — AcademiaFutbol")
+    ap.add_argument("--pie", default="AcademiaFutbol")
+    args = ap.parse_args()
+    build_pdf(args.src, args.dst, args.titulo, args.pie)

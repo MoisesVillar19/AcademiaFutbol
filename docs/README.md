@@ -45,5 +45,6 @@ docs/
 - **¿Deploy?** → `despliegue/despliegue_produccion.md` + `setup_onedrive.bat` (raíz).
 - **¿Uso?** → `manuales/manual_sistema.md`.
 - **¿Probar un flujo / release?** → `manuales/manual_flujos.md`.
+- **¿Instalar en una PC?** → `despliegue/guia_instalacion.md` (Setup + ZIP + red + bloqueos, lenguaje simple).
 
 > **Nota migración:** `docs/` antes plano; ahora agrupado. Rutas antiguas redirigen aquí. Artefactos en raíz: `setup_onedrive.bat`, `config.ini` (generado), `VERSION`.

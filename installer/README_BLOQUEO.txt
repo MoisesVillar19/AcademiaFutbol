@@ -1,10 +1,10 @@
-AcademiaFutbol - Si Windows bloquea el instalador/EXE (sin firma, cualquier PC)
+AcademiaFutbol v1.0.3 - Si Windows bloquea el instalador/EXE
 ===============================================================================
-Fecha: 2026-09-07 | Versión: v1.0.2 | Alternativa ZIP incluida
+LEEME PRIMERO: docs/despliegue/guia_instalacion.md (paso a paso con dibujos de texto)
 
-ESTE EXE ES LEGITIMO (PyInstaller + CustomTkinter). Sin dinero para firma de codigo,
+ESTE EXE ES LEGITIMO (PyInstaller + CustomTkinter). Sin firma de codigo de pago,
 Windows muestra "Editor desconocido" / "Windows protegió su PC". NO ES VIRUS.
-PyInstaller + bcrypt a veces da falso positivo Trojan:Win32/Wacatac.
+(PyInstaller + bcrypt a veces da falso positivo Trojan:Win32/Wacatac.)
 
 ELIGE TU CASO (A, B, C o D):
 
@@ -16,10 +16,8 @@ ELIGE TU CASO (A, B, C o D):
 [B] Archivo bloqueado "No se puede ejecutar" / Zone.Identifier
     - Gráfico: clic derecho .exe -> Propiedades -> marcar "Desbloquear" -> Aplicar
     - PowerShell (recomendado):
-      Unblock-File -Path ".\AcademiaFutbol-Setup-1.0.2.exe"
-      Unblock-File -Path ".\AcademiaFutbol-v1.0.2.zip"  (si usas ZIP)
-      # verificar/fix ADS:
-      Remove-Item -Path ".\AcademiaFutbol-Setup-1.0.2.exe:Zone.Identifier" -ErrorAction SilentlyContinue
+      Unblock-File -Path ".\AcademiaFutbol-Setup-1.0.3.exe"
+      Unblock-File -Path ".\AcademiaFutbol-v1.0.3.zip"  (si usas ZIP)
 
 [C] Defender/Antivirus lo borra ("Amenaza encontrada")
     1. Seguridad de Windows -> Protección antivirus -> Historial -> Permitir
@@ -28,30 +26,26 @@ ELIGE TU CASO (A, B, C o D):
        -> Agregar Carpeta -> C:\Program Files\AcademiaFutbol\
        (o la carpeta donde extrajiste el ZIP, ej C:\AcademiaFutbol\)
     3. Volver a descargar/extraer si lo puso en cuarentena
-    - Verificación SHA256 (hash del Release v1.0.2, copy/paste):
-      certutil -hashfile AcademiaFutbol-Setup-1.0.2.exe SHA256
-      certutil -hashfile AcademiaFutbol-v1.0.2.zip SHA256
-      Debe coincidir con el publicado en GitHub Releases v1.0.2.
+    - Verificación SHA256 (hash del Release v1.0.3):
+      certutil -hashfile AcademiaFutbol-Setup-1.0.3.exe SHA256
+        -> 9dd7c5403671f03e66b6cd6c37559c9212268489aaa60fdd365b57945591e5c0
+      certutil -hashfile AcademiaFutbol-v1.0.3.zip SHA256
+        -> compara con SHA256-v1.0.3.txt del Release
 
-[D] Sin permiso de admin / no puedes instalar en C:\Program Files\ (PC bloqueada, cabina)
-    -> NO USES EL SETUP, USA EL ZIP PORTABLE (no pide permisos):
-    1. Unblock-File AcademiaFutbol-v1.0.2.zip (desbloquear ZIP primero!)
-    2. Clic derecho ZIP -> Extraer todo... -> C:\AcademiaFutbol\  (o Documentos\AcademiaFutbol\)
+[D] Sin permiso de admin / PC bloqueada
+    -> USA EL ZIP PORTABLE (no pide permisos, ya viene parchado: escribe en
+       LOCALAPPDATA, no necesita admin):
+    1. Unblock-File AcademiaFutbol-v1.0.3.zip (desbloquear ZIP primero!)
+    2. Clic derecho ZIP -> Extraer todo... -> C:\AcademiaFutbol\
        (mantener _internal\ y AcademiaFutbol.exe juntos)
-    3. Doble clic AcademiaFutbol.exe -> funciona igual (BD sigue en OneDrive\Academia\academia.db)
-    4. Crear acceso directo: clic derecho AcademiaFutbol.exe -> Crear acceso directo -> Escritorio
-    Esta es la opción oficial para cualquier PC sin OneDrive/admin.
+    3. Ejecuta setup_red.bat (incluido) para conectar a \\SERVIDOR\Academia
+    4. Doble clic AcademiaFutbol.exe -> crear acceso directo al Escritorio
 
-Logs si da PermissionError (fix v1.0.1):
-  - Antes v1.0.0: C:\Program Files\_internal\logs -> Acceso denegado
-  - Ahora v1.0.1+: OneDrive\Academia\logs\academia.log  o  %LOCALAPPDATA%\AcademiaFutbol\logs\academia.log
-    (automático, no necesitas admin)
+RED (4 PCs, una sola BD):
+    - NO copies academia.db entre PCs. Ejecuta setup_red.bat en cada PC.
+    - "No se puede acceder a la base de datos" = enciende la PC principal.
+    - Probar conexión: Configuración -> Respaldo -> Probar conexión.
 
-Actualizaciones v1.0.2 (dual Setup/ZIP):
-  - Si instalaste con Setup en Program Files: actualizará con Setup silencioso (pedirá UAC, es normal).
-  - Si instalaste portable ZIP: actualiza con ZIP sin permisos (MB/s, ETA visible).
-  - Botón manual: Configuración -> Actualizaciones -> Buscar actualizaciones ahora.
-
-Soporte: docs/despliegue/instalacion.md §2.1 y §10 | manual_sistema.md
-Hashes SHA256 del Release v1.0.2:
-  (ver GitHub Releases v1.0.2 notas o ejecutar certutil arriba)
+Actualizaciones:
+    - Barra con %, MB/s y ETA. En Program Files pedirá UAC (normal).
+    - Manual: Configuración -> Actualizaciones -> Buscar ahora.

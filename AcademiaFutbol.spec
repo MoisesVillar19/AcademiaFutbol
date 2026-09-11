@@ -15,7 +15,8 @@ a = Analysis(
         ('database/seed.py', 'database'),
         ('database/connection.py', 'database'),
         ('VERSION', '.'),
-        # config.ini NO se empaqueta fijo: se genera por setup_onedrive.bat / installer según OneDrive de cada PC
+        ('setup_red.bat', '.'),
+        # config.ini NO se empaqueta fijo: se genera por setup_red.bat / installer según cada PC
         # ('config.ini', '.'),  # se deja como ejemplo si existe
     ],
     hiddenimports=[
@@ -25,6 +26,9 @@ a = Analysis(
         'reportlab',
         'bcrypt',
         'pandas',
+        'numpy',
+        'matplotlib',
+        'matplotlib.backends.backend_tkagg',
         'tkinter',
         'database.create_db',
         'database.seed',
@@ -44,6 +48,11 @@ a = Analysis(
         'controllers.auditoria_controller',
         'controllers.importar_controller',
         'controllers.persona_controller',
+        'controllers.beca_controller',
+        'controllers.venta_controller',
+        'controllers.egreso_controller',
+        'controllers.dashboard_controller',
+        'services.concepto_service',
         'services.auth_service',
         'services.estudiante_service',
         'services.matricula_service',

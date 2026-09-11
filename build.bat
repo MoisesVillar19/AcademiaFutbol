@@ -22,6 +22,8 @@ if errorlevel 1 (
 echo [3/3] Copiando assets necesarios...
 if not exist "dist\AcademiaFutbol\assets\images" mkdir "dist\AcademiaFutbol\assets\images"
 copy /y "assets\images\logo_roncalli.png" "dist\AcademiaFutbol\assets\images\" >nul 2>&1
+copy /y "setup_red.bat" "dist\AcademiaFutbol\" >nul 2>&1
+copy /y "installer\README_BLOQUEO.txt" "dist\AcademiaFutbol\" >nul 2>&1
 
 echo.
 echo ========================================

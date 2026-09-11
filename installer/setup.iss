@@ -2,7 +2,7 @@
 ; Requiere: Inno Setup 6.7+
 
 #define MyAppName "AcademiaFutbol"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "Academia Deportiva"
 #define MyAppURL "https://github.com/MoisesVillar19/AcademiaFutbol"
 #define MyAppExeName "AcademiaFutbol.exe"
@@ -48,7 +48,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\AcademiaFutbol\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\AcademiaFutbol\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\setup_onedrive.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\setup_red.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README_BLOQUEO.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [INI]

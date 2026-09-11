@@ -74,43 +74,49 @@ class PagoView(ctk.CTkFrame):
         self.label_status.pack(pady=4)
 
     def _crear_tab_formulario(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
         scroll = ctk.CTkScrollableFrame(self.tab_form)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(
-            scroll, text="Registrar Pago",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        sec1 = crear_seccion(scroll, titulo="Cuota a pagar", icono="🧾",
+                             descripcion="Elige estudiante y su cuota pendiente. Acepta pagos parciales.", nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(scroll, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        ctk.CTkLabel(cuerpo1, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_estudiante = ctk.CTkComboBox(
-            scroll, width=400, values=["Cargando..."],
+            cuerpo1, width=400, values=["Cargando..."],
             command=self._on_estudiante_cambiado,
         )
         self.combo_estudiante.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Cuota pendiente *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.combo_cuota = ctk.CTkComboBox(scroll, width=400, values=["Seleccionar estudiante primero"])
+        ctk.CTkLabel(cuerpo1, text="Cuota pendiente *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.combo_cuota = ctk.CTkComboBox(cuerpo1, width=400, values=["Seleccionar estudiante primero"])
         self.combo_cuota.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Monto a pagar (S/) *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_monto = ctk.CTkEntry(scroll, placeholder_text="0.00", width=200)
+        sec2 = crear_seccion(scroll, titulo="Monto y comprobante", icono="💵",
+                             descripcion="YAPE/PLIN/TRANSFERENCIA exigen foto de comprobante.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
+
+        ctk.CTkLabel(cuerpo2, text="Monto a pagar (S/) *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_monto = ctk.CTkEntry(cuerpo2, placeholder_text="0.00", width=200)
         self.entry_monto.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Método de pago *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        ctk.CTkLabel(cuerpo2, text="Método de pago *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_metodo = ctk.CTkComboBox(
-            scroll, width=200,
+            cuerpo2, width=200,
             values=["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA"],
         )
         self.combo_metodo.set("EFECTIVO")
         self.combo_metodo.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Observación (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_observacion = ctk.CTkEntry(scroll, placeholder_text="Referencia o nota", width=400)
+        ctk.CTkLabel(cuerpo2, text="Observación (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_observacion = ctk.CTkEntry(cuerpo2, placeholder_text="Referencia o nota", width=400)
         self.entry_observacion.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Comprobante foto (obligatorio si YAPE/PLIN/TRANSFERENCIA)", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        comp_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        ctk.CTkLabel(cuerpo2, text="Comprobante foto (obligatorio si YAPE/PLIN/TRANSFERENCIA)", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        comp_frame = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         comp_frame.pack(fill="x", anchor="w", pady=2)
         self.btn_comprobante = ctk.CTkButton(comp_frame, text="📎 Seleccionar comprobante", width=200, command=self._elegir_comprobante)
         self.btn_comprobante.pack(side="left", padx=5)
@@ -119,16 +125,19 @@ class PagoView(ctk.CTkFrame):
         self.label_comprobante_preview = ctk.CTkLabel(comp_frame, text="")
         self.label_comprobante_preview.pack(side="left", padx=5)
         self._comprobante_path = None
+        crear_nota(sec2, "Si el monto cubre el saldo, la cuota pasa a PAGADO; si no, queda PARCIAL.")
 
-        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
-        self.label_form_status.pack(anchor="w", pady=5)
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_form_status = ctk.CTkLabel(footer, text="", font=ctk.CTkFont(size=12))
+        self.label_form_status.pack(anchor="w", padx=10, pady=(8, 2))
 
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.pack(anchor="w", pady=10)
+        btn_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        btn_frame.pack(anchor="w", padx=10, pady=(2, 8))
 
-        ctk.CTkButton(
+        crear_boton_interactivo(
             btn_frame, text="Registrar Pago", width=130,
-            command=self._registrar_pago,
+            command=self._registrar_pago, fg_color="#7C3AED",
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -142,23 +151,19 @@ class PagoView(ctk.CTkFrame):
         ).pack(side="left", padx=5)
 
     def _crear_tab_morosos(self):
-        header = ctk.CTkFrame(self.tab_morosos, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            header, text="Cuotas Vencidas",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            header, text="Actualizar", width=100,
-            command=self._cargar_morosos,
-        ).pack(side="right")
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec = crear_seccion(
+            self.tab_morosos, titulo="Cuotas Vencidas", icono="⚠️",
+            descripcion="Cuotas vencidas con saldo pendiente. Registra el pago desde la pestaña Registrar Pago.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec, text="Actualizar", width=110, command=self._cargar_morosos,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
         self.scroll_morosos = ctk.CTkScrollableFrame(self.tab_morosos)
         self.scroll_morosos.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.label_status_morosos = ctk.CTkLabel(self.tab_morosos, text="", font=ctk.CTkFont(size=11))
+        self.label_status_morosos = ctk.CTkLabel(self.tab_morosos, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status_morosos.pack(pady=3)
 
     def _recargar_actual(self):

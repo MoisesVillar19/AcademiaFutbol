@@ -74,15 +74,16 @@ class EstudianteView(ctk.CTkFrame):
         self.label_status.pack(pady=3)
 
     def _crear_tab_formulario(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
         scroll = ctk.CTkScrollableFrame(self.tab_form)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(
-            scroll, text="Datos del Estudiante",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        sec1 = crear_seccion(scroll, titulo="Documento e identidad", icono="🪪",
+                             descripcion="Datos del estudiante. Los marcados con * son obligatorios.", nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
 
-        row_doc = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_doc = ctk.CTkFrame(cuerpo1, fg_color="transparent")
         row_doc.pack(fill="x", anchor="w", pady=(0, 5))
 
         ctk.CTkLabel(row_doc, text="Tipo Doc. *").pack(side="left", padx=(0, 5))
@@ -97,16 +98,20 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_dni = ctk.CTkEntry(row_doc, placeholder_text="8 dígitos", width=200)
         self.entry_dni.pack(side="left")
 
-        ctk.CTkLabel(scroll, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_nombres = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
+        ctk.CTkLabel(cuerpo1, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_nombres = ctk.CTkEntry(cuerpo1, placeholder_text="Nombres completos", width=400)
         self.entry_nombres.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_apellidos = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
+        ctk.CTkLabel(cuerpo1, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_apellidos = ctk.CTkEntry(cuerpo1, placeholder_text="Apellidos completos", width=400)
         self.entry_apellidos.pack(anchor="w", pady=(0, 5))
 
+        sec2 = crear_seccion(scroll, titulo="Foto y condición de ingreso", icono="📷",
+                             descripcion="Foto opcional (≤2MB). El check 🆕 define Nuevos del Mes.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
         # Foto del niño (RN-041) - flexible, opcional, ≤2MB jpg/png
-        foto_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        foto_frame = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         foto_frame.pack(fill="x", anchor="w", pady=5)
         ctk.CTkLabel(foto_frame, text="Foto del niño (opcional):").pack(side="left", padx=(0,5))
         self.btn_foto = ctk.CTkButton(foto_frame, text="📷 Seleccionar foto", width=150, command=self._seleccionar_foto)
@@ -119,7 +124,7 @@ class EstudianteView(ctk.CTkFrame):
         self.label_foto_preview.pack(side="left", padx=5)
 
         # RN-051: es_nuevo única vez — bloque destacado (define Nuevos del Mes en Dashboard)
-        marco_nuevo = ctk.CTkFrame(scroll, fg_color="#F3E8FF", border_width=1, border_color="#7C3AED", corner_radius=8)
+        marco_nuevo = ctk.CTkFrame(cuerpo2, fg_color="#F3E8FF", border_width=1, border_color="#7C3AED", corner_radius=8)
         marco_nuevo.pack(fill="x", anchor="w", pady=6)
         self.var_es_nuevo = ctk.IntVar(value=0)
         self.check_es_nuevo = ctk.CTkCheckBox(marco_nuevo, text="🆕 ¿Es estudiante REALMENTE nuevo?", font=ctk.CTkFont(size=13, weight="bold"), text_color="#3D1559", variable=self.var_es_nuevo)
@@ -127,7 +132,12 @@ class EstudianteView(ctk.CTkFrame):
         ctk.CTkLabel(marco_nuevo, text="Marca SOLO si es alta nueva real → regala Camiseta S/0 en su 1ª matrícula y cuenta en Dashboard > Nuevos del Mes.", font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=550, justify="left").pack(anchor="w", padx=10)
         ctk.CTkLabel(marco_nuevo, text="⚠ Si es carga masiva de alumnos existentes, DEJAR DESMARCADO (no saldrán como nuevos). Luego se bloquea solo.", font=ctk.CTkFont(size=11, weight="bold"), text_color="#DC2626", wraplength=550, justify="left").pack(anchor="w", padx=10, pady=(2, 8))
 
-        row1 = ctk.CTkFrame(scroll, fg_color="transparent")
+        sec3 = crear_seccion(scroll, titulo="Nacimiento y contacto", icono="🎂",
+                             descripcion="Fecha, sexo y datos de contacto.", nro=3)
+        cuerpo3 = ctk.CTkFrame(sec3, fg_color="transparent")
+        cuerpo3.pack(fill="x", padx=10, pady=(0, 8))
+
+        row1 = ctk.CTkFrame(cuerpo3, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
 
         self.date_picker_nac = DatePicker(row1, label_text="Fecha nacimiento:")
@@ -138,10 +148,10 @@ class EstudianteView(ctk.CTkFrame):
         self.combo_sexo.set("")
         self.combo_sexo.pack(side="left")
 
-        self.entry_direccion = ctk.CTkEntry(scroll, placeholder_text="Dirección", width=400)
+        self.entry_direccion = ctk.CTkEntry(cuerpo3, placeholder_text="Dirección", width=400)
         self.entry_direccion.pack(anchor="w", pady=3)
 
-        row2 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row2 = ctk.CTkFrame(cuerpo3, fg_color="transparent")
         row2.pack(fill="x", anchor="w", pady=3)
 
         ctk.CTkLabel(row2, text="Teléfono:").pack(side="left", padx=(0, 5))
@@ -152,15 +162,12 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_correo = ctk.CTkEntry(row2, placeholder_text="Correo", width=200)
         self.entry_correo.pack(side="left")
 
-        separador = ctk.CTkFrame(scroll, fg_color="#DDD6E5", height=2)
-        separador.pack(fill="x", pady=15)
+        sec4 = crear_seccion(scroll, titulo="Apoderado Principal (obligatorio)", icono="👨‍👩‍👧",
+                             descripcion="Un principal obligatorio; más apoderados en la pestaña Apoderados.", nro=4)
+        cuerpo4 = ctk.CTkFrame(sec4, fg_color="transparent")
+        cuerpo4.pack(fill="x", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(
-            scroll, text="Apoderado Principal (obligatorio)",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
-
-        row_doc_ap = ctk.CTkFrame(scroll, fg_color="transparent")
+        row_doc_ap = ctk.CTkFrame(cuerpo4, fg_color="transparent")
         row_doc_ap.pack(fill="x", anchor="w", pady=(0, 5))
 
         ctk.CTkLabel(row_doc_ap, text="Tipo Doc. *").pack(side="left", padx=(0, 5))
@@ -175,15 +182,15 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_dni_ap = ctk.CTkEntry(row_doc_ap, placeholder_text="8 dígitos", width=200)
         self.entry_dni_ap.pack(side="left")
 
-        ctk.CTkLabel(scroll, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_nombres_ap = ctk.CTkEntry(scroll, placeholder_text="Nombres completos", width=400)
+        ctk.CTkLabel(cuerpo4, text="Nombres *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_nombres_ap = ctk.CTkEntry(cuerpo4, placeholder_text="Nombres completos", width=400)
         self.entry_nombres_ap.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_apellidos_ap = ctk.CTkEntry(scroll, placeholder_text="Apellidos completos", width=400)
+        ctk.CTkLabel(cuerpo4, text="Apellidos *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_apellidos_ap = ctk.CTkEntry(cuerpo4, placeholder_text="Apellidos completos", width=400)
         self.entry_apellidos_ap.pack(anchor="w", pady=(0, 5))
 
-        row3 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row3 = ctk.CTkFrame(cuerpo4, fg_color="transparent")
         row3.pack(fill="x", anchor="w", pady=3)
 
         ctk.CTkLabel(row3, text="Parentesco *").pack(side="left", padx=(0, 5))
@@ -198,18 +205,20 @@ class EstudianteView(ctk.CTkFrame):
         self.entry_telefono_ap = ctk.CTkEntry(row3, placeholder_text="Teléfono", width=150)
         self.entry_telefono_ap.pack(side="left")
 
-        self.entry_direccion_ap = ctk.CTkEntry(scroll, placeholder_text="Dirección del apoderado", width=400)
+        self.entry_direccion_ap = ctk.CTkEntry(cuerpo4, placeholder_text="Dirección del apoderado", width=400)
         self.entry_direccion_ap.pack(anchor="w", pady=3)
 
-        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
-        self.label_form_status.pack(anchor="w", pady=5)
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_form_status = ctk.CTkLabel(footer, text="", font=ctk.CTkFont(size=12))
+        self.label_form_status.pack(anchor="w", padx=10, pady=(8, 2))
 
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.pack(anchor="w", pady=10)
+        btn_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        btn_frame.pack(anchor="w", padx=10, pady=(2, 8))
 
-        self.btn_guardar = ctk.CTkButton(
+        self.btn_guardar = crear_boton_interactivo(
             btn_frame, text="Guardar", width=120,
-            command=self._guardar_estudiante,
+            command=self._guardar_estudiante, fg_color="#7C3AED",
         )
         self.btn_guardar.pack(side="left", padx=5)
 

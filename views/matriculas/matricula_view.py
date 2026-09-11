@@ -86,29 +86,36 @@ class MatriculaView(ctk.CTkFrame):
         scroll = ctk.CTkScrollableFrame(self._form_container)
         scroll.pack(fill="both", expand=True, pady=(0,5))
 
-        ctk.CTkLabel(
-            scroll, text="Nueva Matrícula",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        from utils.ui_helpers import crear_seccion, crear_nota
+        sec1 = crear_seccion(scroll, titulo="Estudiante y tarifa", icono="🎓",
+                             descripcion="Sugiere tarifa por edad. El concepto flexible precede a tarifa/monto.",
+                             nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(scroll, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        ctk.CTkLabel(cuerpo1, text="Estudiante *", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_estudiante = ctk.CTkComboBox(
-            scroll, width=400, values=["Cargando..."],
+            cuerpo1, width=400, values=["Cargando..."],
             command=self._on_estudiante_changed,
         )
         self.combo_estudiante.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Tarifa *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.combo_tarifa = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        ctk.CTkLabel(cuerpo1, text="Tarifa *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.combo_tarifa = ctk.CTkComboBox(cuerpo1, width=400, values=["Cargando..."])
         self.combo_tarifa.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Concepto flexible (opcional, con ítems incluidos) — si eliges, ignora Tarifa/monto:", font=ctk.CTkFont(size=11)).pack(anchor="w")
-        self.combo_concepto = ctk.CTkComboBox(scroll, width=400, values=["Ninguno"])
+        ctk.CTkLabel(cuerpo1, text="Concepto flexible (opcional, con ítems incluidos) — si eliges, ignora Tarifa/monto:", font=ctk.CTkFont(size=11)).pack(anchor="w")
+        self.combo_concepto = ctk.CTkComboBox(cuerpo1, width=400, values=["Ninguno"])
         self.combo_concepto.set("Ninguno")
         self.combo_concepto.pack(anchor="w", pady=(0, 5))
-        ctk.CTkLabel(scroll, text="↳ Ej: Matrícula Promocional S/150 incluye Camiseta. Se descuenta stock de cada ítem.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
+        ctk.CTkLabel(cuerpo1, text="↳ Ej: Matrícula Promocional S/150 incluye Camiseta. Se descuenta stock de cada ítem.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
 
-        row1 = ctk.CTkFrame(scroll, fg_color="transparent")
+        sec2 = crear_seccion(scroll, titulo="Montos, beca y productos", icono="💰",
+                             descripcion="Monto pactado libre (0 = gratuito), beca opcional y extras con −1/+1.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
+
+        row1 = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
 
         ctk.CTkLabel(row1, text="Monto pactado (S/):").pack(side="left")
@@ -120,19 +127,19 @@ class MatriculaView(ctk.CTkFrame):
         self.entry_dia_venc.insert(0, "1")
         self.entry_dia_venc.pack(side="left", padx=5)
 
-        ctk.CTkLabel(scroll, text="Beca (opcional):").pack(anchor="w")
-        self.combo_beca = ctk.CTkComboBox(scroll, width=400, values=["Ninguna"])
+        ctk.CTkLabel(cuerpo2, text="Beca (opcional):").pack(anchor="w")
+        self.combo_beca = ctk.CTkComboBox(cuerpo2, width=400, values=["Ninguna"])
         self.combo_beca.pack(anchor="w", pady=3)
 
-        ctk.CTkLabel(scroll, text="Pago diferido (mensualidad):").pack(anchor="w", pady=(5,0))
-        self.combo_diferir = ctk.CTkComboBox(scroll, width=200, values=["Ahora (0)", "2 meses", "3 meses"])
+        ctk.CTkLabel(cuerpo2, text="Pago diferido (mensualidad):").pack(anchor="w", pady=(5,0))
+        self.combo_diferir = ctk.CTkComboBox(cuerpo2, width=200, values=["Ahora (0)", "2 meses", "3 meses"])
         self.combo_diferir.set("Ahora (0)")
         self.combo_diferir.pack(anchor="w", pady=3)
 
         # Productos configurables (uniforme, etc.) — -1/+1
-        ctk.CTkLabel(scroll, text="Productos adicionales — usa −1 / +1:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(10,5))
-        ctk.CTkLabel(scroll, text="Si es estudiante nuevo con regalo S/0, extras se bloquean (usa Ventas).", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
-        self.frame_productos = ctk.CTkScrollableFrame(scroll, height=150)
+        ctk.CTkLabel(cuerpo2, text="Productos adicionales — usa −1 / +1:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(10,5))
+        ctk.CTkLabel(cuerpo2, text="Si es estudiante nuevo con regalo S/0, extras se bloquean (usa Ventas).", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
+        self.frame_productos = ctk.CTkScrollableFrame(cuerpo2, height=150)
         self.frame_productos.pack(fill="x", anchor="w", pady=5)
         self._productos_disponibles = []
         self._productos_seleccionados = {}  # id_producto -> {cantidad, precio, nombre}

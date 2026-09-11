@@ -42,33 +42,41 @@ class EgresoView(ctk.CTkFrame):
         self.label_lista_status.pack(pady=3)
 
     def _crear_form(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        from widgets.date_picker import DatePicker
         scroll = ctk.CTkScrollableFrame(self.tab_form)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
-        ctk.CTkLabel(scroll, text="Registrar Egreso", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0,10))
-        ctk.CTkLabel(scroll, text="Concepto *").pack(anchor="w")
-        self.combo_concepto = ctk.CTkComboBox(scroll, width=250, values=["PROFESOR","PERSONAL","CAMPEONATO_FIJO","ARBITRAJE","VIATICOS"], command=self._on_concepto_changed)
+        sec1 = crear_seccion(scroll, titulo="Concepto y monto", icono="💸",
+                             descripcion="PROFESOR/ARBITRAJE sugieren monto editable. División solo para campeonatos.",
+                             nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(cuerpo1, text="Concepto *").pack(anchor="w")
+        self.combo_concepto = ctk.CTkComboBox(cuerpo1, width=250, values=["PROFESOR","PERSONAL","CAMPEONATO_FIJO","ARBITRAJE","VIATICOS"], command=self._on_concepto_changed)
         self.combo_concepto.set("PROFESOR")
         self.combo_concepto.pack(anchor="w", pady=3)
-        self.frame_division = ctk.CTkFrame(scroll, fg_color="transparent")
+        self.frame_division = ctk.CTkFrame(cuerpo1, fg_color="transparent")
         ctk.CTkLabel(self.frame_division, text="División campeonato (opcional, para ARBITRAJE/CAMPEONATO_FIJO)").pack(anchor="w")
         self.combo_tarifa_egr = ctk.CTkComboBox(self.frame_division, width=400, values=["Ninguna"])
         self.combo_tarifa_egr.set("Ninguna")
         self.combo_tarifa_egr.pack(anchor="w", pady=3)
         self._tarifas_egr_map = {}
-        ctk.CTkLabel(scroll, text="Monto S/ * (editable: cada profesor/árbitro puede cobrar distinto)").pack(anchor="w")
-        self.entry_monto = ctk.CTkEntry(scroll, width=150, placeholder_text="200")
+        ctk.CTkLabel(cuerpo1, text="Monto S/ * (editable: cada profesor/árbitro puede cobrar distinto)").pack(anchor="w")
+        self.entry_monto = ctk.CTkEntry(cuerpo1, width=150, placeholder_text="200")
         self.entry_monto.pack(anchor="w", pady=3)
-        from widgets.date_picker import DatePicker
-        self.date_fecha = DatePicker(scroll, label_text="Fecha *", default="today")
+        self.date_fecha = DatePicker(cuerpo1, label_text="Fecha *", default="today")
         self.date_fecha.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Responsable").pack(anchor="w")
-        self.entry_resp = ctk.CTkEntry(scroll, width=300, placeholder_text="Nombre")
+        ctk.CTkLabel(cuerpo1, text="Responsable").pack(anchor="w")
+        self.entry_resp = ctk.CTkEntry(cuerpo1, width=300, placeholder_text="Nombre")
         self.entry_resp.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Observación").pack(anchor="w")
-        self.entry_obs = ctk.CTkEntry(scroll, width=400)
+        ctk.CTkLabel(cuerpo1, text="Observación").pack(anchor="w")
+        self.entry_obs = ctk.CTkEntry(cuerpo1, width=400)
         self.entry_obs.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Comprobante (opcional, jpg/png/pdf ≤5MB)").pack(anchor="w", pady=(5,0))
-        comp_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        sec2 = crear_seccion(scroll, titulo="Comprobante", icono="📎",
+                             descripcion="Opcional, jpg/png/pdf ≤5MB.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
+        comp_frame = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         comp_frame.pack(fill="x", anchor="w", pady=2)
         self.btn_comp = ctk.CTkButton(comp_frame, text="📎 Seleccionar comprobante", width=180, command=self._elegir_comprobante)
         self.btn_comp.pack(side="left", padx=5)
@@ -77,9 +85,12 @@ class EgresoView(ctk.CTkFrame):
         self.label_comp_preview = ctk.CTkLabel(comp_frame, text="")
         self.label_comp_preview.pack(side="left", padx=5)
         self._comprobante_path = None
-        self.label_status = ctk.CTkLabel(scroll, text="")
-        self.label_status.pack(anchor="w", pady=5)
-        ctk.CTkButton(scroll, text="Guardar", width=120, command=self._guardar).pack(anchor="w", pady=10)
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_status = ctk.CTkLabel(footer, text="")
+        self.label_status.pack(anchor="w", padx=10, pady=(8, 2))
+        crear_boton_interactivo(footer, text="Guardar", width=120, command=self._guardar,
+                                fg_color="#7C3AED").pack(anchor="w", padx=10, pady=(2, 8))
 
     def _crear_reporte(self):
         frame = ctk.CTkFrame(self.tab_reporte, fg_color="transparent")

@@ -156,37 +156,44 @@ class InventarioView(ctk.CTkFrame):
             self._cargar_combo_categorias()
 
     def _crear_tab_formulario(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
         scroll = ctk.CTkScrollableFrame(self.tab_form)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(
-            scroll, text="Registrar Producto",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        sec1 = crear_seccion(scroll, titulo="Datos del producto", icono="📦",
+                             descripcion="Nombre, categoría y tipo de uso. VENTA aparece en ventas; CONSUMO_INTERNO no.",
+                             nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
 
         self.label_codigo = ctk.CTkLabel(
-            scroll, text="Código: Generando...",
+            cuerpo1, text="Código: Generando...",
             font=ctk.CTkFont(size=13, weight="bold"), text_color="#7C3AED",
         )
         self.label_codigo.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Nombre *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del producto", width=400)
+        ctk.CTkLabel(cuerpo1, text="Nombre *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.entry_nombre = ctk.CTkEntry(cuerpo1, placeholder_text="Nombre del producto", width=400)
         self.entry_nombre.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Categoría *", font=ctk.CTkFont(size=12)).pack(anchor="w")
-        self.combo_categoria = ctk.CTkComboBox(scroll, width=300, values=["Cargando..."])
+        ctk.CTkLabel(cuerpo1, text="Categoría *", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        self.combo_categoria = ctk.CTkComboBox(cuerpo1, width=300, values=["Cargando..."])
         self.combo_categoria.pack(anchor="w", pady=(0, 5))
 
-        ctk.CTkLabel(scroll, text="Tipo de uso", font=ctk.CTkFont(size=12)).pack(anchor="w")
+        ctk.CTkLabel(cuerpo1, text="Tipo de uso", font=ctk.CTkFont(size=12)).pack(anchor="w")
         self.combo_tipo_uso = ctk.CTkComboBox(
-            scroll, width=200,
+            cuerpo1, width=200,
             values=["CONSUMO_INTERNO", "VENTA"],
         )
         self.combo_tipo_uso.set("CONSUMO_INTERNO")
         self.combo_tipo_uso.pack(anchor="w", pady=(0, 5))
 
-        row1 = ctk.CTkFrame(scroll, fg_color="transparent")
+        sec2 = crear_seccion(scroll, titulo="Stock y precios", icono="💰",
+                             descripcion="Mínimo para alertas; compra/venta para valorizado y ganancias.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
+
+        row1 = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)
 
         ctk.CTkLabel(row1, text="Stock mínimo:").pack(side="left")
@@ -197,7 +204,7 @@ class InventarioView(ctk.CTkFrame):
         self.entry_precio = ctk.CTkEntry(row1, placeholder_text="0.00", width=100)
         self.entry_precio.pack(side="left", padx=10)
 
-        row2 = ctk.CTkFrame(scroll, fg_color="transparent")
+        row2 = ctk.CTkFrame(cuerpo2, fg_color="transparent")
         row2.pack(fill="x", anchor="w", pady=3)
 
         ctk.CTkLabel(row2, text="Compra (S/):").pack(side="left")
@@ -208,26 +215,32 @@ class InventarioView(ctk.CTkFrame):
         self.entry_precio_venta = ctk.CTkEntry(row2, placeholder_text="0.00", width=100)
         self.entry_precio_venta.pack(side="left", padx=10)
 
-        ctk.CTkLabel(scroll, text="Tipo uniforme (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
-        self.combo_tipo_uniforme = ctk.CTkComboBox(scroll, width=300, values=["Sin tipo"])
+        sec3 = crear_seccion(scroll, titulo="Variante (opcional)", icono="👕",
+                             descripcion="Solo para uniformes: tipo y talla crean variantes con stock propio.", nro=3)
+        cuerpo3 = ctk.CTkFrame(sec3, fg_color="transparent")
+        cuerpo3.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(cuerpo3, text="Tipo uniforme (opcional)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
+        self.combo_tipo_uniforme = ctk.CTkComboBox(cuerpo3, width=300, values=["Sin tipo"])
         self.combo_tipo_uniforme.set("Sin tipo")
         self.combo_tipo_uniforme.pack(anchor="w", pady=(0, 5))
         self._tipos_uniforme_map = {}
 
-        ctk.CTkLabel(scroll, text="Talla (opcional, para uniformes)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
-        self.combo_talla = ctk.CTkComboBox(scroll, width=200, values=["UNICA", "S", "M", "L", "XL"])
+        ctk.CTkLabel(cuerpo3, text="Talla (opcional, para uniformes)", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5,0))
+        self.combo_talla = ctk.CTkComboBox(cuerpo3, width=200, values=["UNICA", "S", "M", "L", "XL"])
         self.combo_talla.set("UNICA")
         self.combo_talla.pack(anchor="w", pady=(0, 5))
 
-        self.label_form_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
-        self.label_form_status.pack(anchor="w", pady=5)
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_form_status = ctk.CTkLabel(footer, text="", font=ctk.CTkFont(size=12))
+        self.label_form_status.pack(anchor="w", padx=10, pady=(8, 2))
 
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.pack(anchor="w", pady=10)
+        btn_frame = ctk.CTkFrame(footer, fg_color="transparent")
+        btn_frame.pack(anchor="w", padx=10, pady=(2, 8))
 
-        self.btn_guardar = ctk.CTkButton(
+        self.btn_guardar = crear_boton_interactivo(
             btn_frame, text="Guardar", width=120,
-            command=self._guardar_producto,
+            command=self._guardar_producto, fg_color="#7C3AED",
         )
         self.btn_guardar.pack(side="left", padx=5)
 
@@ -239,61 +252,67 @@ class InventarioView(ctk.CTkFrame):
         self._id_producto_editando = None
 
     def _crear_tab_movimiento(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
         scroll = ctk.CTkScrollableFrame(self.tab_movimiento)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(
-            scroll, text="Registrar Movimiento",
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).pack(anchor="w", pady=(0, 10))
+        sec = crear_seccion(scroll, titulo="Registrar Movimiento", icono="🔄",
+                            descripcion="ENTRADA suma, SALIDA resta (valida stock), AJUSTE fija el stock.",
+                            nro=1)
+        cuerpo = ctk.CTkFrame(sec, fg_color="transparent")
+        cuerpo.pack(fill="x", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(scroll, text="Producto:").pack(anchor="w")
-        self.combo_producto = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        ctk.CTkLabel(cuerpo, text="Producto:").pack(anchor="w")
+        self.combo_producto = ctk.CTkComboBox(cuerpo, width=400, values=["Cargando..."])
         self.combo_producto.pack(anchor="w", pady=3)
 
         self.label_stock_actual = ctk.CTkLabel(
-            scroll, text="",
+            cuerpo, text="",
             font=ctk.CTkFont(size=12, weight="bold"), text_color="#7C3AED",
         )
         self.label_stock_actual.pack(anchor="w", pady=(0, 3))
 
-        ctk.CTkLabel(scroll, text="Tipo de movimiento:").pack(anchor="w")
+        ctk.CTkLabel(cuerpo, text="Tipo de movimiento:").pack(anchor="w")
         self.combo_tipo_mov = ctk.CTkComboBox(
-            scroll, width=200,
+            cuerpo, width=200,
             values=["ENTRADA", "SALIDA", "AJUSTE"],
         )
         self.combo_tipo_mov.set("ENTRADA")
         self.combo_tipo_mov.pack(anchor="w", pady=3)
 
-        ctk.CTkLabel(scroll, text="Cantidad:").pack(anchor="w")
-        self.entry_cantidad = ctk.CTkEntry(scroll, placeholder_text="0", width=150)
+        ctk.CTkLabel(cuerpo, text="Cantidad:").pack(anchor="w")
+        self.entry_cantidad = ctk.CTkEntry(cuerpo, placeholder_text="0", width=150)
         self.entry_cantidad.pack(anchor="w", pady=3)
 
-        ctk.CTkLabel(scroll, text="Motivo:").pack(anchor="w")
-        self.entry_motivo = ctk.CTkEntry(scroll, placeholder_text="Motivo del movimiento", width=400)
+        ctk.CTkLabel(cuerpo, text="Motivo:").pack(anchor="w")
+        self.entry_motivo = ctk.CTkEntry(cuerpo, placeholder_text="Motivo del movimiento", width=400)
         self.entry_motivo.pack(anchor="w", pady=3)
+        crear_nota(sec, "Todo movimiento queda en el Historial con usuario y fecha.")
 
-        self.label_mov_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
-        self.label_mov_status.pack(anchor="w", pady=5)
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_mov_status = ctk.CTkLabel(footer, text="", font=ctk.CTkFont(size=12))
+        self.label_mov_status.pack(anchor="w", padx=10, pady=(8, 2))
 
-        ctk.CTkButton(
-            scroll, text="Registrar Movimiento", width=180,
-            command=self._registrar_movimiento,
-        ).pack(anchor="w", pady=10)
+        crear_boton_interactivo(
+            footer, text="Registrar Movimiento", width=180,
+            command=self._registrar_movimiento, fg_color="#7C3AED",
+        ).pack(anchor="w", padx=10, pady=(2, 8))
 
     def _crear_tab_historial(self):
-        header = ctk.CTkFrame(self.tab_historial, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
-
-        ctk.CTkLabel(
-            header, text="Historial de Movimientos",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
+        from utils.ui_helpers import crear_seccion, crear_boton_interactivo
+        sec = crear_seccion(
+            self.tab_historial, titulo="Historial de Movimientos", icono="📜",
+            descripcion="Entradas, salidas y ajustes con usuario y fecha.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec, text="Actualizar", width=110, command=self._cargar_historial,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
         self.scroll_historial = ctk.CTkScrollableFrame(self.tab_historial)
         self.scroll_historial.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.label_status_hist = ctk.CTkLabel(self.tab_historial, text="", font=ctk.CTkFont(size=11))
+        self.label_status_hist = ctk.CTkLabel(self.tab_historial, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status_hist.pack(pady=3)
 
     def _recargar_actual(self):

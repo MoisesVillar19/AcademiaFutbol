@@ -49,18 +49,23 @@ class VentaView(ctk.CTkFrame):
         self.label_lista_status.pack(pady=3)
 
     def _crear_tab_form(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
         scroll = ctk.CTkScrollableFrame(self.tab_form)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
-        ctk.CTkLabel(scroll, text="Registrar Venta", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0,10))
-        ctk.CTkLabel(scroll, text="Producto *").pack(anchor="w")
-        self.combo_producto = ctk.CTkComboBox(scroll, width=400, values=["Cargando..."])
+        sec1 = crear_seccion(scroll, titulo="Producto y tipo", icono="🛒",
+                             descripcion="Uniforme/Tienda por producto con stock. Campeonato se cobra por tarifa.",
+                             nro=1)
+        cuerpo1 = ctk.CTkFrame(sec1, fg_color="transparent")
+        cuerpo1.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(cuerpo1, text="Producto *").pack(anchor="w")
+        self.combo_producto = ctk.CTkComboBox(cuerpo1, width=400, values=["Cargando..."])
         self.combo_producto.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Cantidad *").pack(anchor="w")
-        self.entry_cant = ctk.CTkEntry(scroll, width=150, placeholder_text="1")
+        ctk.CTkLabel(cuerpo1, text="Cantidad *").pack(anchor="w")
+        self.entry_cant = ctk.CTkEntry(cuerpo1, width=150, placeholder_text="1")
         self.entry_cant.pack(anchor="w", pady=3)
         self.entry_cant.insert(0, "1")
-        ctk.CTkLabel(scroll, text="Tipo venta").pack(anchor="w")
-        self.combo_tipo = ctk.CTkComboBox(scroll, width=200, values=["UNIFORME","TIENDA","CAMPEONATO","INSCRIPCION"], command=self._on_tipo_changed)
+        ctk.CTkLabel(cuerpo1, text="Tipo venta").pack(anchor="w")
+        self.combo_tipo = ctk.CTkComboBox(cuerpo1, width=200, values=["UNIFORME","TIENDA","CAMPEONATO","INSCRIPCION"], command=self._on_tipo_changed)
         self.combo_tipo.set("UNIFORME")
         self.combo_tipo.pack(anchor="w", pady=3)
         # CAMPEONATO por tarifa (división): sin producto obligatorio
@@ -73,20 +78,28 @@ class VentaView(ctk.CTkFrame):
         self.entry_monto_camp.pack(anchor="w", pady=3)
         ctk.CTkLabel(self.frame_campeonato, text="↳ En CAMPEONATO el producto es opcional; el monto manda.", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
         self._tarifas_camp_map = {}
-        ctk.CTkLabel(scroll, text="Método pago").pack(anchor="w")
-        self.combo_metodo = ctk.CTkComboBox(scroll, width=200, values=["EFECTIVO","YAPE","PLIN","TRANSFERENCIA"])
+        sec2 = crear_seccion(scroll, titulo="Pago y comprobante", icono="💵",
+                             descripcion="Método, estudiante opcional y comprobante si no es efectivo.", nro=2)
+        cuerpo2 = ctk.CTkFrame(sec2, fg_color="transparent")
+        cuerpo2.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(cuerpo2, text="Método pago").pack(anchor="w")
+        self.combo_metodo = ctk.CTkComboBox(cuerpo2, width=200, values=["EFECTIVO","YAPE","PLIN","TRANSFERENCIA"])
         self.combo_metodo.set("EFECTIVO")
         self.combo_metodo.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="ID Estudiante (opcional, para reingreso/inscripción)").pack(anchor="w")
-        self.entry_est = ctk.CTkEntry(scroll, width=200, placeholder_text="ID estudiante")
+        ctk.CTkLabel(cuerpo2, text="ID Estudiante (opcional, para reingreso/inscripción)").pack(anchor="w")
+        self.entry_est = ctk.CTkEntry(cuerpo2, width=200, placeholder_text="ID estudiante")
         self.entry_est.pack(anchor="w", pady=3)
-        self.btn_comprobante = ctk.CTkButton(scroll, text="Subir comprobante (YAPE/PLIN)", width=200, command=self._elegir_comprobante)
+        self.btn_comprobante = ctk.CTkButton(cuerpo2, text="Subir comprobante (YAPE/PLIN)", width=200, command=self._elegir_comprobante)
         self.btn_comprobante.pack(anchor="w", pady=5)
-        self.label_comp = ctk.CTkLabel(scroll, text="Sin comprobante", text_color="gray")
+        self.label_comp = ctk.CTkLabel(cuerpo2, text="Sin comprobante", text_color="gray")
         self.label_comp.pack(anchor="w")
-        self.label_status = ctk.CTkLabel(scroll, text="")
-        self.label_status.pack(anchor="w", pady=5)
-        ctk.CTkButton(scroll, text="Registrar Venta", width=150, command=self._registrar).pack(anchor="w", pady=10)
+        crear_nota(sec2, "Para campeonatos usa la pestaña Campeonatos (inscribe por división).")
+        footer = ctk.CTkFrame(scroll, fg_color="white", corner_radius=8)
+        footer.pack(fill="x", padx=5, pady=5)
+        self.label_status = ctk.CTkLabel(footer, text="")
+        self.label_status.pack(anchor="w", padx=10, pady=(8, 2))
+        crear_boton_interactivo(footer, text="Registrar Venta", width=150, command=self._registrar,
+                                fg_color="#7C3AED").pack(anchor="w", padx=10, pady=(2, 8))
 
     def _cargar_productos(self):
         prods = inventario_controller.listar_productos(activo=1)

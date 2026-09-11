@@ -50,9 +50,19 @@ class VentaView(ctk.CTkFrame):
         self.entry_cant.pack(anchor="w", pady=3)
         self.entry_cant.insert(0, "1")
         ctk.CTkLabel(scroll, text="Tipo venta").pack(anchor="w")
-        self.combo_tipo = ctk.CTkComboBox(scroll, width=200, values=["UNIFORME","TIENDA","CAMPEONATO","INSCRIPCION"])
+        self.combo_tipo = ctk.CTkComboBox(scroll, width=200, values=["UNIFORME","TIENDA","CAMPEONATO","INSCRIPCION"], command=self._on_tipo_changed)
         self.combo_tipo.set("UNIFORME")
         self.combo_tipo.pack(anchor="w", pady=3)
+        # CAMPEONATO por tarifa (división): sin producto obligatorio
+        self.frame_campeonato = ctk.CTkFrame(scroll, fg_color="transparent")
+        ctk.CTkLabel(self.frame_campeonato, text="Tarifa campeonato (división) *").pack(anchor="w")
+        self.combo_tarifa_camp = ctk.CTkComboBox(self.frame_campeonato, width=400, values=["Cargando..."], command=self._on_tarifa_camp_changed)
+        self.combo_tarifa_camp.pack(anchor="w", pady=3)
+        ctk.CTkLabel(self.frame_campeonato, text="Monto a cobrar (S/) * — editable").pack(anchor="w")
+        self.entry_monto_camp = ctk.CTkEntry(self.frame_campeonato, width=150, placeholder_text="0.00")
+        self.entry_monto_camp.pack(anchor="w", pady=3)
+        ctk.CTkLabel(self.frame_campeonato, text="↳ En CAMPEONATO el producto es opcional; el monto manda.", font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w")
+        self._tarifas_camp_map = {}
         ctk.CTkLabel(scroll, text="Método pago").pack(anchor="w")
         self.combo_metodo = ctk.CTkComboBox(scroll, width=200, values=["EFECTIVO","YAPE","PLIN","TRANSFERENCIA"])
         self.combo_metodo.set("EFECTIVO")
@@ -130,36 +140,84 @@ class VentaView(ctk.CTkFrame):
             self._comprobante_tmp = path
             self.label_comp.configure(text=os.path.basename(path))
 
-    def _registrar(self):
-        sel = self.combo_producto.get()
-        prod = self._productos_map.get(sel)
-        if not prod:
-            self.label_status.configure(text="Seleccione producto", text_color="red")
-            return
+    def _on_tipo_changed(self, selection):
+        if selection == "CAMPEONATO":
+            self.frame_campeonato.pack(anchor="w", pady=5, before=self.btn_comprobante)
+            self._cargar_tarifas_campeonato()
+        else:
+            try:
+                self.frame_campeonato.pack_forget()
+            except Exception:
+                pass
+
+    def _cargar_tarifas_campeonato(self):
         try:
-            cant = int(self.entry_cant.get().strip() or "1")
-            if cant <= 0:
-                raise ValueError
-        except ValueError:
-            self.label_status.configure(text="Cantidad inválida", text_color="red")
-            return
+            from controllers import tarifa_controller
+            tarifas = tarifa_controller.listar_tarifas_activas(tipo="CAMPEONATO")
+        except Exception:
+            tarifas = []
+        nombres = [f"{t.get('categoria_nombre','')} - {t['nombre']} (S/{t['monto']:.2f})" for t in tarifas]
+        self.combo_tarifa_camp.configure(values=nombres if nombres else ["Sin tarifas de campeonato"])
+        self._tarifas_camp_map = {n: t for n, t in zip(nombres, tarifas)}
+
+    def _on_tarifa_camp_changed(self, selection):
+        t = self._tarifas_camp_map.get(selection)
+        if t:
+            self.entry_monto_camp.delete(0, "end")
+            self.entry_monto_camp.insert(0, f"{t['monto']:.2f}")
+
+    def _registrar(self):
+        tipo = self.combo_tipo.get()
         comprobante_path = None
         if self._comprobante_tmp:
             os.makedirs(COMPROBANTES_DIR, exist_ok=True)
-            # se copiará tras generar recibo; por ahora guardamos tmp y lo copia service? aquí lo copiamos con nombre temporal
             comprobante_path = self._comprobante_tmp
         id_est = self.entry_est.get().strip()
         try:
             id_est = int(id_est) if id_est else None
         except ValueError:
             id_est = None
-        data = {
-            "id_estudiante": id_est,
-            "tipo_venta": self.combo_tipo.get(),
-            "metodo_pago": self.combo_metodo.get(),
-            "items": [{"id_producto": prod["id_producto"], "cantidad": cant}],
-            "comprobante_path": comprobante_path,
-        }
+        if tipo == "CAMPEONATO":
+            t = self._tarifas_camp_map.get(self.combo_tarifa_camp.get())
+            if not t:
+                self.label_status.configure(text="Seleccione tarifa de campeonato", text_color="red")
+                return
+            try:
+                monto = float(self.entry_monto_camp.get().strip() or "0")
+                if monto <= 0:
+                    raise ValueError
+            except ValueError:
+                self.label_status.configure(text="Monto de campeonato inválido", text_color="red")
+                return
+            data = {
+                "id_estudiante": id_est,
+                "tipo_venta": tipo,
+                "metodo_pago": self.combo_metodo.get(),
+                "items": [],
+                "id_tarifa": t["id_tarifa"],
+                "monto_total": monto,
+                "comprobante_path": comprobante_path,
+            }
+        else:
+            sel = self.combo_producto.get()
+            prod = self._productos_map.get(sel)
+            if not prod:
+                self.label_status.configure(text="Seleccione producto", text_color="red")
+                return
+            try:
+                cant = int(self.entry_cant.get().strip() or "1")
+                if cant <= 0:
+                    raise ValueError
+            except ValueError:
+                self.label_status.configure(text="Cantidad inválida", text_color="red")
+                return
+            data = {
+                "id_estudiante": id_est,
+                "tipo_venta": tipo,
+                "metodo_pago": self.combo_metodo.get(),
+                "items": [{"id_producto": prod["id_producto"], "cantidad": cant}],
+                "comprobante_path": comprobante_path,
+            }
         exito, msg, vid = venta_controller.registrar_venta(data)
         if exito and comprobante_path and vid:
             # copiar a central con recibo

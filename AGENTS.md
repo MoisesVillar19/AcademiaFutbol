@@ -422,12 +422,19 @@ Incluso para ADMIN.
 
 # Configuración
 
-Los siguientes parámetros deben obtenerse desde la tabla CONFIGURACION (v2 flexibles):
+Los siguientes parámetros deben obtenerse desde la tabla CONFIGURACION:
 
 * mora_habilitada, porcentaje_mora, tipo_mora, monto_mora
 * dias_por_vencer, permitir_multiples_becas
 * backup_automatico, frecuencia_backup, ruta_backup, correo_onedrive, pin_emergencia
-* precio_inscripcion, precio_mensualidad, precio_reingreso, precio_uniforme, tasa_campeonato, arbitraje_por_equipo, pago_profesor
+* pago_profesor, arbitraje_por_equipo (solo como monto SUGERIDO editable al registrar egresos PROFESOR/ARBITRAJE)
+
+Los precios de cobro viven en Tarifas (v2.2, sin globales):
+
+* Inscripción / Reingreso / Uniforme base → tarifas tipo SERVICIO
+* Tasa base / Arbitraje por equipo → tarifas tipo CAMPEONATO (venta CAMPEONATO elige tarifa, monto editable)
+* Mensualidades → tarifas tipo ACADEMIA por rango de edad
+* Columnas precio_* en CONFIGURACION se conservan solo por compatibilidad/migración; no leerlas para cobrar.
 
 No hardcodear estos valores.
 

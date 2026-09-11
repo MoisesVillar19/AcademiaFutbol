@@ -126,6 +126,13 @@ def seed_database() -> None:
                         if alm and not fetch_one("SELECT id_stock FROM stock_almacen WHERE id_variante=?", (id_var,)):
                             conn.execute("INSERT INTO stock_almacen (id_producto, id_variante, id_almacen, stock) VALUES (?, ?, ?, 10)", (id_prod, id_var, alm["id_almacen"]))
 
+    # v2.2: tarifas desde Precios Flexibles (BD nuevas; en existentes lo hace la migración)
+    try:
+        from database.create_db import seed_tarifas_desde_config
+        seed_tarifas_desde_config(conn.cursor())
+    except Exception:
+        pass
+
     conn.commit()
 
 

@@ -4,21 +4,43 @@ from models.venta import Venta
 
 def insertar(venta: Venta) -> int:
     conn = get_connection()
-    cursor = conn.execute(
-        """INSERT INTO venta (id_estudiante, id_usuario, fecha_venta, monto_total, metodo_pago, tipo_venta, numero_recibo, comprobante_path, activo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            venta.id_estudiante,
-            venta.id_usuario,
-            venta.fecha_venta,
-            venta.monto_total,
-            venta.metodo_pago,
-            venta.tipo_venta,
-            venta.numero_recibo,
-            venta.comprobante_path,
-            venta.activo,
-        ),
-    )
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(venta)").fetchall()]
+    except Exception:
+        cols = []
+    if "id_tarifa" in cols:
+        cursor = conn.execute(
+            """INSERT INTO venta (id_estudiante, id_usuario, fecha_venta, monto_total, metodo_pago, tipo_venta, numero_recibo, comprobante_path, id_tarifa, activo)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                venta.id_estudiante,
+                venta.id_usuario,
+                venta.fecha_venta,
+                venta.monto_total,
+                venta.metodo_pago,
+                venta.tipo_venta,
+                venta.numero_recibo,
+                venta.comprobante_path,
+                venta.id_tarifa,
+                venta.activo,
+            ),
+        )
+    else:
+        cursor = conn.execute(
+            """INSERT INTO venta (id_estudiante, id_usuario, fecha_venta, monto_total, metodo_pago, tipo_venta, numero_recibo, comprobante_path, activo)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                venta.id_estudiante,
+                venta.id_usuario,
+                venta.fecha_venta,
+                venta.monto_total,
+                venta.metodo_pago,
+                venta.tipo_venta,
+                venta.numero_recibo,
+                venta.comprobante_path,
+                venta.activo,
+            ),
+        )
     conn.commit()
     return cursor.lastrowid
 

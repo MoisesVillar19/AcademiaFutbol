@@ -343,7 +343,7 @@ class MatriculaView(ctk.CTkFrame):
                 break
 
     def _cargar_combo_tarifas(self):
-        tarifas = matricula_controller.listar_tarifas_activas()
+        tarifas = matricula_controller.listar_tarifas_activas(tipo="ACADEMIA")
         nombres = [f"{t.get('categoria_nombre', '')} - {t['nombre']} (S/{t['monto']:.2f})" for t in tarifas]
         self.combo_tarifa.configure(values=nombres if nombres else ["Sin tarifas"])
         self._tarifas_map = {n: t["id_tarifa"] for n, t in zip(nombres, tarifas)}

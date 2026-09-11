@@ -71,8 +71,9 @@ CREATE TABLE IF NOT EXISTS estudiante_apoderado (
 CREATE TABLE IF NOT EXISTS categoria (
     id_categoria INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT UNIQUE NOT NULL,
-    edad_min INTEGER NOT NULL,
-    edad_max INTEGER NOT NULL,
+    edad_min INTEGER,
+    edad_max INTEGER,
+    tipo TEXT DEFAULT 'ACADEMIA',
     activo INTEGER DEFAULT 1
 );
 
@@ -280,6 +281,7 @@ CREATE TABLE IF NOT EXISTS venta (
     comprobante_path TEXT,
     id_almacen INTEGER REFERENCES almacen(id_almacen),
     id_caja INTEGER REFERENCES caja(id_caja),
+    id_tarifa INTEGER REFERENCES tarifa(id_tarifa),
     activo INTEGER DEFAULT 1
 );
 
@@ -458,10 +460,87 @@ def _migrar_columnas_faltantes(cursor) -> None:
         for col, sql in [
             ("id_almacen", "ALTER TABLE venta ADD COLUMN id_almacen INTEGER REFERENCES almacen(id_almacen)"),
             ("id_caja", "ALTER TABLE venta ADD COLUMN id_caja INTEGER REFERENCES caja(id_caja)"),
+            ("id_tarifa", "ALTER TABLE venta ADD COLUMN id_tarifa INTEGER REFERENCES tarifa(id_tarifa)"),
         ]:
             if col not in cols_venta:
                 cursor.execute(sql)
     except Exception:
+        pass
+
+    # v2.2: categoria con tipo + edad opcional (campeonatos/servicios van por Tarifas)
+    try:
+        cols_cat = _obtener_columnas(cursor, "categoria")
+        if "tipo" not in cols_cat:
+            cursor.execute("ALTER TABLE categoria ADD COLUMN tipo TEXT DEFAULT 'ACADEMIA'")
+            cursor.execute("UPDATE categoria SET tipo='ACADEMIA' WHERE tipo IS NULL")
+        pragma = cursor.execute("PRAGMA table_info(categoria)").fetchall()
+        edad_notnull = any(f[1] in ("edad_min", "edad_max") and f[3] == 1 for f in pragma)
+        if edad_notnull:
+            cursor.execute("ALTER TABLE categoria RENAME TO categoria_old")
+            cursor.execute("""
+                CREATE TABLE categoria (
+                    id_categoria INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT UNIQUE NOT NULL,
+                    edad_min INTEGER,
+                    edad_max INTEGER,
+                    tipo TEXT DEFAULT 'ACADEMIA',
+                    activo INTEGER DEFAULT 1
+                )
+            """)
+            cursor.execute("INSERT INTO categoria (id_categoria, nombre, edad_min, edad_max, tipo, activo) SELECT id_categoria, nombre, edad_min, edad_max, COALESCE(tipo,'ACADEMIA'), activo FROM categoria_old")
+            cursor.execute("DROP TABLE categoria_old")
+    except Exception:
+        pass
+
+    # v2.2: seed tarifas desde Precios Flexibles (migra valores actuales, idempotente)
+    try:
+        seed_tarifas_desde_config(cursor)
+    except Exception:
+        pass
+
+
+def seed_tarifas_desde_config(cursor=None) -> None:
+    """Crea categorías Servicios/Campeonatos + 5 tarifas desde los precios
+    de CONFIGURACION. Idempotente (no duplica). Se llama desde la migración
+    (BD existentes) y desde seed_database (BD nuevas)."""
+    from database.connection import get_connection
+    cerrar = False
+    if cursor is None:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cerrar = True
+    try:
+        cfg = cursor.execute("SELECT precio_inscripcion, precio_reingreso, precio_uniforme, tasa_campeonato, arbitraje_por_equipo FROM configuracion LIMIT 1").fetchone()
+        if not cfg:
+            return
+
+        def _cat(nombre, tipo):
+            row = cursor.execute("SELECT id_categoria FROM categoria WHERE nombre=?", (nombre,)).fetchone()
+            if row:
+                return row[0]
+            cur = cursor.execute("INSERT INTO categoria (nombre, edad_min, edad_max, tipo) VALUES (?, NULL, NULL, ?)", (nombre, tipo))
+            return cur.lastrowid
+
+        def _tar(id_cat, nombre, monto):
+            row = cursor.execute("SELECT id_tarifa FROM tarifa WHERE nombre=? AND id_categoria=?", (nombre, id_cat)).fetchone()
+            try:
+                monto_f = float(monto or 0)
+            except (TypeError, ValueError):
+                return
+            if row or monto_f <= 0:
+                return
+            cursor.execute("INSERT INTO tarifa (id_categoria, nombre, monto, descripcion, activo) VALUES (?,?,?,?,1)", (id_cat, nombre, monto_f, "Migrado desde Precios Flexibles"))
+
+        id_serv = _cat("Servicios", "SERVICIO")
+        id_camp = _cat("Campeonatos", "CAMPEONATO")
+        _tar(id_serv, "Inscripción", cfg[0])
+        _tar(id_serv, "Reingreso", cfg[1])
+        _tar(id_serv, "Uniforme base", cfg[2])
+        _tar(id_camp, "Tasa base", cfg[3])
+        _tar(id_camp, "Arbitraje por equipo", cfg[4])
+        if cerrar:
+            cursor.connection.commit()
+    finally:
         pass
 
     try:

@@ -33,12 +33,23 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
     id_almacen = data.get("id_almacen") or _obtener_almacen_default()
     id_caja = data.get("id_caja")
 
-    if not items:
+    # CAMPEONATO se cobra por tarifa (división), sin items obligatorios
+    try:
+        monto_campeonato = float(data.get("monto_total") or 0)
+    except (TypeError, ValueError):
+        monto_campeonato = 0
+    es_campeonato_por_tarifa = (
+        tipo_venta == "CAMPEONATO" and not items and monto_campeonato > 0
+    )
+    if not items and not es_campeonato_por_tarifa:
         return False, "Debe incluir al menos un producto", None
     if metodo not in METODOS_VALIDOS:
         return False, "Método de pago no válido", None
     if tipo_venta not in TIPOS_VENTA_VALIDOS:
         return False, "Tipo de venta no válido", None
+    id_tarifa = data.get("id_tarifa")
+    if id_tarifa is not None and tipo_venta != "CAMPEONATO":
+        return False, "La tarifa solo aplica a ventas CAMPEONATO", None
     if metodo != METODO_EFECTIVO and not comprobante and data.get("requiere_comprobante"):
         logger.warning(f"Venta {tipo_venta} sin comprobante para {metodo} (RN-042)")
 
@@ -55,6 +66,8 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
         with transaccion():
             # Validar stock y calcular total DENTRO de transacción (evita TOCTOU) — maneja variante/talla
             total = 0
+            if es_campeonato_por_tarifa:
+                total = round(float(data["monto_total"]), 2)
             for it in items:
                 prod = producto_repository.obtener_por_id(it["id_producto"])
                 if not prod:
@@ -96,6 +109,7 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
                 tipo_venta=tipo_venta,
                 numero_recibo=numero_recibo,
                 comprobante_path=comprobante,
+                id_tarifa=id_tarifa,
             )
             id_venta = None
             for _ in range(3):
@@ -173,23 +187,6 @@ def registrar_venta(data: dict) -> tuple[bool, str, int | None]:
     except Exception as e:
         logger.error(f"Error en venta: {e}", exc_info=True)
         return False, "Error al registrar venta", None
-
-
-def registrar_inscripcion_con_uniforme(id_estudiante: int, id_usuario: int, id_producto_camiseta: int, metodo: str = METODO_EFECTIVO, comprobante: str | None = None) -> tuple[bool, str, int | None]:
-    """RN-036: inscripción nuevo descuenta -1 camiseta (versión flexible)."""
-    from services import configuracion_service
-    precio = configuracion_service.obtener_valor("precio_inscripcion") or 100
-    return registrar_venta(
-        {
-            "id_estudiante": id_estudiante,
-            "id_usuario": id_usuario,
-            "tipo_venta": "INSCRIPCION",
-            "metodo_pago": metodo,
-            "comprobante_path": comprobante,
-            "monto_total": precio,
-            "items": [{"id_producto": id_producto_camiseta, "cantidad": 1}],
-        }
-    )
 
 
 def listar_ventas(fecha_inicio: str | None = None, fecha_fin: str | None = None, tipo_venta: str | None = None) -> list[dict]:

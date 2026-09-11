@@ -65,16 +65,11 @@ class ConfiguracionView(ctk.CTkFrame):
         self._crear_campo(sec1, "correo", "Correo", config.get("correo", ""), help="Contacto")
         self._nota(sec1, "Tip: cambia el nombre aquí y se refleja en Dashboard y reportes sin tocar código.")
 
-        # 2 — Precios (lo más usado, arriba y destacado)
-        sec2 = self._seccion("Precios Flexibles", "💰", "Todos los montos que cobra la academia. Edita y guarda — la próxima matrícula/venta usa el nuevo precio. Sin deploy.", 2)
+        # 2 — Precios (v2.2: viven en Tarifas, no aquí)
+        sec2 = self._seccion("Precios y Tarifas", "💰", "Los cobros viven en el módulo Tarifas (mensualidades por edad, inscripción, reingreso, campeonatos por división). Lo que elegías aquí se migró a tarifas automáticamente.", 2)
         self._nota(sec2, "Inscripción = solo nuevos (incluye 1 camiseta y descuenta stock). Mensualidad = solo antiguos. Reingreso = con uniforme anterior (más barato).")
-        self._crear_campo(sec2, "precio_inscripcion", "Inscripción — alumno nuevo (S/)", str(config.get("precio_inscripcion", 100)), help="Incluye 1 camiseta Entrenamiento (-1 stock)")
-        self._crear_campo(sec2, "precio_mensualidad", "Mensualidad — alumno antiguo (S/ mes)", str(config.get("precio_mensualidad", 100)), help="Se genera 1 cuota/mes; diferir crea 2-3")
-        self._crear_campo(sec2, "precio_reingreso", "Reingreso — con uniforme anterior (S/)", str(config.get("precio_reingreso", 100)), help="Más barato que inscripción+uniforme")
-        self._crear_campo(sec2, "precio_uniforme", "Uniforme base (S/)", str(config.get("precio_uniforme", 20)), help="Precio por defecto si el producto no tiene precio_venta propio")
-        self._crear_campo(sec2, "tasa_campeonato", "Tasa campeonato (S/)", str(config.get("tasa_campeonato", 15)), help="Venta tipo CAMPEONATO")
-        self._crear_campo(sec2, "arbitraje_por_equipo", "Arbitraje por equipo (S/)", str(config.get("arbitraje_por_equipo", 15)), help="Se multiplica por nº equipos")
-        self._crear_campo(sec2, "pago_profesor", "Pago profesor (S/ mes)", str(config.get("pago_profesor", 200)), help="Egreso fijo mensual")
+        self._nota(sec2, "Egresos PROFESOR/ARBITRAJE sugieren el monto por defecto al registrar, pero cada caso se edita (no todos cobran igual).")
+        self._nota(sec2, "Ver y editar precios en el menú lateral SISTEMA → Tarifas.")
 
         # 3 — Mora
         sec3 = self._seccion("Mora y Vencimientos", "⏰", "Cómo se penaliza la cuota vencida y cuándo avisa 'por vencer'.", 3)
@@ -291,14 +286,19 @@ class ConfiguracionView(ctk.CTkFrame):
             row = ctk.CTkFrame(parent, fg_color="#F8F5FA", corner_radius=8)
             row.pack(fill="x", padx=10, pady=2)
             ctk.CTkLabel(row, text=f"{cat['nombre']}", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=10, pady=6)
-            ctk.CTkLabel(row, text=f"Edad {cat['edad_min']}-{cat['edad_max']} años", font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(side="left", padx=10)
+            tipo = cat.get("tipo", "ACADEMIA") or "ACADEMIA"
+            if tipo == "ACADEMIA" and cat.get("edad_min") is not None:
+                detalle = f"Edad {cat['edad_min']}-{cat['edad_max']} años"
+            else:
+                detalle = f"[{tipo}] sin rango de edad"
+            ctk.CTkLabel(row, text=detalle, font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(side="left", padx=10)
             ctk.CTkButton(row, text="Editar", width=70, height=28, command=lambda c=cat: self._editar_categoria(c)).pack(side="right", padx=2, pady=4)
             ctk.CTkButton(row, text="Desactivar", width=85, height=28, fg_color="#d9534f", command=lambda c=cat: self._desactivar_categoria(c)).pack(side="right", padx=2, pady=4)
 
     def _nueva_categoria(self):
         dialog = ctk.CTkToplevel(self)
         dialog.title("Nueva Categoría")
-        dialog.geometry("350x250")
+        dialog.geometry("350x330")
         dialog.transient(self)
         dialog.grab_set()
 
@@ -306,11 +306,17 @@ class ConfiguracionView(ctk.CTkFrame):
         entry_nombre = ctk.CTkEntry(dialog, width=300)
         entry_nombre.pack(padx=15)
 
-        ctk.CTkLabel(dialog, text="Edad mínima:").pack(anchor="w", padx=15, pady=(10, 2))
+        ctk.CTkLabel(dialog, text="Tipo:").pack(anchor="w", padx=15, pady=(10, 2))
+        combo_tipo = ctk.CTkComboBox(dialog, width=300, values=["ACADEMIA", "CAMPEONATO", "SERVICIO"])
+        combo_tipo.set("ACADEMIA")
+        combo_tipo.pack(padx=15)
+        ctk.CTkLabel(dialog, text="CAMPEONATO/SERVICIO no usan edad.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w", padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad mínima (solo ACADEMIA):").pack(anchor="w", padx=15, pady=(10, 2))
         entry_min = ctk.CTkEntry(dialog, width=300)
         entry_min.pack(padx=15)
 
-        ctk.CTkLabel(dialog, text="Edad máxima:").pack(anchor="w", padx=15, pady=(10, 2))
+        ctk.CTkLabel(dialog, text="Edad máxima (solo ACADEMIA):").pack(anchor="w", padx=15, pady=(10, 2))
         entry_max = ctk.CTkEntry(dialog, width=300)
         entry_max.pack(padx=15)
 
@@ -321,11 +327,12 @@ class ConfiguracionView(ctk.CTkFrame):
             label_status.configure(text="⏳ Guardando...", text_color="#7C3AED")
             dialog.update()
             nombre = entry_nombre.get().strip()
-            edad_min = entry_min.get().strip()
-            edad_max = entry_max.get().strip()
+            edad_min = entry_min.get().strip() or None
+            edad_max = entry_max.get().strip() or None
 
             exito, msg, _ = categoria_controller.crear_categoria({
                 "nombre": nombre,
+                "tipo": combo_tipo.get(),
                 "edad_min": edad_min,
                 "edad_max": edad_max,
             })
@@ -344,7 +351,7 @@ class ConfiguracionView(ctk.CTkFrame):
     def _editar_categoria(self, cat):
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar Categoría")
-        dialog.geometry("350x250")
+        dialog.geometry("350x330")
         dialog.transient(self)
         dialog.grab_set()
 
@@ -353,14 +360,19 @@ class ConfiguracionView(ctk.CTkFrame):
         entry_nombre.insert(0, cat["nombre"])
         entry_nombre.pack(padx=15)
 
-        ctk.CTkLabel(dialog, text="Edad mínima:").pack(anchor="w", padx=15, pady=(10, 2))
+        ctk.CTkLabel(dialog, text="Tipo:").pack(anchor="w", padx=15, pady=(10, 2))
+        combo_tipo = ctk.CTkComboBox(dialog, width=300, values=["ACADEMIA", "CAMPEONATO", "SERVICIO"])
+        combo_tipo.set(cat.get("tipo", "ACADEMIA") or "ACADEMIA")
+        combo_tipo.pack(padx=15)
+
+        ctk.CTkLabel(dialog, text="Edad mínima (solo ACADEMIA):").pack(anchor="w", padx=15, pady=(10, 2))
         entry_min = ctk.CTkEntry(dialog, width=300)
-        entry_min.insert(0, str(cat["edad_min"]))
+        entry_min.insert(0, "" if cat.get("edad_min") is None else str(cat["edad_min"]))
         entry_min.pack(padx=15)
 
-        ctk.CTkLabel(dialog, text="Edad máxima:").pack(anchor="w", padx=15, pady=(10, 2))
+        ctk.CTkLabel(dialog, text="Edad máxima (solo ACADEMIA):").pack(anchor="w", padx=15, pady=(10, 2))
         entry_max = ctk.CTkEntry(dialog, width=300)
-        entry_max.insert(0, str(cat["edad_max"]))
+        entry_max.insert(0, "" if cat.get("edad_max") is None else str(cat["edad_max"]))
         entry_max.pack(padx=15)
 
         label_status = ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=12))
@@ -371,8 +383,9 @@ class ConfiguracionView(ctk.CTkFrame):
             dialog.update()
             exito, msg = categoria_controller.editar_categoria(cat["id_categoria"], {
                 "nombre": entry_nombre.get().strip(),
-                "edad_min": entry_min.get().strip(),
-                "edad_max": entry_max.get().strip(),
+                "tipo": combo_tipo.get(),
+                "edad_min": entry_min.get().strip() or None,
+                "edad_max": entry_max.get().strip() or None,
             })
             if exito:
                 label_status.configure(text="✅ Se guardó correctamente", text_color="green")

@@ -86,8 +86,8 @@ def listar_tarifas_por_categoria(id_categoria: int) -> list[dict]:
     return tarifa_repository.obtener_por_categoria(id_categoria)
 
 
-def listar_tarifas_activas() -> list[dict]:
-    return tarifa_repository.obtener_activas()
+def listar_tarifas_activas(tipo: str | None = None) -> list[dict]:
+    return tarifa_repository.obtener_activas(tipo=tipo)
 
 
 def listar_tarifas_inactivas() -> list[dict]:

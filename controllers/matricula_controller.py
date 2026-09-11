@@ -76,8 +76,8 @@ def obtener_becas_por_matricula(id_matricula: int) -> list[dict]:
     return matricula_service.obtener_becas_por_matricula(id_matricula)
 
 
-def listar_tarifas_activas() -> list[dict]:
-    return tarifa_service.listar_tarifas_activas()
+def listar_tarifas_activas(tipo: str | None = None) -> list[dict]:
+    return tarifa_service.listar_tarifas_activas(tipo=tipo)
 
 
 def listar_becas() -> list[dict]:

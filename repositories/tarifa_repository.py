@@ -40,14 +40,17 @@ def obtener_por_categoria(id_categoria: int) -> list[dict]:
     )
 
 
-def obtener_activas() -> list[dict]:
-    return fetch_all(
-        """SELECT t.*, c.nombre as categoria_nombre
+def obtener_activas(tipo: str | None = None) -> list[dict]:
+    sql = """SELECT t.*, c.nombre as categoria_nombre, c.tipo as categoria_tipo
            FROM tarifa t
            JOIN categoria c ON t.id_categoria = c.id_categoria
-           WHERE t.activo = 1
-           ORDER BY c.nombre, t.nombre""",
-    )
+           WHERE t.activo = 1"""
+    params: list = []
+    if tipo:
+        sql += " AND c.tipo = ?"
+        params.append(tipo)
+    sql += " ORDER BY c.nombre, t.nombre"
+    return fetch_all(sql, tuple(params))
 
 
 def actualizar(tarifa: Tarifa) -> None:
@@ -72,7 +75,7 @@ def actualizar(tarifa: Tarifa) -> None:
 
 def obtener_inactivas() -> list[dict]:
     return fetch_all(
-        """SELECT t.*, c.nombre as categoria_nombre
+        """SELECT t.*, c.nombre as categoria_nombre, c.tipo as categoria_tipo
            FROM tarifa t
            JOIN categoria c ON t.id_categoria = c.id_categoria
            WHERE t.activo = 0

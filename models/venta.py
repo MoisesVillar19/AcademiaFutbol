@@ -14,4 +14,5 @@ class Venta:
     comprobante_path: str | None = None
     id_almacen: int | None = None
     id_caja: int | None = None
+    id_tarifa: int | None = None
     activo: int = 1

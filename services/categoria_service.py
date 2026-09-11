@@ -3,38 +3,50 @@ from services import auditoria_service
 from utils.logger import logger
 
 
-def crear_categoria(data: dict) -> tuple[bool, str, int | None]:
-    nombre = data.get("nombre", "").strip()
-    edad_min = data.get("edad_min")
-    edad_max = data.get("edad_max")
+TIPOS_CATEGORIA = ("ACADEMIA", "CAMPEONATO", "SERVICIO")
 
-    if not nombre:
-        return False, "El nombre es obligatorio", None
-    if edad_min is None or edad_max is None:
-        return False, "Las edades son obligatorias", None
+
+def _validar_edades(tipo: str, edad_min, edad_max) -> tuple[bool, str, int | None, int | None]:
+    """Edad obligatoria solo en ACADEMIA; en CAMPEONATO/SERVICIO es opcional."""
+    if tipo != "ACADEMIA" and (edad_min in (None, "") and edad_max in (None, "")):
+        return True, "", None, None
     try:
         edad_min = int(edad_min)
         edad_max = int(edad_max)
     except (ValueError, TypeError):
-        return False, "Las edades deben ser números", None
+        return False, "Las edades deben ser números", None, None
     if edad_min < 0 or edad_max < 0:
-        return False, "Las edades no pueden ser negativas", None
+        return False, "Las edades no pueden ser negativas", None, None
     if edad_min > edad_max:
-        return False, "La edad mínima no puede ser mayor que la máxima", None
+        return False, "La edad mínima no puede ser mayor que la máxima", None, None
+    return True, "", edad_min, edad_max
+
+
+def crear_categoria(data: dict) -> tuple[bool, str, int | None]:
+    nombre = data.get("nombre", "").strip()
+    tipo = (data.get("tipo") or "ACADEMIA").strip().upper()
+
+    if not nombre:
+        return False, "El nombre es obligatorio", None
+    if tipo not in TIPOS_CATEGORIA:
+        return False, f"Tipo no válido. Use: {', '.join(TIPOS_CATEGORIA)}", None
+    ok, msg, edad_min, edad_max = _validar_edades(tipo, data.get("edad_min"), data.get("edad_max"))
+    if not ok:
+        return False, msg, None
 
     if categoria_repository.existe_nombre(nombre):
         return False, "Ya existe una categoría con ese nombre", None
 
-    id_categoria = categoria_repository.insertar(nombre, edad_min, edad_max)
+    id_categoria = categoria_repository.insertar(nombre, edad_min, edad_max, tipo)
 
     auditoria_service.registrar_insert(
         id_usuario=1,
         tabla="categoria",
         id_registro=id_categoria,
-        valores_nuevos=f"nombre={nombre}, edad_min={edad_min}, edad_max={edad_max}",
+        valores_nuevos=f"nombre={nombre}, tipo={tipo}, edad_min={edad_min}, edad_max={edad_max}",
     )
 
-    logger.info(f"Categoría creada: {nombre} ({edad_min}-{edad_max})")
+    logger.info(f"Categoría creada: {nombre} [{tipo}] ({edad_min}-{edad_max})")
     return True, "Categoría creada correctamente", id_categoria
 
 
@@ -44,22 +56,18 @@ def editar_categoria(id_categoria: int, data: dict) -> tuple[bool, str]:
         return False, "Categoría no encontrada"
 
     nombre = data.get("nombre", cat["nombre"]).strip()
-    edad_min = data.get("edad_min", cat["edad_min"])
-    edad_max = data.get("edad_max", cat["edad_max"])
+    tipo = (data.get("tipo", cat.get("tipo", "ACADEMIA")) or "ACADEMIA").strip().upper()
+    if tipo not in TIPOS_CATEGORIA:
+        return False, f"Tipo no válido. Use: {', '.join(TIPOS_CATEGORIA)}"
 
-    try:
-        edad_min = int(edad_min)
-        edad_max = int(edad_max)
-    except (ValueError, TypeError):
-        return False, "Las edades deben ser números"
-
-    if edad_min > edad_max:
-        return False, "La edad mínima no puede ser mayor que la máxima"
+    ok, msg, edad_min, edad_max = _validar_edades(tipo, data.get("edad_min", cat["edad_min"]), data.get("edad_max", cat["edad_max"]))
+    if not ok:
+        return False, msg
 
     if categoria_repository.existe_nombre(nombre, exclude_id=id_categoria):
         return False, "Ya existe otra categoría con ese nombre"
 
-    categoria_repository.actualizar(id_categoria, nombre, edad_min, edad_max)
+    categoria_repository.actualizar(id_categoria, nombre, edad_min, edad_max, tipo)
     return True, "Categoría actualizada correctamente"
 
 
@@ -86,6 +94,10 @@ def desactivar_categoria(id_categoria: int) -> tuple[bool, str]:
 
 def listar_categorias() -> list[dict]:
     return categoria_repository.obtener_activas()
+
+
+def listar_categorias_por_tipo(tipo: str) -> list[dict]:
+    return categoria_repository.obtener_por_tipo(tipo)
 
 
 def listar_todas_las_categorias() -> list[dict]:

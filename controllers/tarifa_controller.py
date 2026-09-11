@@ -17,8 +17,8 @@ def obtener_tarifa(id_tarifa: int) -> dict | None:
     return tarifa_service.obtener_tarifa(id_tarifa)
 
 
-def listar_tarifas_activas() -> list[dict]:
-    return tarifa_service.listar_tarifas_activas()
+def listar_tarifas_activas(tipo: str | None = None) -> list[dict]:
+    return tarifa_service.listar_tarifas_activas(tipo=tipo)
 
 
 def listar_por_categoria(id_categoria: int) -> list[dict]:

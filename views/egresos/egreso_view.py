@@ -46,10 +46,10 @@ class EgresoView(ctk.CTkFrame):
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
         ctk.CTkLabel(scroll, text="Registrar Egreso", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", pady=(0,10))
         ctk.CTkLabel(scroll, text="Concepto *").pack(anchor="w")
-        self.combo_concepto = ctk.CTkComboBox(scroll, width=250, values=["PROFESOR","PERSONAL","CAMPEONATO_FIJO","ARBITRAJE","VIATICOS"])
+        self.combo_concepto = ctk.CTkComboBox(scroll, width=250, values=["PROFESOR","PERSONAL","CAMPEONATO_FIJO","ARBITRAJE","VIATICOS"], command=self._on_concepto_changed)
         self.combo_concepto.set("PROFESOR")
         self.combo_concepto.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Monto S/ *").pack(anchor="w")
+        ctk.CTkLabel(scroll, text="Monto S/ * (editable: cada profesor/árbitro puede cobrar distinto)").pack(anchor="w")
         self.entry_monto = ctk.CTkEntry(scroll, width=150, placeholder_text="200")
         self.entry_monto.pack(anchor="w", pady=3)
         ctk.CTkLabel(scroll, text="Fecha *").pack(anchor="w")
@@ -144,6 +144,24 @@ class EgresoView(ctk.CTkFrame):
 
             toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar)
             toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
+
+    def _on_concepto_changed(self, selection):
+        # Prefill editable con el default de Configuración (cada caso puede variar)
+        if self.entry_monto.get().strip():
+            return
+        try:
+            from controllers import configuracion_controller
+            config = configuracion_controller.obtener_configuracion() or {}
+        except Exception:
+            config = {}
+        defaults = {"PROFESOR": config.get("pago_profesor", 200),
+                    "ARBITRAJE": config.get("arbitraje_por_equipo", 15)}
+        if selection in defaults:
+            try:
+                self.entry_monto.delete(0, "end")
+                self.entry_monto.insert(0, str(defaults[selection]))
+            except Exception:
+                pass
 
     def _elegir_comprobante(self):
         path = filedialog.askopenfilename(filetypes=[("Imagen/PDF","*.jpg *.jpeg *.png *.pdf"),("Todos","*.*")])

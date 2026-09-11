@@ -215,9 +215,13 @@ class TarifaView(ctk.CTkFrame):
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
 
+        tipo_cat = t.get("categoria_tipo", "ACADEMIA") or "ACADEMIA"
+        titulo = f"{t.get('categoria_nombre', '')} - {t['nombre']}"
+        if tipo_cat != "ACADEMIA":
+            titulo += f"  [{tipo_cat}]"
         ctk.CTkLabel(
             info,
-            text=f"{t.get('categoria_nombre', '')} - {t['nombre']}",
+            text=titulo,
             font=ctk.CTkFont(size=14, weight="bold"),
         ).pack(anchor="w")
 

@@ -34,7 +34,8 @@ docs/
 │   └── publicacion_release.md         # VERSION → tag → Release ZIP
 │
 └── manuales/             # Uso
-    └── manual_sistema.md              # Config, flujos, uso diario ADMIN/SECRETARIA
+    ├── manual_sistema.md              # Config, flujos, uso diario ADMIN/SECRETARIA
+    └── manual_flujos.md               # Paso a paso + casuísticas + matriz de pruebas por release
 ```
 
 ### Cómo navegar
@@ -43,5 +44,6 @@ docs/
 - **¿Nuevo feature?** → `desarrollo/roadmap.md` → `desarrollo/plan_sprints.md` → `desarrollo/plan_dayanna_v2.1.md` (v2.1 documentado: es_nuevo, conceptos sin redundancia, permisos secretaria).
 - **¿Deploy?** → `despliegue/despliegue_produccion.md` + `setup_onedrive.bat` (raíz).
 - **¿Uso?** → `manuales/manual_sistema.md`.
+- **¿Probar un flujo / release?** → `manuales/manual_flujos.md`.
 
 > **Nota migración:** `docs/` antes plano; ahora agrupado. Rutas antiguas redirigen aquí. Artefactos en raíz: `setup_onedrive.bat`, `config.ini` (generado), `VERSION`.

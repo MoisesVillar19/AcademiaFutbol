@@ -1,89 +1,90 @@
-# AcademiaFutbol — Sistema de Gestión v2 (Flexible + OneDrive Central)
+# AcademiaFutbol — Sistema de Gestión v1.0.3
 
-> **Academia Deportiva Roncalli.** Matrículas, cuotas, pagos, **ventas (uniformes/tienda/campeonato)**, inventario con `tipo_uniforme`, **egresos**, reportes `Ingresos vs Egresos`, auditoría, backups. **BD central en `OneDrive\Academia\academia.db`** (“web sin ser web”) + **precios 100% configurables sin código**.
+> **Academia Deportiva Roncalli.** Matrículas, cuotas, pagos, ventas
+> (uniformes/tienda/campeonato por división), campeonatos (inscritos,
+> recaudado, arbitraje, neto), inventario, egresos, dashboard Pro
+> (tablas + gráficos + comparativa MoM), reportes, auditoría con usuario,
+> backups con fallback local. **BD única en red LAN**
+> (`\\SERVIDOR\Academia\academia.db`) + **precios en Tarifas**.
 
-[![Versión](https://img.shields.io/badge/versión-1.0.0-blue)]()  `VERSION` + `docs/desarrollo/changelog.md`
+[![Versión](https://img.shields.io/badge/versión-1.0.3-blue)]() `VERSION`
 
-### Inicio rápido (3 pasos)
+### Inicio rápido
 
-1. **OneDrive:** Asegúrate que OneDrive esté sincronizado (icono verde). Ejecuta **`setup_onedrive.bat`** (doble clic) → crea `OneDrive\Academia\`, `fotos\`, `comprobantes\`, `BackupsAcademia\` y `config.ini` con `DB_PATH=OneDrive\Academia\academia.db`.
-2. **App:** `py main.py` (dev) o `AcademiaFutbol-Setup-1.0.0.exe` (installer) → sigue wizard 6 pasos → `Probar conexión` ✔ → `Abrir`.
-3. **Login:** `admin / admin123` → cambia clave (queda al frente/centrada, fondo Dashboard no queda blanco) → `Configuración` verifica `Inscripción 100 / Uniforme 20`.
+1. **Red:** en cada PC ejecuta **`setup_red.bat "\\SERVIDOR\Academia"`**
+   (verifica lectura/escritura y escribe `config.ini`).Detalle en
+   `docs/despliegue/guia_instalacion.md`.
+2. **App:** `py main.py` (dev) o instala `AcademiaFutbol-Setup-1.0.3.exe`
+   o extrae `AcademiaFutbol-v1.0.3.zip` (portable, sin admin).
+3. **Login:** `admin / admin123` → cambia la clave → crea usuarios
+   SECRETARIA → verifica Tarifas y Probar conexión.
 
-> Sin OneDrive: `config.ini` fallback `database\academia.db` local.
+> Sin red: fallback a BD local. Nunca copies `academia.db` entre PCs.
 
 ### Estructura del proyecto
 
 ```
 AcademiaFutbol/
-├── main.py + VERSION + config.ini (generado) + config_visual.json
-├── setup_onedrive.bat       # Configura OneDrive central en cada PC
-├── database/  connection.py, create_db.py (18+4 tablas v2), seed.py, backup.py, restore.py
-├── models/  18+4 dataclass (@dataclass) — tipo_uniforme, venta, egreso
-├── repositories/  18+4 — solo INSERT/UPDATE/SELECT, soft delete activo=0
-├── services/  venta_service, egreso_service, tipo_uniforme_service, cuota (mora), pago (comprobante)
-├── controllers/  login, estudiante, matricula (diferir), pago, venta, egreso, inventario, configuracion (7 precios)
-├── views/  login (topmost), dashboard (14 cards), estudiantes (foto 60), matriculas (diferir), pagos (comprobante), ventas, egresos, inventario (compra/venta/ganancia), configuracion (8 secciones), reportes (9), auditoria
-├── utils/  constants.py (OneDrive detect + DB_PATH), validators, security (bcrypt), ui_helpers (hover), dates, logger
-├── widgets/ date_picker.py (escribir YYYY-MM-DD o click Día/Mes/Año + Hoy)
-├── assets/images/logo_roncalli.png
-├── installer/  setup.iss (Inno, crea OneDrive + config.ini solo si no existe), build_installer.bat
-├── updater/  update_service.py (excluye database/*.db, config.ini, logs)
-├── docs/  sistema/ (reglas, arquitectura, diccionario, casos, convenciones) + desarrollo/ + despliegue/ + manuales/ + testing/
-└── DAYANNA_REVISION.md  # Checklist 13 módulos para probar a mano + opencode
+├── main.py + VERSION + config.ini (generado)
+├── setup_red.bat              # Apunta cada PC al recurso compartido
+├── database/  connection.py (journal adaptativo red/local, timeout, cierre limpio),
+│              create_db.py (migraciones), seed.py (idempotente), backup.py, restore.py
+├── models/  dataclass (@dataclass)
+├── repositories/  solo INSERT/UPDATE/SELECT, soft delete activo=0
+├── services/  matricula (concepto>tarifa>monto), pago, venta (campeonato por tarifa),
+│              egreso, cuota (mora), dashboard (comparativa MoM), backup (fallback local)
+├── controllers/  login, estudiante, matricula, pago, venta, egreso, beca,
+│                 inventario, categoria, tarifa, reporte, auditoria, importar,
+│                 usuario (roles + matriz de permisos), configuracion
+├── views/  dashboard Pro, estudiantes, matriculas, pagos, ventas+campeonatos,
+│           egresos, inventario, tarifas+becas, usuarios+permisos,
+│           reportes, auditoria (con username), configuracion, importar, login
+├── utils/  constants (rutas red/local), validators, security (bcrypt),
+│           ui_helpers (secciones, cards, toggle Tabla/Gráfico), dates, logger
+├── widgets/  date_picker.py (escribir fecha + validación), debounce, pagination
+├── installer/  setup.iss (Inno Setup), build_installer.bat, README_BLOQUEO.txt
+├── updater/  dual Setup/ZIP con barra de progreso (%, MB/s, ETA)
+├── docs/  sistema/ + desarrollo/ (incl. plan_red_lan.md) + despliegue/
+│          (guia_instalacion.md/.pdf, despliegue_red.md) + manuales/ (.md + .pdf)
+└── tools/md_to_pdf.py  # genera los PDF de la documentación
 ```
 
 ### Documentación
 
-Ver `docs/README.md` índice:
+- Uso: `docs/manuales/manual_sistema.md(.pdf)` · Flujos y casos:
+  `docs/manuales/manual_flujos.md(.pdf)` · Instalación:
+  `docs/despliegue/guia_instalacion.md(.pdf)` · Red:
+  `docs/despliegue/despliegue_red.md` · Decisiones: `docs/desarrollo/plan_red_lan.md`
+- Índice: `docs/README.md`. Prioridad:
+  `AGENTS.md > sistema/reglas_negocio > arquitectura_bd > diccionario > arquitectura_software`
 
-- `docs/sistema/reglas_negocio.md` RN-001..050 + `desarrollo/cambios_RN_v2.md` (precios flexibles)
-- `docs/sistema/arquitectura_bd.md` + `diccionario_datos.md` (DDL `create_db.py:4`)
-- `docs/despliegue/despliegue_produccion.md` **plan build que no rompe** (11+13 checklist) + `setup_onedrive.bat`
-- `docs/manuales/manual_sistema.md` (ADMIN/SECRETARIA paso a paso)
-- `docs/DAYANNA_REVISION.md` (checklist Dayanna)
+### Flujos clave
 
-Prioridad: `AGENTS.md > sistema/reglas_negocio > arquitectura_bd > diccionario > arquitectura_software`
-
-### Flujos clave (flexibles, sin código)
-
-- **Nuevo:** `Estudiantes → foto → Matrícula (precio_inscripcion 100)` → auto `-1 Camiseta Entrenamiento` stock + `Venta INSCRIPCION` + cuota `PENDIENTE`
-- **Reingreso:** `Retirar → Reingresante → Reingreso` → dialog `¿Vender uniforme?` → `Ventas UNIFORME` aparte (precio por tipo 20/30)
-- **Mensualidad:** `Monto pactado` o `tarifa` + `beca PORCENTAJE/MONTO_FIJO` (múltiple si `permitir=1`) → `cuota.monto_total` + `diferir 2-3` genera N cuotas; asignar beca después recalcula `PENDIENTE`
-- **Pagos:** `YAPE` exige `comprobante` → `OneDrive\comprobantes\{recibo}.jpg`; `PARCIAL→PAGADO` auto siguiente mes
-- **Precios:** todo en `Configuración` `ADMIN` (`precio_inscripcion/mensualidad/reingreso/uniforme` etc.)
-
-### Instalación
-
-**Recomendado OneDrive central (N PCs, BD no se mueve):**
-```
-# PC1 ADMIN
-setup_onedrive.bat
-py main.py  # o AcademiaFutbol.exe
-
-# PC2+ SECRETARIA: mismo bat + misma cuenta OneDrive compartida
-```
-
-**Instalador:** `build.bat` → `dist\` (sin `academia.db`) → `installer\build_installer.bat` → `Output\Setup-1.0.0.exe` (crea OneDrive + `config.ini` solo si no existe) + `assets`.
-
-**Actualizar:** `GitHub Release ZIP` `AcademiaFutbol-v1.1.0.zip`; `main.py:344` check 24h → `updater` extrae **excluyendo** `database/*.db`, `config.ini`, `logs`.
-
-### Requisitos
-
-- Windows 10/11, OneDrive, Python 3.13 (dev), `pip install -r requirements.txt` (`customtkinter`, `bcrypt`, `openpyxl`, `reportlab`, `Pillow`, `matplotlib` opcional)
-- 4 GB RAM, 500 MB disco
+- **Nuevo:** Estudiante 🆕 → Matrícula (tarifa/concepto/monto) → auto `-1 Camiseta` + cuota PENDIENTE
+- **Reingreso:** Retirar → Reingresante → matrícula **nueva** (no reactiva)
+- **Mensualidad:** tarifa por edad o monto pactado (0 = gratuito) + beca %/monto + diferir 2-3
+- **Pagos:** parcial/total, YAPE exige comprobante, PARCIAL→PAGADO automático
+- **Campeonato:** tarifa por división + inscripción de estudiantes + arbitraje vinculado = neto por división
+- **Precios:** todo en Tarifas (ACADEMIA/CAMPEONATO/SERVICIO); egresos PROFESOR/ARBITRAJE con monto sugerido editable
 
 ### Roles
 
-- **ADMIN:** Usuarios, Configuración (7 precios, mora, tipos uniforme), Categorías/Tarifas/Becas, Auditoría, Backups/Restore, Egresos, Importar
-- **SECRETARIA:** Estudiantes (foto)/Apoderados (máx 2, 1 principal)/Matrículas/Pagos (comprobante)/Ventas/Inventario/Dashboard/Reportes
+- **ADMIN:** todo (Usuarios, Tarifas+Becas, Auditoría, Configuración, Importar, Restaurar).
+- **SECRETARIA:** Dashboard, Estudiantes, Matrículas, Pagos, Ventas, Campeonatos, Egresos, Inventario, Reportes, Respaldo manual. Matriz ajustable en Usuarios → Permisos por rol.
+
+### Requisitos
+
+- Windows 10/11, red LAN con carpeta compartida (servidor siempre encendido en horario)
+- Dev: Python 3.13, `pip install -r requirements.txt`
+- 4 GB RAM, 500 MB disco
 
 ### Troubleshooting
 
-- `Database is locked` → OneDrive no verde → esperar sync `WAL`
-- `academia (conflicto).db` → 2 PCs offline simultáneo → restaurar último `BackupsAcademia\academia_*.db` via `database/restore.py`
-- Foto >2MB → rechaza, `PIL` no instalado → `pip install pillow`
+- `No se puede acceder a la base de datos` → encender servidor, revisar red/recurso
+- App no reabre → terminar `AcademiaFutbol.exe` en Administrador de tareas
+- Bloqueo SmartScreen/antivirus → `guia_instalacion.md` §7 (o usar ZIP)
+- Dato borrado → restaurar backup con PIN (ADMIN, demás PCs cerradas)
 
 ### Licencia
 
-Privado — Academia Deportiva Roncalli. Ver `docs/desarrollo/changelog.md`.
+Privado — Academia Deportiva Roncalli.

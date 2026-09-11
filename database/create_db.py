@@ -311,6 +311,7 @@ CREATE TABLE IF NOT EXISTS egreso (
     id_usuario INTEGER REFERENCES usuario(id_usuario),
     observacion TEXT,
     comprobante_path TEXT,
+    id_tarifa INTEGER REFERENCES tarifa(id_tarifa),
     activo INTEGER DEFAULT 1
 );
 
@@ -446,6 +447,8 @@ def _migrar_columnas_faltantes(cursor) -> None:
         cursor.execute("ALTER TABLE egreso ADD COLUMN activo INTEGER DEFAULT 1")
     if "comprobante_path" not in columnas_egreso:
         cursor.execute("ALTER TABLE egreso ADD COLUMN comprobante_path TEXT")
+    if "id_tarifa" not in columnas_egreso:
+        cursor.execute("ALTER TABLE egreso ADD COLUMN id_tarifa INTEGER REFERENCES tarifa(id_tarifa)")
 
     # v2 escalable: nuevas columnas para multi-almacén/variante/lote (si tabla ya existe)
     try:

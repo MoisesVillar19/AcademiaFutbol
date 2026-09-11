@@ -36,6 +36,7 @@ def registrar_egreso(data: dict) -> tuple[bool, str, int | None]:
         id_usuario=id_usuario,
         observacion=data.get("observacion", ""),
         comprobante_path=comprobante,
+        id_tarifa=data.get("id_tarifa"),
     )
     id_egreso = egreso_repository.insertar(egreso)
     auditoria_service.registrar_insert(id_usuario, "egreso", id_egreso, f"concepto={concepto}, monto={monto_f}, comprobante={bool(comprobante)}")
@@ -76,6 +77,13 @@ def editar_egreso(id_egreso: int, data: dict) -> tuple[bool, str]:
         "UPDATE egreso SET concepto=?, monto=?, fecha=?, responsable=?, observacion=?, comprobante_path=?, id_usuario=? WHERE id_egreso=?",
         (concepto, round(monto_f,2), data.get("fecha", e["fecha"]), data.get("responsable", e.get("responsable","")), data.get("observacion", e.get("observacion","")), data.get("comprobante_path", e.get("comprobante_path","")), data.get("id_usuario") or auditoria_service.id_usuario_sesion_or_system(), id_egreso),
     )
+    if "id_tarifa" in data:
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(egreso)").fetchall()]
+            if "id_tarifa" in cols:
+                conn.execute("UPDATE egreso SET id_tarifa=? WHERE id_egreso=?", (data.get("id_tarifa"), id_egreso))
+        except Exception:
+            pass
     conn.commit()
     auditoria_service.registrar_update(auditoria_service.id_usuario_sesion_or_system(), "egreso", id_egreso, f"concepto={e['concepto']}", f"concepto={concepto}, monto={monto_f}")
     return True, "Egreso actualizado"

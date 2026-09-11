@@ -49,6 +49,12 @@ class EgresoView(ctk.CTkFrame):
         self.combo_concepto = ctk.CTkComboBox(scroll, width=250, values=["PROFESOR","PERSONAL","CAMPEONATO_FIJO","ARBITRAJE","VIATICOS"], command=self._on_concepto_changed)
         self.combo_concepto.set("PROFESOR")
         self.combo_concepto.pack(anchor="w", pady=3)
+        self.frame_division = ctk.CTkFrame(scroll, fg_color="transparent")
+        ctk.CTkLabel(self.frame_division, text="División campeonato (opcional, para ARBITRAJE/CAMPEONATO_FIJO)").pack(anchor="w")
+        self.combo_tarifa_egr = ctk.CTkComboBox(self.frame_division, width=400, values=["Ninguna"])
+        self.combo_tarifa_egr.set("Ninguna")
+        self.combo_tarifa_egr.pack(anchor="w", pady=3)
+        self._tarifas_egr_map = {}
         ctk.CTkLabel(scroll, text="Monto S/ * (editable: cada profesor/árbitro puede cobrar distinto)").pack(anchor="w")
         self.entry_monto = ctk.CTkEntry(scroll, width=150, placeholder_text="200")
         self.entry_monto.pack(anchor="w", pady=3)
@@ -134,6 +140,13 @@ class EgresoView(ctk.CTkFrame):
             def _poblar(frame, _e=e):
                 linea_detalle(frame, "ID egreso", _e.get("id_egreso"))
                 linea_detalle(frame, "Concepto", _e.get("concepto"))
+                if _e.get("id_tarifa"):
+                    try:
+                        from controllers import tarifa_controller
+                        _t = tarifa_controller.obtener_tarifa(_e.get("id_tarifa"))
+                        linea_detalle(frame, "División", f"{_t.get('nombre','')} (S/{_t.get('monto',0)})" if _t else _e.get("id_tarifa"))
+                    except Exception:
+                        linea_detalle(frame, "División", _e.get("id_tarifa"))
                 linea_detalle(frame, "Monto", f"S/{_e.get('monto',0)}")
                 linea_detalle(frame, "Fecha", _e.get("fecha"))
                 linea_detalle(frame, "Responsable", _e.get("responsable"))
@@ -145,6 +158,15 @@ class EgresoView(ctk.CTkFrame):
             toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _on_concepto_changed(self, selection):
+        # División visible solo para ARBITRAJE/CAMPEONATO_FIJO
+        try:
+            if selection in ("ARBITRAJE", "CAMPEONATO_FIJO"):
+                self.frame_division.pack(anchor="w", pady=3, before=self.entry_monto)
+                self._cargar_tarifas_egreso()
+            else:
+                self.frame_division.pack_forget()
+        except Exception:
+            pass
         # Prefill editable con el default de Configuración (cada caso puede variar)
         if self.entry_monto.get().strip():
             return
@@ -161,6 +183,16 @@ class EgresoView(ctk.CTkFrame):
                 self.entry_monto.insert(0, str(defaults[selection]))
             except Exception:
                 pass
+
+    def _cargar_tarifas_egreso(self):
+        try:
+            from controllers import tarifa_controller
+            tarifas = tarifa_controller.listar_tarifas_activas(tipo="CAMPEONATO")
+        except Exception:
+            tarifas = []
+        nombres = ["Ninguna"] + [f"{t.get('categoria_nombre','')} - {t['nombre']} (S/{t['monto']:.2f})" for t in tarifas]
+        self.combo_tarifa_egr.configure(values=nombres)
+        self._tarifas_egr_map = {n: t["id_tarifa"] for n, t in zip(nombres[1:], tarifas)}
 
     def _elegir_comprobante(self):
         path = filedialog.askopenfilename(filetypes=[("Imagen/PDF","*.jpg *.jpeg *.png *.pdf"),("Todos","*.*")])
@@ -192,6 +224,7 @@ class EgresoView(ctk.CTkFrame):
                 comprobante_dest = self._comprobante_path
             except Exception:
                 comprobante_dest = self._comprobante_path
+        id_tarifa = self._tarifas_egr_map.get(self.combo_tarifa_egr.get())
         data = {
             "concepto": self.combo_concepto.get(),
             "monto": self.entry_monto.get().strip(),
@@ -199,6 +232,7 @@ class EgresoView(ctk.CTkFrame):
             "responsable": self.entry_resp.get().strip(),
             "observacion": self.entry_obs.get().strip(),
             "comprobante_path": comprobante_dest,
+            "id_tarifa": id_tarifa,
         }
         exito, msg, id_eg = egreso_controller.registrar_egreso(data)
         self.label_status.configure(text=msg, text_color="green" if exito else "red")
@@ -220,6 +254,11 @@ class EgresoView(ctk.CTkFrame):
             self.label_comp_preview.configure(image=None, text="")
             self._cargar_egresos()
             self.entry_monto.delete(0, "end")
+            try:
+                self.combo_tarifa_egr.set("Ninguna")
+                self.frame_division.pack_forget()
+            except Exception:
+                pass
 
     def _calcular(self):
         from datetime import date

@@ -11,4 +11,5 @@ class Egreso:
     id_usuario: int | None = None
     observacion: str = ""
     comprobante_path: str | None = None
+    id_tarifa: int | None = None
     activo: int = 1

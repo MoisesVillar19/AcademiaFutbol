@@ -16,30 +16,46 @@ def insertar(id_usuario: int, tabla_afectada: str, id_registro: int,
     return cursor.lastrowid
 
 
+# Columnas extra: username (NULL si sistema/usuario borrado) + nombre.
+# La vista muestra username o fallback "sistema (id=N)".
+_JOIN_USUARIO = """
+    LEFT JOIN usuario u ON u.id_usuario = log.id_usuario
+    LEFT JOIN persona p ON p.id_persona = u.id_persona
+"""
+_COLS_USUARIO = """,
+    u.username AS username,
+    TRIM(COALESCE(p.nombres, '') || ' ' || COALESCE(p.apellidos, '')) AS usuario_nombre
+"""
+
+
 def obtener_todos(limit: int = 100, offset: int = 0) -> list[dict]:
     return fetch_all(
-        "SELECT * FROM log ORDER BY fecha DESC LIMIT ? OFFSET ?",
+        "SELECT log.*" + _COLS_USUARIO + " FROM log" + _JOIN_USUARIO +
+        " ORDER BY fecha DESC LIMIT ? OFFSET ?",
         (limit, offset),
     )
 
 
 def obtener_por_tabla(tabla_afectada: str, limit: int = 100) -> list[dict]:
     return fetch_all(
-        "SELECT * FROM log WHERE tabla_afectada = ? ORDER BY fecha DESC LIMIT ?",
+        "SELECT log.*" + _COLS_USUARIO + " FROM log" + _JOIN_USUARIO +
+        " WHERE tabla_afectada = ? ORDER BY fecha DESC LIMIT ?",
         (tabla_afectada, limit),
     )
 
 
 def obtener_por_usuario(id_usuario: int, limit: int = 100) -> list[dict]:
     return fetch_all(
-        "SELECT * FROM log WHERE id_usuario = ? ORDER BY fecha DESC LIMIT ?",
+        "SELECT log.*" + _COLS_USUARIO + " FROM log" + _JOIN_USUARIO +
+        " WHERE log.id_usuario = ? ORDER BY fecha DESC LIMIT ?",
         (id_usuario, limit),
     )
 
 
 def obtener_por_fecha(fecha_inicio: str, fecha_fin: str) -> list[dict]:
     return fetch_all(
-        "SELECT * FROM log WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC",
+        "SELECT log.*" + _COLS_USUARIO + " FROM log" + _JOIN_USUARIO +
+        " WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC",
         (fecha_inicio, fecha_fin),
     )
 

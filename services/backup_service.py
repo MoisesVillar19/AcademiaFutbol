@@ -7,11 +7,30 @@ from services import auditoria_service, configuracion_service
 from utils.logger import logger
 
 
+def _ruta_escribible(ruta: str) -> bool:
+    """Prueba escritura real (detecta share caído o sin permisos)."""
+    try:
+        os.makedirs(ruta, exist_ok=True)
+        test = os.path.join(ruta, ".write_test")
+        with open(test, "w", encoding="utf-8") as f:
+            f.write("ok")
+        try:
+            os.remove(test)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def _resolver_ruta_backup() -> str:
     """Resuelve la carpeta de respaldos desde CONFIGURACION.ruta_backup (RN-029).
 
     Rutas relativas se interpretan respecto al directorio de la aplicacion.
     Si no hay configuracion, usa la carpeta detectada por defecto.
+    Fallback (red): si el destino central no es escribible (servidor
+    apagado/sin permisos), usa la carpeta local y lo advierte en el log,
+    para que cada PC conserve su última foto útil.
     """
     from utils.constants import APP_DIR, BACKUP_DIR
     ruta = configuracion_service.obtener_valor("ruta_backup")
@@ -20,7 +39,10 @@ def _resolver_ruta_backup() -> str:
     ruta = str(ruta).strip()
     if not os.path.isabs(ruta):
         ruta = os.path.join(APP_DIR, ruta)
-    return ruta
+    if _ruta_escribible(ruta):
+        return ruta
+    logger.warning(f"Backup central inaccesible, usando local: {ruta} -> {BACKUP_DIR}")
+    return BACKUP_DIR
 
 
 def crear_backup(id_usuario: int | None = None) -> tuple[bool, str, str | None]:
@@ -40,7 +62,16 @@ def crear_backup(id_usuario: int | None = None) -> tuple[bool, str, str | None]:
         valor_nuevo=ruta_respaldo,
     )
     logger.info(f"Backup creado: {ruta_respaldo}")
-    return True, "Respaldo creado correctamente", ruta_respaldo
+    msg = "Respaldo creado correctamente"
+    try:
+        from utils.constants import APP_DIR
+        cfg = str(configuracion_service.obtener_valor("ruta_backup") or "").strip()
+        cfg_abs = cfg if os.path.isabs(cfg) else (os.path.join(APP_DIR, cfg) if cfg else "")
+        if cfg_abs and os.path.abspath(destino) != os.path.abspath(cfg_abs):
+            msg += " (copia LOCAL: destino central inaccesible)"
+    except Exception:
+        pass
+    return True, msg, ruta_respaldo
 
 
 def dias_desde_ultimo_backup() -> float | None:

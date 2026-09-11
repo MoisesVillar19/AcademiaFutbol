@@ -24,6 +24,24 @@ def test_login_registra_log(usuario_admin):
     assert _hay_log("usuario", "LOGIN")
 
 
+def test_logs_traen_username(usuario_admin):
+    logs = auditoria_service.obtener_logs(limit=50)
+    assert logs
+    assert logs[0].get("username") == "admin"
+
+
+def test_log_muestra_nombre_y_fallback(usuario_admin):
+    from views.auditoria.auditoria_view import AuditoriaView
+    logs = log_repository.obtener_todos(limit=5)
+    assert logs
+    assert logs[0].get("username")  # usuario real (FK impide huérfanos)
+    assert AuditoriaView._nombre_usuario(
+        {"id_usuario": 1, "username": "admin", "usuario_nombre": "Admin Sistema"}
+    ) == "admin (Admin Sistema)"
+    assert AuditoriaView._nombre_usuario({"id_usuario": 999, "username": None}) == "sistema (id=999)"
+    assert AuditoriaView._nombre_usuario({"id_usuario": 999}) == "sistema (id=999)"
+
+
 def test_crear_usuario_registra_log(usuario_admin):
     usuario_service.crear_usuario(
         {"dni": "56565656", "nombres": "Log", "apellidos": "Test"},

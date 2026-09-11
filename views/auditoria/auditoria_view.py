@@ -79,7 +79,7 @@ class AuditoriaView(ctk.CTkFrame):
         # Header más completo con valores
         header_row = ctk.CTkFrame(self.tabla_frame, fg_color="#3D1559")
         header_row.pack(fill="x", padx=2, pady=2)
-        for text, width in [("Fecha", 125), ("Usuario", 70), ("Tabla", 95), ("Acción", 90), ("Registro", 60), ("Valor Anterior", 160), ("Valor Nuevo", 160), ("", 70)]:
+        for text, width in [("Fecha", 125), ("Usuario", 110), ("Tabla", 95), ("Acción", 90), ("Registro", 60), ("Valor Anterior", 140), ("Valor Nuevo", 140), ("", 70)]:
             ctk.CTkLabel(header_row, text=text, width=width, font=ctk.CTkFont(size=11, weight="bold"), text_color="white").pack(side="left", padx=2)
         for log in logs:
             row = ctk.CTkFrame(self.tabla_frame, fg_color="white", border_width=1, border_color="#E5E7EB", corner_radius=6)
@@ -91,7 +91,7 @@ class AuditoriaView(ctk.CTkFrame):
             except Exception:
                 pass
             ctk.CTkLabel(row, text=log.get("fecha", "")[:19], width=125, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
-            ctk.CTkLabel(row, text=str(log.get("id_usuario", "")), width=70, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
+            ctk.CTkLabel(row, text=self._nombre_usuario(log), width=110, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
             ctk.CTkLabel(row, text=log.get("tabla_afectada", ""), width=95, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
             # color acción
             accion = log.get("accion", "")
@@ -136,6 +136,14 @@ class AuditoriaView(ctk.CTkFrame):
         self._logs_actuales = logs
         self._renderizar_tabla(logs)
 
+    @staticmethod
+    def _nombre_usuario(log) -> str:
+        uname = (log.get("username") or "").strip()
+        if uname:
+            nom = (log.get("usuario_nombre") or "").strip()
+            return f"{uname} ({nom})" if nom else uname
+        return f"sistema (id={log.get('id_usuario', '?')})"
+
     def _ver_detalle(self, log):
         dialog = ctk.CTkToplevel(self)
         dialog.title(f"Auditoría #{log.get('id_log', log.get('id_registro',''))}")
@@ -145,7 +153,11 @@ class AuditoriaView(ctk.CTkFrame):
         ctk.CTkLabel(dialog, text=f"{log.get('tabla_afectada','')} • {log.get('accion','')} • {log.get('fecha','')}", font=ctk.CTkFont(size=13, weight="bold"), text_color="#3D1559").pack(pady=(15,5))
         info = ctk.CTkFrame(dialog, fg_color="transparent")
         info.pack(fill="x", padx=15, pady=5)
-        for k in ["id_usuario","tabla_afectada","id_registro","accion","fecha"]:
+        row_u = ctk.CTkFrame(info, fg_color="transparent")
+        row_u.pack(fill="x", pady=2)
+        ctk.CTkLabel(row_u, text="Usuario:", width=120, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left")
+        ctk.CTkLabel(row_u, text=f"{self._nombre_usuario(log)}  [id={log.get('id_usuario','')}]", font=ctk.CTkFont(size=11), wraplength=350, justify="left").pack(side="left", fill="x", expand=True)
+        for k in ["tabla_afectada","id_registro","accion","fecha"]:
             row = ctk.CTkFrame(info, fg_color="transparent")
             row.pack(fill="x", pady=2)
             ctk.CTkLabel(row, text=f"{k}:", width=120, anchor="w", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left")
@@ -170,7 +182,7 @@ class AuditoriaView(ctk.CTkFrame):
             return
         datos = []
         for l in self._logs_actuales:
-            datos.append({"fecha": l.get("fecha",""), "usuario": l.get("id_usuario",""), "tabla": l.get("tabla_afectada",""), "accion": l.get("accion",""), "registro": l.get("id_registro",""), "anterior": l.get("valor_anterior",""), "nuevo": l.get("valor_nuevo","")})
+            datos.append({"fecha": l.get("fecha",""), "usuario": self._nombre_usuario(l), "tabla": l.get("tabla_afectada",""), "accion": l.get("accion",""), "registro": l.get("id_registro",""), "anterior": l.get("valor_anterior",""), "nuevo": l.get("valor_nuevo","")})
         cols = [("fecha","Fecha"),("usuario","Usuario"),("tabla","Tabla"),("accion","Acción"),("registro","Registro"),("anterior","Valor Anterior"),("nuevo","Valor Nuevo")]
         ok, msg = exportar_a_excel(datos, cols, "Auditoría", ruta)
         if ok:

@@ -54,7 +54,9 @@ en el share.
    de IDs y pérdida silenciosa. No se implementará.
 
 **Cada PC** conserva backups automáticos locales del share (última copia
-útil como referencia de lectura ante apagado prolongado).
+útil como referencia de lectura ante apagado prolongado): si el destino
+central falla, el sistema guarda en la carpeta local y avisa
+("copia LOCAL: destino central inaccesible").
 
 ## 4. Operativa diaria
 

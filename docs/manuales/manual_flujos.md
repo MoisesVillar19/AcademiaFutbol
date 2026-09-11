@@ -249,6 +249,7 @@ inventario · becas activas. El archivo se genera con openpyxl y se confirma la 
 ## F14. Respaldo (FINANZAS → Respaldo + Configuración)
 
 - **Manual:** sidebar Respaldo → copia inmediata a la ruta (OneDrive ideal).
+- **Fallback local:** si el destino central no es escribible (servidor apagado/sin permiso), la copia se guarda en la carpeta local y el mensaje lo dice ("copia LOCAL…"). Cada PC conserva así su última foto útil.
 - **Automático:** cada 6h verifica; crea si pasaron `frecuencia_backup` días.
 - **Restaurar:** solo ADMIN, pide PIN, sobreescribe `academia.db` → reiniciar app.
 - **Rotar:** borra backups >30 días. **Verificar:** comprueba hash del archivo.

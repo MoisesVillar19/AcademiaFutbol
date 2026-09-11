@@ -14,33 +14,34 @@ class TarifaView(ctk.CTkFrame):
         self._cargar_tarifas()
 
     def _crear_widgets(self):
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=5)
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec_titulo = crear_seccion(
+            self, titulo="Tarifas", icono="🏷",
+            descripcion="Precios de cobro por categoría (mensualidades por edad, inscripción, campeonatos). Clic en ▾ Ver detalle para descripción y uso.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec_titulo, text="+ Nueva", width=110, command=self._nueva_tarifa,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
-        ctk.CTkLabel(
-            header, text="Tarifas",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            header, text="+ Nueva", width=100,
-            command=self._nueva_tarifa,
-        ).pack(side="right")
-
-        filtros = ctk.CTkFrame(self, fg_color="transparent")
-        filtros.pack(fill="x", padx=5, pady=(0, 5))
-
+        sec_filtros = crear_seccion(
+            self, titulo="Estado", icono="🔍",
+            descripcion="Muestra activas (disponibles) o desactivadas.",
+            nro=2,
+        )
+        filtros = ctk.CTkFrame(sec_filtros, fg_color="transparent")
+        filtros.pack(fill="x", padx=10, pady=(0, 8))
         self.filtro_estado = ctk.CTkSegmentedButton(
             filtros, values=["Activas", "Desactivadas"],
             command=self._filtrar,
         )
         self.filtro_estado.set("Activas")
         self.filtro_estado.pack(side="left")
+        crear_nota(sec_filtros, "Tip: las tarifas con matrículas activas no se pueden eliminar, solo desactivar.")
 
         self.scroll = ctk.CTkScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.label_status = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=11))
+        self.label_status = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status.pack(pady=3)
 
         self._crear_formulario()
@@ -195,11 +196,9 @@ class TarifaView(ctk.CTkFrame):
             tarifas = tarifa_controller.listar_tarifas_inactivas()
 
         if not tarifas:
+            from utils.ui_helpers import crear_lista_vacia
             texto = "No hay tarifas activas" if self._filtro_actual == "Activas" else "No hay tarifas desactivadas"
-            ctk.CTkLabel(
-                self.scroll, text=texto,
-                text_color="gray",
-            ).pack(pady=20)
+            crear_lista_vacia(self.scroll, texto, "Crea la primera con + Nueva")
             self.label_status.configure(text=f"Total: 0")
             return
 
@@ -209,11 +208,15 @@ class TarifaView(ctk.CTkFrame):
         self.label_status.configure(text=f"Total: {len(tarifas)} tarifa(s)")
 
     def _crear_card(self, t):
-        card = ctk.CTkFrame(self.scroll)
-        card.pack(fill="x", padx=5, pady=3)
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle
+        card = crear_card_interactiva(self.scroll)
+        card.pack(fill="x", padx=6, pady=4)
 
-        info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+        top = ctk.CTkFrame(card, fg_color="transparent")
+        top.pack(fill="x", padx=10, pady=8)
+
+        info = ctk.CTkFrame(top, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True)
 
         tipo_cat = t.get("categoria_tipo", "ACADEMIA") or "ACADEMIA"
         titulo = f"{t.get('categoria_nombre', '')} - {t['nombre']}"
@@ -222,7 +225,7 @@ class TarifaView(ctk.CTkFrame):
         ctk.CTkLabel(
             info,
             text=titulo,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"), text_color="#1F0A33",
         ).pack(anchor="w")
 
         desc = t.get("descripcion", "") or ""
@@ -231,16 +234,23 @@ class TarifaView(ctk.CTkFrame):
             monto_line += f" | {desc}"
         ctk.CTkLabel(
             info, text=monto_line,
-            font=ctk.CTkFont(size=12), text_color="gray",
+            font=ctk.CTkFont(size=12), text_color="#6B5B7B",
         ).pack(anchor="w")
 
         if t.get("observaciones"):
             ctk.CTkLabel(
                 info, text=f"Obs: {t['observaciones']}",
-                font=ctk.CTkFont(size=11), text_color="gray",
+                font=ctk.CTkFont(size=11), text_color="#6B5B7B",
             ).pack(anchor="w")
 
-        botones = ctk.CTkFrame(card, fg_color="transparent")
+        badge = ctk.CTkFrame(top, fg_color="#F3E8FF", corner_radius=8)
+        badge.pack(side="right", padx=10)
+        try:
+            ctk.CTkLabel(badge, text=f"S/{t['monto']:.2f}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#7C3AED").pack(padx=10, pady=6)
+        except Exception:
+            pass
+
+        botones = ctk.CTkFrame(top, fg_color="transparent")
         botones.pack(side="right", padx=5, pady=5)
 
         if t["activo"]:
@@ -266,6 +276,23 @@ class TarifaView(ctk.CTkFrame):
                 fg_color="#dc3545", hover_color="#c82333",
                 command=lambda t=t: self._eliminar_tarifa(t),
             ).pack(side="left", padx=2)
+
+        # ── Detalle expandible inline ──
+        def _poblar(frame, _t=t):
+            linea_detalle(frame, "ID tarifa", _t.get("id_tarifa"))
+            linea_detalle(frame, "Categoría", f"{_t.get('categoria_nombre','')} [{_t.get('categoria_tipo','ACADEMIA') or 'ACADEMIA'}]")
+            linea_detalle(frame, "Descripción", _t.get("descripcion"))
+            linea_detalle(frame, "Observaciones", _t.get("observaciones"))
+            try:
+                from repositories import tarifa_repository
+                uso = tarifa_repository.contar_matriculas_por_tarifa(_t.get("id_tarifa"))
+                linea_detalle(frame, "Matrículas activas que la usan", uso)
+            except Exception:
+                pass
+            linea_detalle(frame, "Estado", "Activa" if _t.get("activo") else "Desactivada")
+
+        toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar)
+        toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
 
     def _desactivar_tarifa(self, t):
         respuesta = messagebox.askyesno(

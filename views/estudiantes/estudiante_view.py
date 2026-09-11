@@ -118,11 +118,14 @@ class EstudianteView(ctk.CTkFrame):
         self.label_foto_preview = ctk.CTkLabel(foto_frame, text="")
         self.label_foto_preview.pack(side="left", padx=5)
 
-        # RN-051: es_nuevo única vez
+        # RN-051: es_nuevo única vez — bloque destacado (define Nuevos del Mes en Dashboard)
+        marco_nuevo = ctk.CTkFrame(scroll, fg_color="#F3E8FF", border_width=1, border_color="#7C3AED", corner_radius=8)
+        marco_nuevo.pack(fill="x", anchor="w", pady=6)
         self.var_es_nuevo = ctk.IntVar(value=0)
-        self.check_es_nuevo = ctk.CTkCheckBox(scroll, text="¿Es estudiante nuevo? (marca solo si es alta nueva real — regala Camiseta S/0 en primera matrícula, luego bloqueado)", variable=self.var_es_nuevo)
-        self.check_es_nuevo.pack(anchor="w", pady=4)
-        ctk.CTkLabel(scroll, text="↳ Si es carga masiva de existentes, dejar desmarcado. Solo marcar para alumnos realmente nuevos.", font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w")
+        self.check_es_nuevo = ctk.CTkCheckBox(marco_nuevo, text="🆕 ¿Es estudiante REALMENTE nuevo?", font=ctk.CTkFont(size=13, weight="bold"), text_color="#3D1559", variable=self.var_es_nuevo)
+        self.check_es_nuevo.pack(anchor="w", padx=10, pady=(8, 2))
+        ctk.CTkLabel(marco_nuevo, text="Marca SOLO si es alta nueva real → regala Camiseta S/0 en su 1ª matrícula y cuenta en Dashboard > Nuevos del Mes.", font=ctk.CTkFont(size=11), text_color="#6B5B7B", wraplength=550, justify="left").pack(anchor="w", padx=10)
+        ctk.CTkLabel(marco_nuevo, text="⚠ Si es carga masiva de alumnos existentes, DEJAR DESMARCADO (no saldrán como nuevos). Luego se bloquea solo.", font=ctk.CTkFont(size=11, weight="bold"), text_color="#DC2626", wraplength=550, justify="left").pack(anchor="w", padx=10, pady=(2, 8))
 
         row1 = ctk.CTkFrame(scroll, fg_color="transparent")
         row1.pack(fill="x", anchor="w", pady=3)

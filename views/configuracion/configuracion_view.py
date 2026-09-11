@@ -117,6 +117,8 @@ class ConfiguracionView(ctk.CTkFrame):
             self.backup_switch.select()
         self._crear_campo(sec5, "frecuencia_backup", "Frecuencia (días)", str(config.get("frecuencia_backup", 7)), help="Si 7, crea backup si pasaron ≥7 días sin uno")
         self._crear_campo(sec5, "ruta_backup", "Ruta de backup", config.get("ruta_backup", "backups/"), help="OneDrive\\BackupsAcademia recomendado")
+        from utils.ui_helpers import crear_boton_interactivo as _btn_path
+        _btn_path(sec5, text="📁 Examinar…", width=130, command=self._elegir_ruta_backup, fg_color="#E5E7EB", hover_color="#DDD6E5", text_color="#1F0A33").pack(anchor="w", padx=10, pady=(0, 4))
         self._crear_campo(sec5, "correo_onedrive", "Correo OneDrive", config.get("correo_onedrive", ""), help="Cuenta que sincroniza academia.db")
         self._nota(sec5, "Botón Respaldo en sidebar crea backup manual en OneDrive inmediatamente.")
         self._nota(sec5, "Restaurar sobreescribe academia.db actual — requiere reiniciar la app. Hora muestra (UTC-5).")
@@ -276,6 +278,21 @@ class ConfiguracionView(ctk.CTkFrame):
             messagebox.showinfo("Éxito", msg + "\n\nVisual guardado. Reinicia para aplicar fuente/tamaño.")
         else:
             messagebox.showerror("Error", msg)
+
+    def _elegir_ruta_backup(self):
+        from tkinter import filedialog
+        actual = ""
+        try:
+            actual = self.entries["ruta_backup"].get().strip()
+        except Exception:
+            pass
+        sel = filedialog.askdirectory(title="Elegir carpeta de backups", initialdir=actual or None)
+        if sel:
+            try:
+                self.entries["ruta_backup"].delete(0, "end")
+                self.entries["ruta_backup"].insert(0, sel)
+            except Exception:
+                pass
 
     def _cargar_categorias(self, parent):
         cats = categoria_controller.listar_categorias()

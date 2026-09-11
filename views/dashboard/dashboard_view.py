@@ -767,14 +767,18 @@ class DashboardView(ctk.CTkFrame):
         frame_grafico = ctk.CTkFrame(padre)
         frame_grafico.pack(fill="x", padx=5, pady=10)
 
-        fig = Figure(figsize=(8, 4), dpi=100)
+        # Rendimiento: figura compacta, fondo opaco y barras sin alpha.
+        # Las transparencias y figuras grandes obligan a recomponer todo el
+        # scroll en cada movimiento → tintineo en GPUs integradas.
+        fig = Figure(figsize=(7.5, 3.4), dpi=100, facecolor="white")
         ax = fig.add_subplot(111)
+        ax.set_facecolor("white")
 
         if color_fijo:
             colores = [color_fijo] * len(valores)
         else:
             colores = ["#4CAF50" if v >= 0 else "#F44336" for v in valores]
-        ax.bar(range(len(valores)), valores, color=colores, alpha=0.7)
+        ax.bar(range(len(valores)), valores, color=colores, alpha=1.0, edgecolor="none")
         ax.set_xticks(range(len(etiquetas)))
         ax.set_xticklabels(etiquetas, rotation=45, ha="right", fontsize=8)
         ax.set_title(titulo, fontsize=12, fontweight="bold")
@@ -802,12 +806,13 @@ class DashboardView(ctk.CTkFrame):
             x = list(np.arange(len(etiquetas)))
         except ImportError:
             x = list(range(len(etiquetas)))
-        fig = Figure(figsize=(9, 4), dpi=100)
+        fig = Figure(figsize=(8, 3.4), dpi=100, facecolor="white")
         ax = fig.add_subplot(111)
+        ax.set_facecolor("white")
 
         ancho = 0.38
-        ax.bar([i - ancho / 2 for i in x], serie_a, ancho, label=nombre_a, color="#7C3AED", alpha=0.85)
-        ax.bar([i + ancho / 2 for i in x], serie_b, ancho, label=nombre_b, color="#9CA3AF", alpha=0.85)
+        ax.bar([i - ancho / 2 for i in x], serie_a, ancho, label=nombre_a, color="#7C3AED", alpha=1.0, edgecolor="none")
+        ax.bar([i + ancho / 2 for i in x], serie_b, ancho, label=nombre_b, color="#9CA3AF", alpha=1.0, edgecolor="none")
         ax.set_xticks(x)
         ax.set_xticklabels(etiquetas, rotation=45, ha="right", fontsize=8)
         ax.set_title(titulo, fontsize=12, fontweight="bold")

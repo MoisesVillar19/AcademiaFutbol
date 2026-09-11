@@ -430,10 +430,34 @@ class App(ctk.CTk):
         login_controller.cerrar_sesion()
         self._mostrar_bienvenida()
 
+    def _cancelar_timers(self):
+        try:
+            pendientes = self.tk.call("after", "info") or ()
+        except Exception:
+            return
+        for _id in pendientes:
+            try:
+                self.after_cancel(_id)
+            except Exception:
+                pass
+
     def _on_cerrar(self):
-        login_controller.cerrar_sesion()
-        close_connection()
-        self.destroy()
+        import sys
+        try:
+            self._cancelar_timers()
+            try:
+                import matplotlib.pyplot as plt
+                plt.close("all")
+            except Exception:
+                pass
+            login_controller.cerrar_sesion()
+            from database.connection import cerrar_limpio
+            cerrar_limpio()
+        finally:
+            try:
+                self.destroy()
+            finally:
+                sys.exit(0)
 
 
 def initialize_system() -> None:

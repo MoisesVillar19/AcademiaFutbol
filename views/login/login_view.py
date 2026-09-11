@@ -246,6 +246,12 @@ class LoginView(ctk.CTkToplevel):
         RecuperarPasswordDialog(self)
 
     def _on_cerrar(self):
-        from database.connection import close_connection
-        close_connection()
-        self.master.destroy()
+        import sys
+        from database.connection import cerrar_limpio
+        try:
+            cerrar_limpio()
+        finally:
+            try:
+                self.master.destroy()
+            finally:
+                sys.exit(0)

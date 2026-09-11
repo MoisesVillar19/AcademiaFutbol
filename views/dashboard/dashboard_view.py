@@ -83,6 +83,17 @@ class DashboardView(ctk.CTkFrame):
         self.detalle_frame.pack(fill="x", pady=5)
 
     def _cargar_indicadores(self):
+        from utils.ui_helpers import mostrar_cargando as _mc
+        _detener = _mc(self, "Cargando dashboard")
+        try:
+            self._cargar_indicadores_impl()
+        finally:
+            try:
+                _detener()
+            except Exception:
+                pass
+
+    def _cargar_indicadores_impl(self):
         self._reset_contenedores()
 
         data = dashboard_controller.obtener_indicadores()
@@ -214,6 +225,17 @@ class DashboardView(ctk.CTkFrame):
             pass
 
     def _mostrar_detalle(self, tipo):
+        from utils.ui_helpers import mostrar_cargando as _mc
+        _detener = _mc(self, "Cargando detalle")
+        try:
+            self._mostrar_detalle_impl(tipo)
+        finally:
+            try:
+                _detener()
+            except Exception:
+                pass
+
+    def _mostrar_detalle_impl(self, tipo):
         self._reset_contenedores()
 
         self.btn_actualizar.pack_forget()

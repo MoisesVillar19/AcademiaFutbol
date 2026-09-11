@@ -1,5 +1,53 @@
+"""Selector de fecha priorizando ESCRITURA (los combos eran rudimentarios).
+
+Uso: escribir libre (AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA o 8 dígitos),
+Enter o salir del campo normaliza. Botón Hoy. API compatible: get/set/delete.
+"""
 import customtkinter as ctk
 from datetime import date
+
+
+BORDE_OK = "#22C55E"
+BORDE_MAL = "#DC2626"
+BORDE_NEUTRO = "#E5E7EB"
+
+
+def parsear_fecha(texto: str | None) -> str | None:
+    """Normaliza a YYYY-MM-DD o None si inválido/vacío.
+
+    Acepta: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY y 8 dígitos
+    (DDMMYYYY, o YYYYMMDD si empieza en 19/20 con mes válido).
+    """
+    if not texto:
+        return None
+    t = texto.strip()
+    if not t:
+        return None
+    # datetime con hora ("2020-05-10 14:30:00" / "...T..."): usar fecha
+    if len(t) > 10 and t[10] in (" ", "T") and len(t) >= 10:
+        t = t[:10]
+    try:
+        a = m = d = None
+        if len(t) == 10 and t[4] == "-" and t[7] == "-":
+            a, m, d = t.split("-")
+        elif len(t) == 10 and t[4] == "/" and t[7] == "/":
+            a, m, d = t.split("/")
+        elif len(t) == 10 and t[2] in "/-." and t[5] in "/-.":
+            d, m, a = t[:2], t[3:5], t[6:10]
+        elif len(t) == 8 and t.isdigit():
+            if t[:2] in ("19", "20") and 1 <= int(t[4:6]) <= 12:
+                a, m, d = t[:4], t[4:6], t[6:8]
+            else:
+                d, m, a = t[:2], t[2:4], t[4:8]
+        else:
+            return None
+        anio, mes, dia = int(a), int(m), int(d)
+        fecha = date(anio, mes, dia)  # valida calendario real (no 30-feb)
+        if not (1900 <= anio <= 2100):
+            return None
+        return fecha.strftime("%Y-%m-%d")
+    except (ValueError, TypeError, IndexError):
+        return None
 
 
 class DatePicker(ctk.CTkFrame):
@@ -20,105 +68,78 @@ class DatePicker(ctk.CTkFrame):
         row = ctk.CTkFrame(self, fg_color="transparent")
         row.pack(anchor="w")
 
-        # Entrada libre + combos clickables (escribir o clickear)
-        ctk.CTkLabel(row, text="Fecha (YYYY-MM-DD):", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left", padx=(0,5))
-        self.entry_fecha = ctk.CTkEntry(row, width=120, placeholder_text="2026-09-06")
-        self.entry_fecha.pack(side="left", padx=(0, 8))
-        self.entry_fecha.bind("<KeyRelease>", self._on_entry_change)
-        self.entry_fecha.bind("<FocusOut>", self._on_entry_change)
-
-        ctk.CTkLabel(row, text="o", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left", padx=2)
-
-        ctk.CTkLabel(row, text="Día", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left")
-        self.combo_dia = ctk.CTkComboBox(
-            row, width=55, values=[str(i).zfill(2) for i in range(1, 32)], command=lambda v: self._sync_from_combos()
+        self.entry_fecha = ctk.CTkEntry(
+            row, width=130, placeholder_text="AAAA-MM-DD",
+            border_color=BORDE_NEUTRO,
         )
-        self.combo_dia.pack(side="left", padx=(2, 8))
+        self.entry_fecha.pack(side="left", padx=(0, 6))
+        self.entry_fecha.bind("<KeyRelease>", self._on_escribir)
+        self.entry_fecha.bind("<FocusOut>", self._on_normalizar)
+        self.entry_fecha.bind("<Return>", self._on_normalizar)
 
-        ctk.CTkLabel(row, text="Mes", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left")
-        meses = ["01", "02", "03", "04", "05", "06",
-                 "07", "08", "09", "10", "11", "12"]
-        self.combo_mes = ctk.CTkComboBox(
-            row, width=55, values=meses, command=lambda v: self._sync_from_combos()
-        )
-        self.combo_mes.pack(side="left", padx=(2, 8))
-
-        ctk.CTkLabel(row, text="Año", font=ctk.CTkFont(size=10), text_color="gray").pack(side="left")
-        anio_actual = date.today().year
-        anios = [str(a) for a in range(anio_actual - 100, anio_actual + 2)]
-        self.combo_anio = ctk.CTkComboBox(
-            row, width=75, values=anios, command=lambda v: self._sync_from_combos()
-        )
-        self.combo_anio.pack(side="left", padx=2)
-
-        ctk.CTkButton(row, text="Hoy", width=50, height=28, command=self._set_hoy).pack(side="left", padx=5)
+        ctk.CTkButton(row, text="Hoy", width=56, height=28,
+                      command=self._set_hoy).pack(side="left", padx=2)
+        ctk.CTkLabel(row, text="✏️ escribe: 2026-09-06 o 06/09/2026",
+                     font=ctk.CTkFont(size=10), text_color="gray").pack(side="left", padx=6)
 
         self._aplicar_default()
 
-    def _sync_from_combos(self):
-        # combos → entry
-        dia = self.combo_dia.get().strip()
-        mes = self.combo_mes.get().strip()
-        anio = self.combo_anio.get().strip()
-        if dia and mes and anio:
-            self.entry_fecha.delete(0, "end")
-            self.entry_fecha.insert(0, f"{anio}-{mes}-{dia}")
+    def _on_escribir(self, event=None):
+        val = self.entry_fecha.get()
+        if not val.strip():
+            self._pintar_borde(BORDE_NEUTRO)
+            return
+        ok = parsear_fecha(val) is not None
+        # mientras escribe (corto) no marcar rojo todavía
+        if ok:
+            self._pintar_borde(BORDE_OK)
+        elif len(val.strip()) >= 8:
+            self._pintar_borde(BORDE_MAL)
+        else:
+            self._pintar_borde(BORDE_NEUTRO)
 
-    def _on_entry_change(self, event=None):
-        # entry → combos
+    def _on_normalizar(self, event=None):
         val = self.entry_fecha.get().strip()
-        if len(val) >= 10 and val[4] == "-" and val[7] == "-":
-            try:
-                a,m,d = val[:10].split("-")
-                if a.isdigit() and m.isdigit() and d.isdigit():
-                    self.combo_anio.set(a)
-                    self.combo_mes.set(m.zfill(2))
-                    self.combo_dia.set(d.zfill(2))
-            except Exception:
-                pass
+        if not val:
+            self._pintar_borde(BORDE_NEUTRO)
+            return
+        norm = parsear_fecha(val)
+        if norm:
+            self.entry_fecha.delete(0, "end")
+            self.entry_fecha.insert(0, norm)
+            self._pintar_borde(BORDE_OK)
+        else:
+            self._pintar_borde(BORDE_MAL)
+
+    def _pintar_borde(self, color):
+        try:
+            self.entry_fecha.configure(border_color=color)
+        except Exception:
+            pass
 
     def _set_hoy(self):
         self.set(date.today().strftime("%Y-%m-%d"))
 
-    def get(self) -> str:
-        # prioriza entry si está completo
+    def es_valido(self) -> bool:
         val = self.entry_fecha.get().strip()
-        if len(val) >= 10:
-            # valida quick
-            try:
-                a,m,d = val[:10].split("-")
-                int(a); int(m); int(d)
-                return f"{a.zfill(4)}-{m.zfill(2)}-{d.zfill(2)}"
-            except Exception:
-                pass
-        # fallback combos
-        dia = self.combo_dia.get().strip()
-        mes = self.combo_mes.get().strip()
-        anio = self.combo_anio.get().strip()
-        if dia and mes and anio:
-            return f"{anio}-{mes}-{dia}"
-        return ""
+        return not val or parsear_fecha(val) is not None
+
+    def get(self) -> str:
+        norm = parsear_fecha(self.entry_fecha.get())
+        return norm or ""
 
     def set(self, fecha: str):
-        if fecha and len(fecha) >= 10:
-            partes = fecha[:10].split("-")
-            if len(partes) == 3:
-                self.combo_anio.set(partes[0])
-                self.combo_mes.set(partes[1])
-                self.combo_dia.set(partes[2])
-                self.entry_fecha.delete(0, "end")
-                self.entry_fecha.insert(0, f"{partes[0]}-{partes[1]}-{partes[2]}")
+        norm = parsear_fecha(fecha)
+        self.entry_fecha.delete(0, "end")
+        if norm:
+            self.entry_fecha.insert(0, norm)
+            self._pintar_borde(BORDE_OK)
         else:
-            self.combo_dia.set("")
-            self.combo_mes.set("")
-            self.combo_anio.set("")
-            self.entry_fecha.delete(0, "end")
+            self._pintar_borde(BORDE_NEUTRO)
 
     def delete(self):
-        self.combo_dia.set("")
-        self.combo_mes.set("")
-        self.combo_anio.set("")
         self.entry_fecha.delete(0, "end")
+        self._pintar_borde(BORDE_NEUTRO)
 
     def _aplicar_default(self):
         hoy = date.today()
@@ -129,7 +150,4 @@ class DatePicker(ctk.CTkFrame):
         elif self._default == "start_of_year":
             self.set(hoy.strftime("%Y-01-01"))
         else:
-            self.combo_dia.set("")
-            self.combo_mes.set("")
-            self.combo_anio.set("")
-            self.entry_fecha.delete(0, "end")
+            self.delete()

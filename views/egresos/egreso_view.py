@@ -52,10 +52,9 @@ class EgresoView(ctk.CTkFrame):
         ctk.CTkLabel(scroll, text="Monto S/ * (editable: cada profesor/árbitro puede cobrar distinto)").pack(anchor="w")
         self.entry_monto = ctk.CTkEntry(scroll, width=150, placeholder_text="200")
         self.entry_monto.pack(anchor="w", pady=3)
-        ctk.CTkLabel(scroll, text="Fecha *").pack(anchor="w")
-        self.entry_fecha = ctk.CTkEntry(scroll, width=150)
-        self.entry_fecha.insert(0, get_today())
-        self.entry_fecha.pack(anchor="w", pady=3)
+        from widgets.date_picker import DatePicker
+        self.date_fecha = DatePicker(scroll, label_text="Fecha *", default="today")
+        self.date_fecha.pack(anchor="w", pady=3)
         ctk.CTkLabel(scroll, text="Responsable").pack(anchor="w")
         self.entry_resp = ctk.CTkEntry(scroll, width=300, placeholder_text="Nombre")
         self.entry_resp.pack(anchor="w", pady=3)
@@ -196,7 +195,7 @@ class EgresoView(ctk.CTkFrame):
         data = {
             "concepto": self.combo_concepto.get(),
             "monto": self.entry_monto.get().strip(),
-            "fecha": self.entry_fecha.get().strip(),
+            "fecha": self.date_fecha.get().strip() or get_today(),
             "responsable": self.entry_resp.get().strip(),
             "observacion": self.entry_obs.get().strip(),
             "comprobante_path": comprobante_dest,

@@ -337,7 +337,18 @@ class App(ctk.CTk):
                 btn.configure(fg_color=COLOR_SIDEBAR_ACT, text_color="#ffffff")
             else:
                 btn.configure(fg_color="transparent", text_color="#c0c8d4")
-        command()
+        # Indicador visible mientras la vista carga (las pesadas congelan
+        # la UI; se pinta ANTES del trabajo pesado). Vive en la ventana
+        # (no en contenido, que command() limpia al empezar).
+        from utils.ui_helpers import mostrar_cargando
+        detener = mostrar_cargando(self, "Cargando " + label.strip().split("  ")[-1])
+        try:
+            command()
+        finally:
+            try:
+                detener()
+            except Exception:
+                pass
 
     def _limpiar_contenido(self):
         for widget in self.contenido.winfo_children():

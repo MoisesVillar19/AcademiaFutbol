@@ -102,6 +102,55 @@ def crear_nota(parent, texto):
     return lbl
 
 
+def mostrar_cargando(parent, texto="Cargando"):
+    """Indicador flotante con puntos animados. Retorna detener() que lo quita.
+
+    Uso: overlay, detener = mostrar_cargando(frame); frame.update_idletasks();
+    ... trabajo pesado ...; detener(). Seguro si el padre ya no existe.
+    """
+    try:
+        lbl = ctk.CTkLabel(parent, text=f"⏳ {texto}",
+                           font=ctk.CTkFont(size=15, weight="bold"),
+                           text_color=TITULO_COLOR, fg_color="white",
+                           corner_radius=8)
+        lbl.place(relx=0.5, rely=0.5, anchor="center")
+    except Exception:
+        return (lambda: None)
+    estado = {"i": 0, "vivo": True}
+
+    def _animar():
+        if not estado["vivo"]:
+            return
+        try:
+            if not lbl.winfo_exists():
+                return
+            lbl.configure(text=f"⏳ {texto}" + "." * (estado["i"] % 4))
+            estado["i"] += 1
+            lbl.after(400, _animar)
+        except Exception:
+            pass
+
+    try:
+        parent.update_idletasks()
+        _animar()
+    except Exception:
+        pass
+
+    def _detener():
+        estado["vivo"] = False
+        try:
+            if lbl.winfo_exists():
+                lbl.destroy()
+        except Exception:
+            pass
+        try:
+            parent.update_idletasks()
+        except Exception:
+            pass
+
+    return _detener
+
+
 def crear_lista_vacia(parent, texto, subtexto=""):
     """Estado vacío estándar."""
     ctk.CTkLabel(parent, text=texto, text_color="gray",

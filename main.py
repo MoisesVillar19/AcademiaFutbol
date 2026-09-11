@@ -465,8 +465,34 @@ def initialize_system() -> None:
     seed_database()
 
 
+def verificar_acceso_bd() -> None:
+    """Guardián anti-huérfana: si config apunta a red inalcanzable, avisar
+    y salir SIN crear/sembrar BD local silenciosa."""
+    from utils.constants import DB_PATH
+    from database.connection import es_ruta_red
+    if not es_ruta_red(DB_PATH):
+        return
+    padre = os.path.dirname(os.path.abspath(DB_PATH))
+    if os.path.isdir(padre):
+        return
+    msg = (f"No se puede acceder a la base de datos en red:\n{DB_PATH}\n\n"
+           "Verifique: red, PC servidor encendida y carpeta compartida.\n"
+           "La app se cerrará sin crear datos locales.")
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        r = tk.Tk()
+        r.withdraw()
+        messagebox.showerror("Base de datos no disponible", msg)
+        r.destroy()
+    except Exception:
+        print(msg)
+    sys.exit(1)
+
+
 def main() -> None:
     try:
+        verificar_acceso_bd()
         initialize_system()
         app = App()
         app.after(2000, lambda: update_view.verificar_y_mostrar(app))

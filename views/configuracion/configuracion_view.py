@@ -120,6 +120,26 @@ class ConfiguracionView(ctk.CTkFrame):
         from utils.ui_helpers import crear_boton_interactivo as _btn_path
         _btn_path(sec5, text="📁 Examinar…", width=130, command=self._elegir_ruta_backup, fg_color="#E5E7EB", hover_color="#DDD6E5", text_color="#1F0A33").pack(anchor="w", padx=10, pady=(0, 4))
         self._crear_campo(sec5, "correo_onedrive", "Correo OneDrive", config.get("correo_onedrive", ""), help="Cuenta que sincroniza academia.db")
+        # BD en red (separado de entries: vive en config.ini, no en tabla CONFIGURACION)
+        try:
+            from utils.constants import DB_PATH
+            _ruta_bd_actual = DB_PATH
+        except Exception:
+            _ruta_bd_actual = ""
+        _frame_bd = ctk.CTkFrame(sec5, fg_color="transparent")
+        _frame_bd.pack(fill="x", padx=10, pady=(6, 3))
+        ctk.CTkLabel(_frame_bd, text="Base de datos en uso:", width=200, anchor="w", font=ctk.CTkFont(size=12)).pack(side="left")
+        self.entry_ruta_bd = ctk.CTkEntry(_frame_bd, width=260, border_width=1, border_color="#E5E7EB")
+        self.entry_ruta_bd.insert(0, _ruta_bd_actual)
+        self.entry_ruta_bd.pack(side="left", padx=5)
+        ctk.CTkLabel(sec5, text="↳ En red: \\\\SERVIDOR\\Academia\\academia.db (todas las PCs igual). Cambiar requiere reiniciar.", font=ctk.CTkFont(size=10), text_color="#9CA3AF", justify="left", wraplength=600).pack(anchor="w", padx=10, pady=(0,2))
+        _btns_bd = ctk.CTkFrame(sec5, fg_color="transparent")
+        _btns_bd.pack(fill="x", padx=10, pady=(0, 4))
+        _btn_path(_btns_bd, text="📁 Examinar…", width=130, command=self._elegir_ruta_bd, fg_color="#E5E7EB", hover_color="#DDD6E5", text_color="#1F0A33").pack(side="left", padx=(0, 5))
+        _btn_path(_btns_bd, text="🔌 Probar conexión", width=150, command=self._probar_conexion_bd, fg_color="#7C3AED", hover_color="#6D28D9", text_color="white").pack(side="left", padx=5)
+        _btn_path(_btns_bd, text="💾 Guardar ruta", width=130, command=self._guardar_ruta_bd, fg_color="#22C55E", hover_color="#16A34A", text_color="white").pack(side="left", padx=5)
+        self.label_bd_status = ctk.CTkLabel(sec5, text="", font=ctk.CTkFont(size=11), justify="left", wraplength=600)
+        self.label_bd_status.pack(anchor="w", padx=10, pady=2)
         self._nota(sec5, "Botón Respaldo en sidebar crea backup manual en OneDrive inmediatamente.")
         self._nota(sec5, "Restaurar sobreescribe academia.db actual — requiere reiniciar la app. Hora muestra (UTC-5).")
         # Lista backups + restaurar/verificar/rotar
@@ -278,6 +298,99 @@ class ConfiguracionView(ctk.CTkFrame):
             messagebox.showinfo("Éxito", msg + "\n\nVisual guardado. Reinicia para aplicar fuente/tamaño.")
         else:
             messagebox.showerror("Error", msg)
+
+    def _elegir_ruta_bd(self):
+        from tkinter import filedialog
+        actual = ""
+        try:
+            actual = self.entry_ruta_bd.get().strip()
+        except Exception:
+            pass
+        import os
+        sel = filedialog.askopenfilename(
+            title="Elegir base de datos (academia.db)",
+            initialdir=os.path.dirname(actual) or None,
+            filetypes=[("Base de datos", "*.db"), ("Todos", "*.*")],
+        )
+        if sel:
+            try:
+                self.entry_ruta_bd.delete(0, "end")
+                self.entry_ruta_bd.insert(0, sel)
+            except Exception:
+                pass
+
+    @staticmethod
+    def _probar_ruta_bd(ruta: str) -> tuple[bool, str]:
+        import os
+        import sqlite3
+        import time
+        if not ruta:
+            return False, "Ruta vacía"
+        padre = os.path.dirname(os.path.abspath(ruta))
+        if not os.path.isdir(padre):
+            return False, f"No se accede a la carpeta: {padre} (¿servidor apagado o sin red?)"
+        t0 = time.monotonic()
+        try:
+            conn = sqlite3.connect(ruta, timeout=5)
+            try:
+                conn.execute("SELECT 1")
+                jm = conn.execute("PRAGMA journal_mode").fetchone()
+                ms = int((time.monotonic() - t0) * 1000)
+                return True, f"OK en {ms}ms (journal: {jm[0] if jm else '?'})"
+            finally:
+                conn.close()
+        except Exception as e:
+            return False, f"No se pudo abrir: {e}"
+
+    def _probar_conexion_bd(self):
+        try:
+            ruta = self.entry_ruta_bd.get().strip()
+        except Exception:
+            ruta = ""
+        ok, msg = self._probar_ruta_bd(ruta)
+        try:
+            self.label_bd_status.configure(text=("✅ " if ok else "❌ ") + msg,
+                                           text_color="green" if ok else "red")
+        except Exception:
+            pass
+
+    def _guardar_ruta_bd(self):
+        import os
+        from tkinter import messagebox
+        try:
+            ruta = self.entry_ruta_bd.get().strip()
+        except Exception:
+            ruta = ""
+        if not ruta:
+            messagebox.showwarning("Ruta BD", "Ruta vacía")
+            return
+        ok, msg = self._probar_ruta_bd(ruta)
+        if not ok:
+            messagebox.showerror("Ruta BD", f"No se guardó: {msg}")
+            try:
+                self.label_bd_status.configure(text="❌ " + msg, text_color="red")
+            except Exception:
+                pass
+            return
+        try:
+            import configparser
+            from utils.constants import APP_DIR
+            ini = os.path.join(APP_DIR, "config.ini")
+            cp = configparser.ConfigParser()
+            if os.path.isfile(ini):
+                cp.read(ini, encoding="utf-8")
+            if not cp.has_section("database"):
+                cp.add_section("database")
+            cp.set("database", "path", ruta)
+            with open(ini, "w", encoding="utf-8") as f:
+                cp.write(f)
+            messagebox.showinfo("Ruta BD", f"Guardada en config.ini.\n\nReinicia la app para usar:\n{ruta}")
+            try:
+                self.label_bd_status.configure(text="✅ Guardada. Reinicia la app.", text_color="green")
+            except Exception:
+                pass
+        except Exception as e:
+            messagebox.showerror("Ruta BD", f"No se pudo escribir config.ini: {e}")
 
     def _elegir_ruta_backup(self):
         from tkinter import filedialog

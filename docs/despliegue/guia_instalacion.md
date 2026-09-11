@@ -86,7 +86,11 @@ No crees otra. Úsala tal cual:
 
 ### 4.3 En cada PC (incluida la principal): apuntar a la compartida
 
-1. Doble clic en `setup_red.bat` (viene en el ZIP y en Program Files).
+Vale igual para instalación **Setup y ZIP**: el `setup_red.bat` viene en
+ambos (ZIP en la raíz, Setup en Program Files) y el `config.ini` funciona
+idéntico en los dos casos.
+
+1. Doble clic en `setup_red.bat`.
 2. Escribe la dirección de datos: `\\PC1\AcademiaDatos`
    (o la IP, ej. `\\192.168.1.50\AcademiaDatos`, o tu carpeta existente del §4.1).
 3. Debes ver **OK lectura** y **OK escritura**. El script deja todo apuntando

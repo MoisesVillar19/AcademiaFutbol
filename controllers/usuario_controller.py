@@ -83,5 +83,37 @@ def listar_usuarios(activo: int | None = None) -> list[dict]:
     return usuario_service.listar_usuarios(activo=activo)
 
 
+def listar_permisos_rol(rol: str) -> set:
+    permitido, msg = _requerir_admin()
+    if not permitido:
+        return set()
+    from repositories import rol_permiso_repository
+    perms = rol_permiso_repository.obtener_por_rol(rol)
+    if not perms:
+        from utils.constants import PERMISOS_ROL
+        perms = set(PERMISOS_ROL.get(rol, set()))
+    return perms
+
+
+def guardar_permisos_rol(rol: str, modulos) -> tuple[bool, str]:
+    permitido, msg = _requerir_admin()
+    if not permitido:
+        return False, msg
+    if rol == "ADMIN":
+        return False, "El rol ADMIN siempre tiene acceso total (fijo)"
+    if not validate_rol(rol):
+        return False, "Rol no válido. Use ADMIN o SECRETARIA"
+    mods = [m for m in (modulos or []) if m]
+    if not mods:
+        return False, "El rol debe conservar al menos 1 módulo"
+    try:
+        from repositories import rol_permiso_repository
+        rol_permiso_repository.reemplazar(rol, mods)
+    except ValueError as e:
+        return False, str(e)
+    auth_service.limpiar_cache_permisos()
+    return True, f"Permisos de {rol} actualizados ({len(mods)} módulos)"
+
+
 def obtener_usuario(id_usuario: int) -> dict | None:
     return usuario_service.obtener_usuario(id_usuario)

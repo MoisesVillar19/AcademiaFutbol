@@ -68,5 +68,49 @@ def obtener_beca(id_beca: int) -> dict | None:
     return beca_repository.obtener_por_id(id_beca)
 
 
+def desactivar_beca(id_beca: int) -> tuple[bool, str]:
+    beca = beca_repository.obtener_por_id(id_beca)
+    if not beca:
+        return False, "Beca no encontrada"
+    if beca["activo"] == 0:
+        return False, "La beca ya está desactivada"
+    beca_repository.soft_delete(id_beca)
+    auditoria_service.registrar_desactivacion(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="beca",
+        id_registro=id_beca,
+        valores_anteriores=f"nombre={beca['nombre']}, activo=1",
+        valores_nuevos="activo=0",
+    )
+    logger.info(f"Beca desactivada: {beca['nombre']} (id={id_beca})")
+    return True, "Beca desactivada correctamente"
+
+
+def activar_beca(id_beca: int) -> tuple[bool, str]:
+    beca = beca_repository.obtener_por_id(id_beca)
+    if not beca:
+        return False, "Beca no encontrada"
+    if beca["activo"]:
+        return False, "La beca ya está activa"
+    conn_beca = Beca(
+        id_beca=id_beca,
+        nombre=beca["nombre"],
+        tipo=beca["tipo"],
+        valor=beca["valor"],
+        observacion=beca.get("observacion", "") or "",
+        activo=1,
+    )
+    beca_repository.actualizar(conn_beca)
+    auditoria_service.registrar_update(
+        id_usuario=auditoria_service.id_usuario_sesion(),
+        tabla="beca",
+        id_registro=id_beca,
+        valores_anteriores="activo=0",
+        valores_nuevos="activo=1",
+    )
+    logger.info(f"Beca activada: {beca['nombre']} (id={id_beca})")
+    return True, "Beca activada correctamente"
+
+
 def listar_becas(activo: int | None = None) -> list[dict]:
     return beca_repository.obtener_todas(activo=activo)

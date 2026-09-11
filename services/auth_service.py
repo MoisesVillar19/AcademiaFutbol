@@ -42,6 +42,7 @@ def login(username: str, password: str) -> dict | None:
         accion="LOGIN",
     )
 
+    limpiar_cache_permisos()
     logger.info(f"Login exitoso: '{username}' (rol: {usuario['rol']})")
     return _usuario_actual
 
@@ -51,6 +52,7 @@ def logout() -> None:
     if _usuario_actual:
         logger.info(f"Logout: '{_usuario_actual.get('username','')}'")
     _usuario_actual = None
+    limpiar_cache_permisos()
 
 
 def obtener_usuario_actual() -> dict | None:
@@ -80,18 +82,37 @@ def es_admin() -> bool:
     return _usuario_actual is not None and _usuario_actual["rol"] == "ADMIN"
 
 
+_cache_permisos: dict = {}
+
+
+def limpiar_cache_permisos() -> None:
+    _cache_permisos.clear()
+
+
 def tiene_permiso(modulo: str) -> bool:
-    """Matriz granular: ADMIN todo, otros según PERMISOS_ROL. modulo ej: 'pagos', 'ventas', 'inventario'."""
+    """Matriz granular editable: ADMIN siempre todo; otros según tabla
+    rol_permiso (UI en Usuarios). Fallback a PERMISOS_ROL si tabla vacía."""
     if not _usuario_actual:
         return False
     if _usuario_actual["rol"] == "ADMIN":
         return True
+    rol = _usuario_actual["rol"]
+    if rol in _cache_permisos:
+        return modulo.lower() in _cache_permisos[rol]
     try:
-        from utils.constants import PERMISOS_ROL
-        perms = PERMISOS_ROL.get(_usuario_actual["rol"], set())
-        return modulo.lower() in perms
+        from repositories import rol_permiso_repository
+        perms = rol_permiso_repository.obtener_por_rol(rol)
+        if not perms:
+            from utils.constants import PERMISOS_ROL
+            perms = set(PERMISOS_ROL.get(rol, set()))
+        _cache_permisos[rol] = set(perms)
+        return modulo.lower() in _cache_permisos[rol]
     except Exception:
-        return False
+        try:
+            from utils.constants import PERMISOS_ROL
+            return modulo.lower() in PERMISOS_ROL.get(rol, set())
+        except Exception:
+            return False
 
 
 def es_rol(rol: str) -> bool:

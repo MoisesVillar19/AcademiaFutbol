@@ -93,6 +93,43 @@ def test_editar_a_rol_legacy_rechazado(usuario_admin):
     assert "ADMIN o SECRETARIA" in msg
 
 
+def test_matriz_default_secretaria(usuario_admin):
+    perms = usuario_controller.listar_permisos_rol("SECRETARIA")
+    assert "pagos" in perms and "usuarios" not in perms
+    assert "configuracion" not in perms and "dashboard" in perms
+
+
+def test_editar_permisos_rol(usuario_admin):
+    from services import auth_service
+    exito, msg = usuario_controller.guardar_permisos_rol("SECRETARIA", ["dashboard", "pagos"])
+    assert exito is True, msg
+    assert usuario_controller.listar_permisos_rol("SECRETARIA") == {"dashboard", "pagos"}
+    # restaurar default para no afectar otros tests (cada test tiene BD propia igual)
+    exito, msg = usuario_controller.guardar_permisos_rol(
+        "SECRETARIA", ["dashboard", "estudiantes", "matriculas", "pagos", "ventas",
+                       "inventario", "reportes", "egresos", "respaldo"])
+    assert exito is True
+
+
+def test_editar_permisos_requiere_admin_y_no_vacia(usuario_admin):
+    from services import auth_service
+    exito, msg = usuario_controller.guardar_permisos_rol("ADMIN", ["dashboard"])
+    assert exito is False
+    exito, msg = usuario_controller.guardar_permisos_rol("SECRETARIA", [])
+    assert exito is False
+    exito, msg = usuario_controller.guardar_permisos_rol("SECRETARIA", ["noexiste"])
+    assert exito is False
+    exito, msg = usuario_controller.guardar_permisos_rol("CAJA", ["pagos"])
+    assert exito is False
+
+
+def test_permiso_aplica_en_sesion(usuario_secretaria):
+    from services import auth_service
+    assert auth_service.tiene_permiso("pagos") is True
+    assert auth_service.tiene_permiso("usuarios") is False
+    assert auth_service.tiene_permiso("ADMIN cognitive") is False
+
+
 def test_sin_sesion_no_accede_a_gestion_usuarios():
     from services import auth_service
     auth_service.logout()

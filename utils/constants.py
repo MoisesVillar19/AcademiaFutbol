@@ -150,8 +150,12 @@ ROLE_INVENTARIO = "INVENTARIO"
 ROLES_VALIDOS = (ROLE_ADMIN, ROLE_SECRETARIA)
 ROLES_LEGACY = (ROLE_CAJA, ROLE_INVENTARIO)
 # Matriz permisos por rol (para sidebar y gates) — v2.1 secretaria con más libertad
+# Es el DEFAULT inicial: el ADMIN puede editarla (tabla rol_permiso) sin tocar código.
+MODULOS_SISTEMA = ("dashboard", "estudiantes", "matriculas", "pagos", "ventas",
+                   "inventario", "reportes", "egresos", "importar", "usuarios",
+                   "tarifas", "auditoria", "configuracion", "respaldo")
 PERMISOS_ROL = {
-    ROLE_ADMIN: {"dashboard", "estudiantes", "matriculas", "pagos", "ventas", "inventario", "reportes", "egresos", "importar", "usuarios", "tarifas", "auditoria", "configuracion", "respaldo"},
+    ROLE_ADMIN: set(MODULOS_SISTEMA),
     ROLE_SECRETARIA: {"dashboard", "estudiantes", "matriculas", "pagos", "ventas", "inventario", "reportes", "egresos", "respaldo"},
 }
 

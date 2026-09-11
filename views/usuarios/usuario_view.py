@@ -227,7 +227,12 @@ class UsuarioView(ctk.CTkFrame):
         self._cargar_usuarios()
 
     def _crear_widgets(self):
-        header = ctk.CTkFrame(self, fg_color="transparent")
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        self.tab_usuarios = self.tabview.add("Usuarios")
+        self.tab_permisos = self.tabview.add("Permisos por rol")
+
+        header = ctk.CTkFrame(self.tab_usuarios, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 5))
 
         ctk.CTkLabel(
@@ -240,7 +245,7 @@ class UsuarioView(ctk.CTkFrame):
             command=self._abrir_formulario,
         ).pack(side="right")
 
-        filtros = ctk.CTkFrame(self, fg_color="transparent")
+        filtros = ctk.CTkFrame(self.tab_usuarios, fg_color="transparent")
         filtros.pack(fill="x", padx=10, pady=5)
 
         self.filtro_estado = ctk.CTkSegmentedButton(
@@ -250,11 +255,49 @@ class UsuarioView(ctk.CTkFrame):
         self.filtro_estado.set("Todos")
         self.filtro_estado.pack(side="left")
 
-        self.scroll_frame = ctk.CTkScrollableFrame(self)
+        self.scroll_frame = ctk.CTkScrollableFrame(self.tab_usuarios)
         self.scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        self.label_status = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=11))
+        self.label_status = ctk.CTkLabel(self.tab_usuarios, text="", font=ctk.CTkFont(size=11))
         self.label_status.pack(pady=5)
+
+        self._crear_tab_permisos()
+
+    def _crear_tab_permisos(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec = crear_seccion(
+            self.tab_permisos, titulo="Permisos del rol SECRETARIA", icono="🔑",
+            descripcion="Tilda los módulos visibles. ADMIN siempre tiene acceso total (fijo). Aplica al próximo login.",
+            nro=1,
+        )
+        crear_nota(sec, "Si quitas Pagos o Ventas a SECRETARIA, esas opciones desaparecen de su menú.")
+        self._vars_permisos = {}
+        grid = ctk.CTkFrame(sec, fg_color="transparent")
+        grid.pack(fill="x", padx=10, pady=(0, 8))
+        try:
+            from utils.constants import MODULOS_SISTEMA
+        except Exception:
+            MODULOS_SISTEMA = ("dashboard", "estudiantes", "matriculas", "pagos", "ventas",
+                               "inventario", "reportes", "egresos", "importar", "usuarios",
+                               "tarifas", "auditoria", "configuracion", "respaldo")
+        actuales = usuario_controller.listar_permisos_rol("SECRETARIA")
+        for i, mod in enumerate(MODULOS_SISTEMA):
+            var = ctk.BooleanVar(value=(mod in actuales))
+            chk = ctk.CTkCheckBox(grid, text=mod.capitalize(), variable=var)
+            chk.grid(row=i // 2, column=i % 2, sticky="w", padx=10, pady=3)
+            self._vars_permisos[mod] = var
+        self.label_permisos_status = ctk.CTkLabel(sec, text="", font=ctk.CTkFont(size=11))
+        self.label_permisos_status.pack(anchor="w", padx=10, pady=2)
+        crear_boton_interactivo(sec, text="Guardar permisos", width=160,
+                                command=self._guardar_permisos, fg_color="#7C3AED").pack(anchor="w", padx=10, pady=6)
+
+    def _guardar_permisos(self):
+        elegidos = [m for m, v in self._vars_permisos.items() if v.get()]
+        exito, msg = usuario_controller.guardar_permisos_rol("SECRETARIA", elegidos)
+        try:
+            self.label_permisos_status.configure(text=msg, text_color="green" if exito else "red")
+        except Exception:
+            pass
 
     def _cargar_usuarios(self, activo=None):
         for widget in self.scroll_frame.winfo_children():

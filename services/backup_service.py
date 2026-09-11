@@ -116,13 +116,87 @@ def verificar_backup(ruta: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Backup corrupto: {e}"
 
+LOCK_RESTORE_NOMBRE = ".restore_lock"
+LOCK_RESTORE_TIMEOUT_SEG = 30 * 60
+
+
+def _info_pc() -> dict:
+    import socket
+    try:
+        pc = socket.gethostname()
+    except Exception:
+        pc = "?"
+    try:
+        usuario = (auditoria_service.id_usuario_sesion() and
+                   f"id={auditoria_service.id_usuario_sesion()}") or "?"
+    except Exception:
+        usuario = "?"
+    return {"pc": pc, "usuario": usuario, "pid": os.getpid()}
+
+
+def hay_restauracion_en_curso() -> tuple[bool, dict | None]:
+    """Detecta lock de otra PC (con expiración anti-zombi)."""
+    import json
+    import time
+    lock = os.path.join(_resolver_ruta_backup(), LOCK_RESTORE_NOMBRE)
+    try:
+        with open(lock, "r", encoding="utf-8") as f:
+            info = json.load(f)
+    except Exception:
+        return False, None
+    try:
+        edad = time.time() - float(info.get("ts", 0))
+    except Exception:
+        edad = LOCK_RESTORE_TIMEOUT_SEG + 1
+    if edad < LOCK_RESTORE_TIMEOUT_SEG:
+        return True, info
+    try:
+        os.remove(lock)  # rancio: liberar
+    except Exception:
+        pass
+    return False, None
+
+
+def adquirir_lock_restore() -> tuple[bool, str]:
+    import json
+    import time
+    ocupado, info = hay_restauracion_en_curso()
+    if ocupado:
+        quien = f"{info.get('pc','?')} ({info.get('usuario','?')})" if info else "otra PC"
+        return False, (f"Otra PC está restaurando ({quien}). "
+                       "Pida que cierren la app e intente de nuevo.")
+    try:
+        datos = _info_pc()
+        datos["ts"] = time.time()
+        with open(os.path.join(_resolver_ruta_backup(), LOCK_RESTORE_NOMBRE),
+                  "w", encoding="utf-8") as f:
+            json.dump(datos, f)
+        return True, ""
+    except Exception as e:
+        return False, f"No se pudo coordinar: {e}"
+
+
+def liberar_lock_restore() -> None:
+    try:
+        os.remove(os.path.join(_resolver_ruta_backup(), LOCK_RESTORE_NOMBRE))
+    except Exception:
+        pass
+
+
 def restaurar_backup(ruta: str, pin: str) -> tuple[bool, str]:
-    """Restaura con PIN de emergencia, cierra conexión y copia."""
+    """Restaura con PIN de emergencia, cierra conexión y copia.
+
+    Coordinación multi-PC: adquiere lock en la carpeta de backups para
+    que dos PCs no restauren a la vez; se libera siempre (finally).
+    """
     from services import configuracion_service
     from utils.security import verify_password
     pin_hash = configuracion_service.obtener_valor("pin_emergencia")
     if not pin_hash or not verify_password(pin, pin_hash):
         return False, "PIN incorrecto"
+    ok, msg = adquirir_lock_restore()
+    if not ok:
+        return False, msg
     try:
         from database.connection import close_connection
         from database.restore import restore_backup
@@ -133,6 +207,8 @@ def restaurar_backup(ruta: str, pin: str) -> tuple[bool, str]:
     except Exception as e:
         logger.error(f"Restore fallo: {e}")
         return False, str(e)
+    finally:
+        liberar_lock_restore()
 
 def rotar_backups(dias: int = 30) -> int:
     """Borra backups con más de N días, retorna cantidad borradas."""

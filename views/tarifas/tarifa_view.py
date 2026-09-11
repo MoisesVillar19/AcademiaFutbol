@@ -15,8 +15,12 @@ class TarifaView(ctk.CTkFrame):
 
     def _crear_widgets(self):
         from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        self.tab_tarifas = self.tabview.add("Tarifas")
+        self.tab_becas = self.tabview.add("Becas")
         sec_titulo = crear_seccion(
-            self, titulo="Tarifas", icono="🏷",
+            self.tab_tarifas, titulo="Tarifas", icono="🏷",
             descripcion="Precios de cobro por categoría (mensualidades por edad, inscripción, campeonatos). Clic en ▾ Ver detalle para descripción y uso.",
             nro=1,
         )
@@ -24,7 +28,7 @@ class TarifaView(ctk.CTkFrame):
                                 fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
 
         sec_filtros = crear_seccion(
-            self, titulo="Estado", icono="🔍",
+            self.tab_tarifas, titulo="Estado", icono="🔍",
             descripcion="Muestra activas (disponibles) o desactivadas.",
             nro=2,
         )
@@ -38,13 +42,79 @@ class TarifaView(ctk.CTkFrame):
         self.filtro_estado.pack(side="left")
         crear_nota(sec_filtros, "Tip: las tarifas con matrículas activas no se pueden eliminar, solo desactivar.")
 
-        self.scroll = ctk.CTkScrollableFrame(self)
+        self.scroll = ctk.CTkScrollableFrame(self.tab_tarifas)
         self.scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.label_status = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
+        self.label_status = ctk.CTkLabel(self.tab_tarifas, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
         self.label_status.pack(pady=3)
 
         self._crear_formulario()
+        self._crear_tab_becas()
+
+    def _crear_tab_becas(self):
+        from utils.ui_helpers import crear_seccion, crear_nota, crear_boton_interactivo
+        sec = crear_seccion(
+            self.tab_becas, titulo="Becas", icono="🎓",
+            descripcion="Descuentos PORCENTAJE o MONTO_FIJO que se asignan al matricular. Clic en ▾ Ver detalle.",
+            nro=1,
+        )
+        crear_boton_interactivo(sec, text="+ Nueva Beca", width=130, command=self._nueva_beca,
+                                fg_color="#7C3AED").pack(anchor="e", padx=10, pady=(0, 8))
+        crear_nota(sec, "En matrícula se elige 1 beca (o varias si Configuración lo permite).")
+        self.scroll_becas = ctk.CTkScrollableFrame(self.tab_becas)
+        self.scroll_becas.pack(fill="both", expand=True, padx=5, pady=5)
+        self.label_becas_status = ctk.CTkLabel(self.tab_becas, text="", font=ctk.CTkFont(size=13, weight="bold"), text_color="#6B5B7B")
+        self.label_becas_status.pack(pady=3)
+        self._cargar_becas()
+        self._crear_formulario_beca()
+
+    def _cargar_becas(self):
+        from utils.ui_helpers import crear_card_interactiva, agregar_detalle_expandible, linea_detalle, crear_lista_vacia
+        from controllers import beca_controller
+        for w in self.scroll_becas.winfo_children():
+            w.destroy()
+        becas = beca_controller.listar_todas()
+        if not becas:
+            crear_lista_vacia(self.scroll_becas, "No hay becas", "Crea la primera con + Nueva Beca")
+            self.label_becas_status.configure(text="Total: 0")
+            return
+        for b in becas:
+            card = crear_card_interactiva(self.scroll_becas)
+            card.pack(fill="x", padx=6, pady=4)
+            top = ctk.CTkFrame(card, fg_color="transparent")
+            top.pack(fill="x", padx=10, pady=8)
+            info = ctk.CTkFrame(top, fg_color="transparent")
+            info.pack(side="left", fill="x", expand=True)
+            estado = "Activa" if b.get("activo") else "Desactivada"
+            ctk.CTkLabel(info, text=f"{b.get('nombre','')} — {b.get('tipo','')} {b.get('valor',0)}",
+                         font=ctk.CTkFont(size=14, weight="bold"), text_color="#1F0A33").pack(anchor="w")
+            ctk.CTkLabel(info, text=f"{estado} | {b.get('observacion','') or '—'}",
+                         font=ctk.CTkFont(size=12), text_color="#6B5B7B").pack(anchor="w")
+            badge = ctk.CTkFrame(top, fg_color="#F3E8FF" if b.get("activo") else "#E5E7EB", corner_radius=8)
+            badge.pack(side="right", padx=10)
+            suf = "%" if b.get("tipo") == "PORCENTAJE" else ""
+            ctk.CTkLabel(badge, text=f"{b.get('valor',0)}{suf}", font=ctk.CTkFont(size=14, weight="bold"), text_color="#7C3AED").pack(padx=10, pady=6)
+            botones = ctk.CTkFrame(top, fg_color="transparent")
+            botones.pack(side="right", padx=5, pady=5)
+            ctk.CTkButton(botones, text="Editar", width=70, height=28,
+                          command=lambda x=b: self._editar_beca(x)).pack(side="left", padx=2)
+            if b.get("activo"):
+                ctk.CTkButton(botones, text="Desactivar", width=90, height=28, fg_color="#d9534f",
+                              command=lambda x=b: self._desactivar_beca(x)).pack(side="left", padx=2)
+            else:
+                ctk.CTkButton(botones, text="Activar", width=80, height=28, fg_color="#28a745",
+                              command=lambda x=b: self._activar_beca(x)).pack(side="left", padx=2)
+
+            def _poblar(frame, _b=b):
+                linea_detalle(frame, "ID beca", _b.get("id_beca"))
+                linea_detalle(frame, "Tipo", _b.get("tipo"))
+                linea_detalle(frame, "Valor", f"{_b.get('valor',0)}{'%' if _b.get('tipo')=='PORCENTAJE' else ' S/'}")
+                linea_detalle(frame, "Observación", _b.get("observacion"))
+                linea_detalle(frame, "Estado", "Activa" if _b.get("activo") else "Desactivada")
+
+            toggle_btn, _, _ = agregar_detalle_expandible(card, _poblar)
+            toggle_btn.pack(anchor="e", padx=10, pady=(0, 8))
+        self.label_becas_status.configure(text=f"Total: {len(becas)} beca(s)")
 
     def _crear_formulario(self):
         self.form_window = ctk.CTkToplevel(self)
@@ -339,5 +409,110 @@ class TarifaView(ctk.CTkFrame):
         if exito:
             self.label_status.configure(text=msg, text_color="green")
             self._cargar_tarifas()
+
+    # ── Becas (CRUD, solo ADMIN por menú Tarifas) ──
+    def _crear_formulario_beca(self):
+        self.form_beca = ctk.CTkToplevel(self)
+        self.form_beca.title("Beca")
+        self.form_beca.geometry("420x420")
+        self.form_beca.withdraw()
+
+        scroll = ctk.CTkScrollableFrame(self.form_beca)
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.label_beca_title = ctk.CTkLabel(scroll, text="Nueva Beca", font=ctk.CTkFont(size=16, weight="bold"))
+        self.label_beca_title.pack(anchor="w", pady=(0, 10))
+
+        ctk.CTkLabel(scroll, text="Nombre *").pack(anchor="w")
+        self.entry_beca_nombre = ctk.CTkEntry(scroll, placeholder_text="Ej: Pronto pago", width=380)
+        self.entry_beca_nombre.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Tipo *").pack(anchor="w")
+        self.combo_beca_tipo = ctk.CTkComboBox(scroll, width=380, values=["PORCENTAJE", "MONTO_FIJO"])
+        self.combo_beca_tipo.set("PORCENTAJE")
+        self.combo_beca_tipo.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Valor * (% si PORCENTAJE, S/ si MONTO_FIJO)").pack(anchor="w")
+        self.entry_beca_valor = ctk.CTkEntry(scroll, placeholder_text="10", width=380)
+        self.entry_beca_valor.pack(anchor="w", pady=3)
+
+        ctk.CTkLabel(scroll, text="Observación:").pack(anchor="w")
+        self.entry_beca_obs = ctk.CTkEntry(scroll, placeholder_text="Opcional", width=380)
+        self.entry_beca_obs.pack(anchor="w", pady=3)
+
+        self.label_beca_status = ctk.CTkLabel(scroll, text="", font=ctk.CTkFont(size=12))
+        self.label_beca_status.pack(anchor="w", pady=5)
+
+        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        btn_frame.pack(anchor="w", pady=10)
+        ctk.CTkButton(btn_frame, text="Guardar", width=120, command=self._guardar_beca).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Cancelar", width=100, fg_color="gray",
+                      command=lambda: self.form_beca.withdraw()).pack(side="left", padx=5)
+        self._editing_beca_id = None
+
+    def _nueva_beca(self):
+        self.label_beca_title.configure(text="Nueva Beca")
+        self._editing_beca_id = None
+        for e in (self.entry_beca_nombre, self.entry_beca_valor, self.entry_beca_obs):
+            e.delete(0, "end")
+        self.combo_beca_tipo.set("PORCENTAJE")
+        self.label_beca_status.configure(text="")
+        self.form_beca.deiconify()
+
+    def _editar_beca(self, b):
+        self.label_beca_title.configure(text="Editar Beca")
+        self._editing_beca_id = b["id_beca"]
+        for e, v in ((self.entry_beca_nombre, b.get("nombre", "")),
+                     (self.entry_beca_valor, str(b.get("valor", ""))),
+                     (self.entry_beca_obs, b.get("observacion", "") or "")):
+            e.delete(0, "end")
+            e.insert(0, v)
+        self.combo_beca_tipo.set(b.get("tipo", "PORCENTAJE"))
+        self.label_beca_status.configure(text="")
+        self.form_beca.deiconify()
+
+    def _guardar_beca(self):
+        from controllers import beca_controller
+        nombre = self.entry_beca_nombre.get().strip()
+        if not nombre:
+            self.label_beca_status.configure(text="El nombre es obligatorio", text_color="red")
+            return
+        try:
+            valor = float(self.entry_beca_valor.get().strip() or "0")
+            if valor <= 0:
+                raise ValueError
+        except ValueError:
+            self.label_beca_status.configure(text="Valor inválido (mayor a 0)", text_color="red")
+            return
+        data = {"nombre": nombre, "tipo": self.combo_beca_tipo.get(),
+                "valor": valor, "observacion": self.entry_beca_obs.get().strip()}
+        if self._editing_beca_id:
+            exito, msg = beca_controller.editar_beca(self._editing_beca_id, data)
+            self._editing_beca_id = None
+        else:
+            exito, msg, _ = beca_controller.crear_beca(data)
+        if exito:
+            self.label_becas_status.configure(text=msg, text_color="green")
+            self.form_beca.withdraw()
+            self._cargar_becas()
+        else:
+            self.label_beca_status.configure(text=msg, text_color="red")
+
+    def _desactivar_beca(self, b):
+        from tkinter import messagebox
+        from controllers import beca_controller
+        if not messagebox.askyesno("Confirmar", f"¿Desactivar la beca '{b['nombre']}'?"):
+            return
+        exito, msg = beca_controller.desactivar_beca(b["id_beca"])
+        self.label_becas_status.configure(text=msg, text_color="green" if exito else "red")
+        if exito:
+            self._cargar_becas()
+
+    def _activar_beca(self, b):
+        from controllers import beca_controller
+        exito, msg = beca_controller.activar_beca(b["id_beca"])
+        self.label_becas_status.configure(text=msg, text_color="green" if exito else "red")
+        if exito:
+            self._cargar_becas()
         else:
             self.label_status.configure(text=f"Error: {msg}", text_color="red")

@@ -98,3 +98,38 @@ def test_asignar_beca_inexistente_rechazada(crear_matricula):
     ids = crear_matricula()
     exito, msg = matricula_service.asignar_beca(ids["id_matricula"], 99999)
     assert exito is False
+
+def test_beca_crud_admin(usuario_admin):
+    from controllers import beca_controller
+    exito, msg, bid = beca_controller.crear_beca(
+        {"nombre": "Beca QA", "tipo": "PORCENTAJE", "valor": 15, "observacion": "t"})
+    assert exito is True, msg
+    assert any(b["id_beca"] == bid for b in beca_controller.listar_becas())
+    exito, msg = beca_controller.editar_beca(bid, {"valor": 20})
+    assert exito is True, msg
+    exito, msg = beca_controller.desactivar_beca(bid)
+    assert exito is True, msg
+    assert all(b["id_beca"] != bid for b in beca_controller.listar_becas())
+    assert any(b["id_beca"] == bid for b in beca_controller.listar_todas())
+    exito, msg = beca_controller.activar_beca(bid)
+    assert exito is True, msg
+    assert any(b["id_beca"] == bid for b in beca_controller.listar_becas())
+
+
+def test_beca_secretaria_no_gestiona(usuario_secretaria):
+    from controllers import beca_controller
+    exito, _, _ = beca_controller.crear_beca(
+        {"nombre": "X", "tipo": "PORCENTAJE", "valor": 5})
+    assert exito is False
+    exito, _ = beca_controller.desactivar_beca(1)
+    assert exito is False
+
+
+def test_beca_validaciones(usuario_admin):
+    from controllers import beca_controller
+    exito, _, _ = beca_controller.crear_beca({"nombre": "", "tipo": "PORCENTAJE", "valor": 5})
+    assert exito is False
+    exito, _, _ = beca_controller.crear_beca({"nombre": "X", "tipo": "RARO", "valor": 5})
+    assert exito is False
+    exito, _, _ = beca_controller.crear_beca({"nombre": "X", "tipo": "PORCENTAJE", "valor": 0})
+    assert exito is False

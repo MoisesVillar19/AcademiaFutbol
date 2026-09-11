@@ -77,6 +77,12 @@ CREATE TABLE IF NOT EXISTS categoria (
     activo INTEGER DEFAULT 1
 );
 
+CREATE TABLE IF NOT EXISTS rol_permiso (
+    rol TEXT NOT NULL,
+    modulo TEXT NOT NULL,
+    PRIMARY KEY (rol, modulo)
+);
+
 CREATE TABLE IF NOT EXISTS tarifa (
     id_tarifa INTEGER PRIMARY KEY AUTOINCREMENT,
     id_categoria INTEGER NOT NULL,
@@ -495,6 +501,18 @@ def _migrar_columnas_faltantes(cursor) -> None:
     # v2.2: seed tarifas desde Precios Flexibles (migra valores actuales, idempotente)
     try:
         seed_tarifas_desde_config(cursor)
+    except Exception:
+        pass
+
+    # Matriz de permisos editable (defaults desde PERMISOS_ROL, idempotente)
+    try:
+        from utils.constants import PERMISOS_ROL
+        for rol, modulos in PERMISOS_ROL.items():
+            for modulo in modulos:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO rol_permiso (rol, modulo) VALUES (?, ?)",
+                    (rol, modulo),
+                )
     except Exception:
         pass
 
